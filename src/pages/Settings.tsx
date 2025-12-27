@@ -1,0 +1,500 @@
+import React, { useEffect, useState } from "react";
+import { invoke } from "@tauri-apps/api/core";
+import { MicaCard } from "@/components/MicaCard";
+import { MicaInput } from "@/components/MicaInput";
+import { useSettingsStore } from "@/stores/settingsStore";
+import { Settings as SettingsType } from "@/types";
+import { Cog, Minus, Square, X } from "lucide-react";
+import { VscChromeClose, VscChromeMaximize, VscChromeMinimize } from "react-icons/vsc";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Switch } from "@/components/ui/switch";
+import { Card } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { useTheme } from "next-themes";
+
+//@ts-ignore
+import lightAppearanceHeader from "@/public/appearance-header-light.svg";
+//@ts-ignore
+import darkAppearanceHeader from "@/public/appearance-header-dark.svg";
+import { DropdownMenu, DropdownMenuItem, DropdownMenuContent, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import { useThemeStore } from "@/stores/themeStore";
+import { LibraryHygiene } from "@/components/LibraryHygiene";
+
+type TabId = "general" | "library" | "browser" | "accessibility" | "about";
+
+const Settings: React.FC = () => {
+  const { settings, setSettings, updateSettings } = useSettingsStore();
+  const { theme, setTheme } = useTheme();
+  const [activeTab, setActiveTab] = useState<TabId>("general");
+  const { colors: themeColors, setColors: setThemeColors, resetTheme, mode: themeMode, setMode: setThemeMode } = useThemeStore();
+
+  const [accentColor, setAccentColor] = useState(themeColors.accent);
+  const [buttonColor, setButtonColor] = useState(themeColors.button);
+  const [buttonSecondaryColor, setButtonSecondaryColor] = useState(themeColors.buttonSecondary || themeColors.accent);
+  const [backgroundColor, setBackgroundColor] = useState(themeColors.background);
+  const [panelColor, setPanelColor] = useState(themeColors.panel);
+
+  useEffect(() => {
+    loadSettings();
+  }, []);
+
+  useEffect(() => {
+    setAccentColor(themeColors.accent);
+    setButtonColor(themeColors.button);
+    setButtonSecondaryColor(themeColors.buttonSecondary || themeColors.accent);
+    setBackgroundColor(themeColors.background);
+    setPanelColor(themeColors.panel);
+  }, [themeColors.accent, themeColors.button, themeColors.buttonSecondary, themeColors.background, themeColors.panel]);
+
+  const loadSettings = async () => {
+    try {
+      const data = await invoke<SettingsType>("get_settings");
+      setSettings(data);
+    } catch (error) {
+      console.error("Failed to load settings:", error);
+    }
+  };
+
+  const handleThemeChange = (theme: "light" | "dark") => {
+    setTheme(theme);
+    updateSettings({ theme });
+  };
+
+  const handleSaveSettings = async () => {
+    try {
+      await invoke("update_settings", { settings });
+      alert("Settings saved successfully!");
+    } catch (error) {
+      console.error("Failed to save settings:", error);
+      alert("Failed to save settings");
+    }
+  };
+
+  const handleMinimize = async (e: React.MouseEvent) => {
+    try {
+      await invoke("minimize_settings_window");
+    } catch (error) {
+      console.error("Failed to minimize settings window:", error);
+      alert("Failed to minimize settings window");
+    }
+  };
+
+  const handleMaximize = async (e: React.MouseEvent) => {
+    try {
+      await invoke("maximize_settings_window");
+    } catch (error) {
+      console.error("Failed to maximize settings window:", error);
+      alert("Failed to maximize settings window");
+    }
+  };
+
+  const handleClose = async (e: React.MouseEvent) => {
+    try {
+      await invoke("close_settings_window");
+    } catch (error) {
+      console.error("Failed to close settings window:", error);
+      alert("Failed to close settings window");
+    }
+  };
+
+  return (
+    <div className="w-full h-full flex flex-col bg-background">
+      <link rel="preconnect" href="https://fonts.googleapis.com" />
+      <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
+      <link href="https://fonts.googleapis.com/css2?family=Livvic:ital,wght@0,100;0,200;0,300;0,400;0,500;0,600;0,700;0,900;1,100;1,200;1,300;1,400;1,500;1,600;1,700;1,900&family=Unbounded:wght@200..900&display=swap" rel="stylesheet"></link>
+      <div className="flex items-center justify-between py-1 px-2 border-b border-border bg-muted drag-region" data-tauri-drag-region>
+        <div className="flex items-center gap-2 text-foreground/70">
+          <Cog size={16} />
+          <h2 className="text-sm font-semibold uppercase italic" style={{ fontFamily: 'Unbounded, sans-serif' }}>Settings</h2>
+        </div>
+        <div className="flex items-end gap-2 no-drag-region text-foreground/70" data-tauri-drag-region="false">
+          {/* Window Controls */}
+          <button
+            onClick={handleMinimize}
+            className="p-1 hover:bg-muted-foreground/10 rounded transition-colors text-foreground/70"
+            title="Minimize"
+          >
+            <VscChromeMinimize size={14} />
+          </button>
+          <button
+            onClick={handleMaximize}
+            className="p-1 hover:bg-muted-foreground/10 rounded transition-colors text-foreground/70"
+            title="Maximize"
+          >
+            <VscChromeMaximize size={14} />
+          </button>
+          <button
+            onClick={handleClose}
+            className="p-1 hover:bg-red-500/20 rounded transition-colors text-foreground/70"
+            title="Close"
+          >
+            <VscChromeClose size={14} />
+          </button>
+        </div>
+      </div>
+
+      <div className="flex flex-row w-full h-full overflow-hidden">
+        {/* Tabs List - Left Side */}
+        <div className="w-48 border-r border-border bg-background/50 flex flex-col">
+          <div className="p-2 space-y-1">
+            <button
+              onClick={() => setActiveTab("general")}
+              className={`w-full text-left px-4 py-2 rounded transition-colors ${activeTab === "general"
+                ? "bg-[var(--theme-accent)]/20 text-[var(--theme-accent)] font-medium"
+                : "text-foreground/70 hover:bg-muted/50 hover:text-foreground"
+                }`}
+            >
+              General
+            </button>
+            <button
+              onClick={() => setActiveTab("library")}
+              className={`w-full text-left px-4 py-2 rounded transition-colors ${activeTab === "library"
+                ? "bg-[var(--theme-accent)]/20 text-[var(--theme-accent)] font-medium"
+                : "text-foreground/70 hover:bg-muted/50 hover:text-foreground"
+                }`}
+            >
+              Library
+            </button>
+            <button
+              onClick={() => setActiveTab("browser")}
+              className={`w-full text-left px-4 py-2 rounded transition-colors ${activeTab === "browser"
+                ? "bg-[var(--theme-accent)]/20 text-[var(--theme-accent)] font-medium"
+                : "text-foreground/70 hover:bg-muted/50 hover:text-foreground"
+                }`}
+            >
+              Browser
+            </button>
+            <button
+              onClick={() => setActiveTab("accessibility")}
+              className={`w-full text-left px-4 py-2 rounded transition-colors ${activeTab === "accessibility"
+                ? "bg-[var(--theme-accent)]/20 text-[var(--theme-accent)] font-medium"
+                : "text-foreground/70 hover:bg-muted/50 hover:text-foreground"
+                }`}
+            >
+              Accessibility
+            </button>
+            <button
+              onClick={() => setActiveTab("about")}
+              className={`w-full text-left px-4 py-2 rounded transition-colors ${activeTab === "about"
+                ? "bg-[var(--theme-accent)]/20 text-[var(--theme-accent)] font-medium"
+                : "text-foreground/70 hover:bg-muted/50 hover:text-foreground"
+                }`}
+            >
+              About
+            </button>
+          </div>
+        </div>
+
+        {/* Content - Right Side */}
+        <div className="flex-1 overflow-y-auto content-view-scrollbar">
+          <div className="p-6">
+            {activeTab === "general" && (
+              <>
+                <h2 className="text-foreground/70 font-medium uppercase italic text-lg" style={{ fontFamily: 'Unbounded, sans-serif' }}>General</h2>
+                <div className="flex flex-col gap-2">
+                  <label className="text-foreground/70 font-medium" style={{ fontFamily: 'Livvic, sans-serif' }}>Appearance</label>
+                  <div className="flex flex-col items-center gap-2 w-full">
+                    <Card className="w-full h-58 flex flex-row items-center justify-between p-0">
+                      <img src={lightAppearanceHeader} alt="Light" className="w-fit h-full object-contain" />
+                      <div className="flex flex-col items-end h-full p-2">
+                        <span className="text-foreground/70 font-medium text-2xl italic uppercase" style={{ fontFamily: 'Unbounded, sans-serif' }}>Light</span>
+                        <p className="text-foreground/70 font-medium text-right" style={{ fontFamily: 'Livvic, sans-serif' }}>
+                          Enjoy a bright, clean interface that feels fresh. Customize with your favorite accent.
+                        </p>
+                        <Button variant="default" onClick={() => handleThemeChange("light")} className="p-2 cursor-pointer font-medium place-self-end mt-auto dark:bg-[var(--theme-button)] bg-[var(--theme-button-secondary)]] text-foreground dark:border-[var(--theme-button)] border-[var(--theme-button-secondary)]" disabled={settings.theme === "light"}>
+                          {theme === "light" ? "You can't re-select light mode silly :)" : "Use Light mode"}
+                        </Button>
+                      </div>
+                    </Card>
+                    <Card className="w-full h-58 flex flex-row items-center justify-between p-0">
+                      <img src={darkAppearanceHeader} alt="Dark" className="w-fit h-full object-contain" />
+                      <div className="flex flex-col items-end h-full p-2">
+                        <span className="text-foreground/70 font-medium text-2xl italic uppercase" style={{ fontFamily: 'Unbounded, sans-serif' }}>Dark</span>
+                        <p className="text-foreground/70 font-medium text-right" style={{ fontFamily: 'Livvic, sans-serif' }}>
+                          Enjoy deep blacks, perfect for midnight gaming. Change up the look with a custom accent.
+                        </p>
+                        <Button variant="default" onClick={() => handleThemeChange("dark")} className="p-2 cursor-pointer font-medium place-self-end mt-auto dark:bg-[var(--theme-button)] bg-[var(--theme-button-secondary)] text-foreground dark:border-[var(--theme-button)] border-[var(--theme-button-secondary)]" disabled={theme === "dark"}>
+                          {theme === "dark" ? "You can't re-select dark mode silly :)" : "Use Dark mode"}
+                        </Button>
+                      </div>
+                    </Card>
+                  </div>
+                </div>
+                <div className="flex flex-col gap-2 mt-4">
+                  <label className="text-foreground/70 font-medium" style={{ fontFamily: 'Livvic, sans-serif' }}>Theme</label>
+                  <div className="flex flex-row items-center gap-2 w-full">
+                    <Card className="p-2 text-foreground">
+                      <label className="text-sm text-foreground/80 mb-1 block">Accent Color</label>
+                      <div className="flex gap-2 items-center">
+                        <input
+                          type="color"
+                          value={accentColor}
+                          onChange={(e) => setAccentColor(e.target.value)}
+                          className="w-12 h-10 cursor-pointer"
+                        />
+                        <MicaInput
+                          type="text"
+                          value={accentColor}
+                          onChange={(e) => setAccentColor(e.target.value)}
+                          placeholder="#4CE4B1"
+                          className="flex-1"
+                        />
+                      </div>
+                    </Card>
+
+                    <Card className="p-2 text-foreground">
+                      <label className="text-sm text-foreground/80 mb-1 block">Button Color (Dark)</label>
+                      <div className="flex gap-2 items-center">
+                        <input
+                          type="color"
+                          value={buttonColor}
+                          onChange={(e) => setButtonColor(e.target.value)}
+                          className="w-12 h-10 rounded cursor-pointer"
+                        />
+                        <MicaInput
+                          type="text"
+                          value={buttonColor}
+                          onChange={(e) => setButtonColor(e.target.value)}
+                          placeholder="#006B4F"
+                          className="flex-1"
+                        />
+                      </div>
+                    </Card>
+
+                    <Card className="p-2 text-foreground">
+                      <label className="text-sm text-foreground/80 mb-1 block">Button Color (Light)</label>
+                      <div className="flex gap-2 items-center">
+                        <input
+                          type="color"
+                          value={buttonSecondaryColor}
+                          onChange={(e) => setButtonSecondaryColor(e.target.value)}
+                          className="w-12 h-10 rounded cursor-pointer"
+                        />
+                        <MicaInput
+                          type="text"
+                          value={buttonSecondaryColor}
+                          onChange={(e) => setButtonSecondaryColor(e.target.value)}
+                          placeholder="#4CE4B1"
+                          className="flex-1"
+                        />
+                      </div>
+                    </Card>
+                  </div>
+                  <div className="flex gap-2 mt-2 items-end">
+                    <Button
+                      type="button"
+                      variant="default"
+                      onClick={() => {
+                        setThemeColors({
+                          accent: accentColor,
+                          button: buttonColor,
+                          buttonSecondary: buttonSecondaryColor,
+                          background: backgroundColor,
+                          panel: panelColor,
+                        });
+                      }}
+                      className="text-sm dark:bg-[var(--theme-button)] bg-[var(--theme-button-secondary)] text-foreground border-[var(--theme-button-secondary)] dark:border-[var(--theme-button)]"
+                    >
+                      Apply Theme
+                    </Button>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={() => {
+                        resetTheme();
+                      }}
+                      className="text-sm text-foreground/70"
+                    >
+                      Reset to Defaults
+                    </Button>
+                  </div>
+                </div>
+              </>
+            )}
+
+            {activeTab === "library" && (
+              <MicaCard className="settings-section">
+                <h2>Library Settings</h2>
+                <div className="settings-group">
+                  <label>Default View</label>
+                  <select
+                    value={settings.librarySettings?.defaultView || "grid"}
+                    onChange={(e) =>
+                      updateSettings({
+                        librarySettings: {
+                          cacheGameMetadata: settings.librarySettings?.cacheGameMetadata ?? true,
+                          autoUpdateMetadata: settings.librarySettings?.autoUpdateMetadata ?? true,
+                          defaultView: e.target.value as "grid" | "list",
+                          sortBy: settings.librarySettings?.sortBy ?? "title",
+                          groupBy: settings.librarySettings?.groupBy ?? "none",
+                        },
+                      })
+                    }
+                    className="settings-select"
+                  >
+                    <option value="grid">Grid</option>
+                    <option value="list">List</option>
+                  </select>
+                </div>
+                <div className="settings-group">
+                  <label>Sort By</label>
+                  <select
+                    value={settings.librarySettings?.sortBy || "title"}
+                    onChange={(e) =>
+                      updateSettings({
+                        librarySettings: {
+                          cacheGameMetadata: settings.librarySettings?.cacheGameMetadata ?? true,
+                          autoUpdateMetadata: settings.librarySettings?.autoUpdateMetadata ?? true,
+                          defaultView: settings.librarySettings?.defaultView ?? "grid",
+                          sortBy: e.target.value as any,
+                          groupBy: settings.librarySettings?.groupBy ?? "none",
+                        },
+                      })
+                    }
+                    className="settings-select"
+                  >
+                    <option value="title">Title</option>
+                    <option value="lastPlayed">Last Played</option>
+                    <option value="playtime">Playtime</option>
+                    <option value="added">Date Added</option>
+                  </select>
+                </div>
+                <div className="settings-group">
+                  <label>
+                    <input
+                      type="checkbox"
+                      checked={settings.librarySettings?.cacheGameMetadata || false}
+                      onChange={(e) =>
+                        updateSettings({
+                          librarySettings: {
+                            cacheGameMetadata: e.target.checked,
+                            autoUpdateMetadata: settings.librarySettings?.autoUpdateMetadata ?? true,
+                            defaultView: settings.librarySettings?.defaultView ?? "grid",
+                            sortBy: settings.librarySettings?.sortBy ?? "title",
+                            groupBy: settings.librarySettings?.groupBy ?? "none",
+                          },
+                        })
+                      }
+                    />
+                    Cache game metadata
+                  </label>
+                </div>
+                <div className="mt-6">
+                  <LibraryHygiene />
+                </div>
+              </MicaCard>
+            )}
+
+            {activeTab === "browser" && (
+              <MicaCard className="settings-section">
+                <h2>Browser Settings</h2>
+                <div className="settings-group">
+                  <label>Homepage</label>
+                  <MicaInput
+                    type="text"
+                    value={settings.browserSettings?.homepage || ""}
+                    onChange={(e) =>
+                      updateSettings({
+                        browserSettings: {
+                          defaultSearchEngine: settings.browserSettings?.defaultSearchEngine ?? "google",
+                          homepage: e.target.value,
+                          blockAds: settings.browserSettings?.blockAds ?? false,
+                          enableJavascript: settings.browserSettings?.enableJavascript ?? true,
+                        },
+                      })
+                    }
+                  />
+                </div>
+                <div className="settings-group">
+                  <label>
+                    <input
+                      type="checkbox"
+                      checked={settings.browserSettings?.enableJavascript ?? true}
+                      onChange={(e) =>
+                        updateSettings({
+                          browserSettings: {
+                            defaultSearchEngine: settings.browserSettings?.defaultSearchEngine ?? "google",
+                            homepage: settings.browserSettings?.homepage ?? "https://www.google.com",
+                            blockAds: settings.browserSettings?.blockAds ?? false,
+                            enableJavascript: e.target.checked,
+                          },
+                        })
+                      }
+                    />
+                    Enable JavaScript
+                  </label>
+                </div>
+              </MicaCard>
+            )}
+
+            {activeTab === "accessibility" && (
+              <MicaCard className="settings-section">
+                <h2 className="text-foreground/70 font-medium uppercase italic text-lg mb-4" style={{ fontFamily: 'Unbounded, sans-serif' }}>Accessibility</h2>
+                <div className="flex flex-col gap-4">
+                  <div className="settings-group">
+                    <label className="flex items-center justify-between cursor-pointer">
+                      <div>
+                        <div className="font-medium text-foreground/90" style={{ fontFamily: 'Livvic, sans-serif' }}>Grayscale Mode</div>
+                        <div className="text-sm text-foreground/60" style={{ fontFamily: 'Livvic, sans-serif' }}>
+                          Apply grayscale filter to the entire application
+                        </div>
+                      </div>
+                      <Switch
+                        checked={settings.accessibilitySettings?.grayscale || false}
+                        onCheckedChange={(checked) =>
+                          updateSettings({
+                            accessibilitySettings: {
+                              grayscale: checked,
+                              highContrast: settings.accessibilitySettings?.highContrast ?? false,
+                            },
+                          })
+                        }
+                      />
+                    </label>
+                  </div>
+                  <div className="settings-group">
+                    <label className="flex items-center justify-between cursor-pointer">
+                      <div>
+                        <div className="font-medium text-foreground/90" style={{ fontFamily: 'Livvic, sans-serif' }}>High Contrast Mode</div>
+                        <div className="text-sm text-foreground/60" style={{ fontFamily: 'Livvic, sans-serif' }}>
+                          Increase contrast for better visibility
+                        </div>
+                      </div>
+                      <Switch
+                        checked={settings.accessibilitySettings?.highContrast || false}
+                        onCheckedChange={(checked) =>
+                          updateSettings({
+                            accessibilitySettings: {
+                              grayscale: settings.accessibilitySettings?.grayscale ?? false,
+                              highContrast: checked,
+                            },
+                          })
+                        }
+                      />
+                    </label>
+                  </div>
+                </div>
+              </MicaCard>
+            )}
+
+            {activeTab === "about" && (
+              <MicaCard className="settings-section">
+                <h2>About</h2>
+                <div className="about-content">
+                  <p>
+                    <strong>PoliGame</strong>
+                  </p>
+                  <p>Version 1.0.0</p>
+                  <p>Game aggregator with marketplace functionality</p>
+                </div>
+              </MicaCard>
+            )}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+export default Settings;
+
