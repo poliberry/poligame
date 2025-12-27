@@ -79,7 +79,7 @@ const Library: React.FC = () => {
   // Create playtime map for quick lookups
   const playtimeMap = React.useMemo(() => {
     if (!allPlaytimeData) return new Map();
-    return new Map(allPlaytimeData.map((pt) => [pt.gameId, pt]));
+    return new Map(allPlaytimeData.map((pt: { gameId: string; totalPlaytime: number; lastPlayed: number }) => [pt.gameId, pt]));
   }, [allPlaytimeData]);
 
   // Get "Let's jump back in" games - recently played games with playtime

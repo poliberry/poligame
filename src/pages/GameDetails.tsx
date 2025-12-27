@@ -18,6 +18,7 @@ import { MediaGallery } from "@/components/MediaGallery";
 import { IoPlay } from "react-icons/io5";
 import { X, Clock, Users, Tag, RefreshCw } from "lucide-react";
 import { Card } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
 import { getImageUrl } from "@/utils/imageUtils";
 
 const GameDetails: React.FC = () => {
@@ -444,7 +445,7 @@ const GameDetails: React.FC = () => {
       const result = await invoke<any>("fetch_and_update_game_metadata", { gameId });
       console.log("Metadata fetch result:", result);
       // Reload game data
-      await loadGame();
+      await loadGameDetails();
       alert("Game metadata updated successfully!");
     } catch (error) {
       console.error("Failed to fetch metadata:", error);

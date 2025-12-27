@@ -3,7 +3,7 @@ import React from "react";
 interface MicaCardProps {
   children: React.ReactNode;
   className?: string;
-  onClick?: () => void;
+  onClick?: (e: React.MouseEvent) => void;
   hover?: boolean;
 }
 

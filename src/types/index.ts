@@ -37,6 +37,9 @@ export interface GameMetadata {
   dlc?: DLCEntry[];
   updates?: UpdateEntry[];
   relatedContent?: RelatedContent[];
+  tags?: string[];
+  genres?: string[];
+  categories?: string[];
 }
 
 export interface DLCEntry {
