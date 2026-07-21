@@ -1,4 +1,4 @@
-@import 'tailwindcss';
+@import "tailwindcss";
 @import "tw-animate-css";
 
 @custom-variant dark (&:is(.dark *));
@@ -88,7 +88,9 @@
   padding: 0.125rem 0.25rem;
   border-radius: 0.25rem;
   font-size: 0.875em;
-  font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, "Liberation Mono", monospace;
+  font-family:
+    ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, "Liberation Mono",
+    monospace;
 }
 
 .prose pre {
@@ -186,7 +188,7 @@
   --card-foreground: oklch(0.141 0.005 285.823);
   --popover: oklch(1 0 0);
   --popover-foreground: oklch(0.141 0.005 285.823);
-  --primary: oklch(0.60 0.10 185);
+  --primary: oklch(59.173% 0.11469 166.898);
   --primary-foreground: oklch(0.98 0.01 181);
   --secondary: oklch(0.967 0.001 286.375);
   --secondary-foreground: oklch(0.21 0.006 285.885);
@@ -200,13 +202,13 @@
   --ring: oklch(0.705 0.015 286.067);
   --chart-1: oklch(0.85 0.13 181);
   --chart-2: oklch(0.78 0.13 182);
-  --chart-3: oklch(0.70 0.12 183);
-  --chart-4: oklch(0.60 0.10 185);
+  --chart-3: oklch(0.7 0.12 183);
+  --chart-4: oklch(0.6 0.1 185);
   --chart-5: oklch(0.51 0.09 186);
   --radius: 0.625rem;
   --sidebar: oklch(0.985 0 0);
   --sidebar-foreground: oklch(0.141 0.005 285.823);
-  --sidebar-primary: oklch(0.60 0.10 185);
+  --sidebar-primary: oklch(0.6 0.1 185);
   --sidebar-primary-foreground: oklch(0.98 0.01 181);
   --sidebar-accent: oklch(0.967 0.001 286.375);
   --sidebar-accent-foreground: oklch(0.21 0.006 285.885);
@@ -221,7 +223,7 @@
   --card-foreground: oklch(0.985 0 0);
   --popover: oklch(0.21 0.006 285.885);
   --popover-foreground: oklch(0.985 0 0);
-  --primary: oklch(0.70 0.12 183);
+  --primary: oklch(0.7 0.12 183);
   --primary-foreground: oklch(0.28 0.04 193);
   --secondary: oklch(0.274 0.006 286.033);
   --secondary-foreground: oklch(0.985 0 0);
@@ -235,8 +237,8 @@
   --ring: oklch(0.552 0.016 285.938);
   --chart-1: oklch(0.85 0.13 181);
   --chart-2: oklch(0.78 0.13 182);
-  --chart-3: oklch(0.70 0.12 183);
-  --chart-4: oklch(0.60 0.10 185);
+  --chart-3: oklch(0.7 0.12 183);
+  --chart-4: oklch(0.6 0.1 185);
   --chart-5: oklch(0.51 0.09 186);
   --sidebar: oklch(0.21 0.006 285.885);
   --sidebar-foreground: oklch(0.985 0 0);
@@ -255,5 +257,93 @@
 }
 
 .nv-inbox__popoverTrigger {
-  @apply border-border bg-background hover:bg-muted hover:text-foreground dark:bg-input/30 dark:border-input dark:hover:bg-input/50 aria-expanded:bg-muted aria-expanded:text-foreground px-2 py-1 flex flex-row items-center justify-center border-1 rounded-none;
+  @apply border-none bg-transparent hover:bg-muted hover:text-[var(--theme-accent)] rounded-full aria-expanded:bg-muted aria-expanded:text-[var(--theme-accent)] px-1 py-1 flex flex-row items-center justify-center;
+}
+
+@keyframes shimmer-sweep {
+  0% {
+    transform: translateX(-100%);
+  }
+  100% {
+    transform: translateX(100%);
+  }
+}
+
+.game-card-shimmer {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 20;
+  opacity: 0;
+  transition: opacity 0.3s ease;
+  overflow: hidden;
+}
+
+.game-card-shimmer::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(
+    105deg,
+    transparent 40%,
+    rgba(255, 255, 255, 0.15) 50%,
+    transparent 60%
+  );
+  transform: translateX(-100%);
+}
+
+/* Trigger shimmer on parent hover */
+.game-card:hover .game-card-shimmer::before {
+  animation: shimmer-sweep 0.8s ease-out;
+}
+
+.game-card:hover .game-card-shimmer {
+  opacity: 1;
+}
+
+.game-card {
+  transition:
+    transform 0.3s ease,
+    box-shadow 0.3s ease;
+  transform-origin: top center;
+  transform-style: preserve-3d;
+}
+
+.game-card:hover {
+  transform: perspective(1000px) rotateX(6deg) scale(1.02);
+  box-shadow:
+    0 20px 40px -10px rgba(0, 0, 0, 0.6),
+    0 15px 30px rgba(0, 0, 0, 0.4);
+  z-index: 50;
+}
+
+.figma-range::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 16px;
+  height: 16px;
+  border-radius: 9999px;
+  border: 2px solid #ffffff;
+  background: #2563eb;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.35);
+  margin-top: -2px;
+}
+.figma-range::-webkit-slider-runnable-track {
+  height: 100%;
+  border-radius: 9999px;
+}
+.figma-range::-moz-range-thumb {
+  width: 16px;
+  height: 16px;
+  border-radius: 9999px;
+  border: 2px solid #ffffff;
+  background: #2563eb;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.35);
+}
+.figma-range::-moz-range-track {
+  height: 100%;
+  border-radius: 9999px;
 }

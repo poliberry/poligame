@@ -11,6 +11,8 @@ interface GameStore {
   updateGame: (gameId: string, updates: Partial<Game>) => void;
   removeGame: (gameId: string) => void;
   setSelectedGame: (game: Game | null) => void;
+  setActiveHoverGame: (game: Game | null) => void;
+  activeHoverGame: Game | null;
   setLoading: (loading: boolean) => void;
   setError: (error: string | null) => void;
   filterGames: (predicate: (game: Game) => boolean) => Game[];
@@ -44,6 +46,8 @@ export const useGameStore = create<GameStore>((set, get) => ({
   setLoading: (loading) => set({ isLoading: loading }),
   setError: (error) => set({ error }),
   filterGames: (predicate) => get().games.filter(predicate),
+  activeHoverGame: null,
+  setActiveHoverGame: (game) => set({ activeHoverGame: game }),
   getGameById: (gameId) => get().games.find((game) => game.id === gameId),
 }));
 

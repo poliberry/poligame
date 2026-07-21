@@ -16,14 +16,23 @@ import {
   Upload,
   X,
   Volume2,
-  VolumeX
+  VolumeX,
+  Sidebar,
+  LogOut,
+  Settings,
+  ShoppingBag,
+  Library,
+  MessageSquare,
+  Users,
 } from "lucide-react";
 // @ts-ignore
 import logo from "@/public/poligame-logo.svg";
 // @ts-ignore
-import welcomeVideo from "@/public/video/loader-video.mp4";
-// @ts-ignore
 import welcomeAudio from "@/public/setup-music.wav";
+// @ts-ignore
+import welcomeVideo from "@/public/intro-video.mp4";
+// @ts-ignore
+import setupVideo from "@/public/setup-video.mp4";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
@@ -31,11 +40,34 @@ import { Input } from "@/components/ui/input";
 import { SiEpicgames, SiRockstargames } from "react-icons/si";
 import { TbBrandElectronicArts } from "react-icons/tb";
 import { Textarea } from "@/components/ui/textarea";
+import { cn } from "@/lib/utils";
+import { ColorPicker } from "@/components/ui/color-picker";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { Link } from "react-router-dom";
+import styled from "styled-components";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
-type SetupStep = "welcome" | "auth" | "userIds" | "theme" | "profile" | "complete";
+type SetupStep =
+  | "video"
+  | "welcome"
+  | "auth"
+  | "userIds"
+  | "theme"
+  | "profile"
+  | "complete";
+
+interface NavItem {
+  path: string;
+  label: string;
+  icon: React.ReactNode;
+}
 
 export const Setup: React.FC = () => {
-  const [currentStep, setCurrentStep] = useState<SetupStep>("welcome");
+  const [currentStep, setCurrentStep] = useState<SetupStep>("video");
   const { user, setUser, setLoading: setAuthLoading } = useAuthStore();
   const { colors: themeColors, setColors: setThemeColors } = useThemeStore();
   const [isMainWindow, setIsMainWindow] = useState(false);
@@ -61,8 +93,12 @@ export const Setup: React.FC = () => {
   // Theme state
   const [accentColor, setAccentColor] = useState(themeColors.accent);
   const [buttonColor, setButtonColor] = useState(themeColors.button);
-  const [buttonSecondaryColor, setButtonSecondaryColor] = useState(themeColors.buttonSecondary || themeColors.accent);
-  const [backgroundColor, setBackgroundColor] = useState(themeColors.background);
+  const [buttonSecondaryColor, setButtonSecondaryColor] = useState(
+    themeColors.buttonSecondary || themeColors.accent,
+  );
+  const [backgroundColor, setBackgroundColor] = useState(
+    themeColors.background,
+  );
   const [panelColor, setPanelColor] = useState(themeColors.panel);
 
   // Profile state
@@ -90,30 +126,6 @@ export const Setup: React.FC = () => {
     checkWindow();
   }, []);
 
-  // Play video when main window is refocused
-  useEffect(() => {
-    if (!isMainWindow) return;
-
-    const handleFocus = async () => {
-      const video = videoRef.current;
-      if (video && !isCompleteRef.current && (video.paused || video.ended)) {
-        try {
-          if (video.ended) {
-            video.currentTime = 0;
-          }
-          await video.play();
-        } catch (error) {
-          console.error("Error playing video on focus:", error);
-        }
-      }
-    };
-
-    window.addEventListener("focus", handleFocus);
-    return () => {
-      window.removeEventListener("focus", handleFocus);
-    };
-  }, [isMainWindow]);
-
   // Load user data if already authenticated
   useEffect(() => {
     if (user) {
@@ -130,89 +142,9 @@ export const Setup: React.FC = () => {
   // Check if user is authenticated to skip auth step
   useEffect(() => {
     if (user && currentStep === "auth") {
-      // Small delay to ensure state is updated
-      setTimeout(() => {
-        setCurrentStep("userIds");
-      }, 100);
+      setCurrentStep("userIds");
     }
   }, [user, currentStep]);
-
-  // Ensure video keeps playing and looping until setup is complete
-  useEffect(() => {
-    const video = videoRef.current;
-    if (!video) return;
-
-    const isComplete = currentStep === "complete";
-    isCompleteRef.current = isComplete;
-
-    // Stop video when setup is complete
-    if (isComplete) {
-      video.pause();
-      return;
-    }
-
-    // Ensure video is playing
-    const playVideo = async () => {
-      try {
-        if (video.paused || video.ended) {
-          if (video.ended) {
-            video.currentTime = 0;
-          }
-          await video.play();
-        }
-      } catch (error) {
-        console.error("Error playing video:", error);
-      }
-    };
-
-    // Initial play
-    playVideo();
-
-    // Handle video end to ensure it loops
-    const handleEnded = () => {
-      if (!isCompleteRef.current) {
-        video.currentTime = 0;
-        video.play().catch(console.error);
-      }
-    };
-
-    // Handle video pause to resume it
-    const handlePause = () => {
-      // Only resume if setup is not complete
-      if (!isCompleteRef.current) {
-        video.play().catch(console.error);
-      }
-    };
-
-    // Handle when video stops playing for any reason
-    const handleStop = () => {
-      if (!isCompleteRef.current && (video.paused || video.ended)) {
-        playVideo();
-      }
-    };
-
-    // Periodic check to ensure video is playing (every 2 seconds)
-    const playCheckInterval = setInterval(() => {
-      if (!isCompleteRef.current && (video.paused || video.ended)) {
-        playVideo();
-      }
-    }, 2000);
-
-    video.addEventListener("ended", handleEnded);
-    video.addEventListener("pause", handlePause);
-    video.addEventListener("suspend", handleStop);
-    video.addEventListener("stalled", handleStop);
-    video.addEventListener("waiting", handleStop);
-
-    return () => {
-      clearInterval(playCheckInterval);
-      video.removeEventListener("ended", handleEnded);
-      video.removeEventListener("pause", handlePause);
-      video.removeEventListener("suspend", handleStop);
-      video.removeEventListener("stalled", handleStop);
-      video.removeEventListener("waiting", handleStop);
-    };
-  }, [currentStep]);
 
   const handleAuthSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -307,7 +239,7 @@ export const Setup: React.FC = () => {
       });
 
       // Mark setup as complete
-      await invoke("set_setup_complete");
+      await invoke("set_setup_complete", { completed: true });
 
       setCurrentStep("complete");
     } catch (error: any) {
@@ -319,15 +251,23 @@ export const Setup: React.FC = () => {
   };
 
   const steps: { key: SetupStep; title: string; description: string }[] = [
-    { key: "welcome", title: "Welcome", description: "Get started with PoliGame" },
+    {
+      key: "welcome",
+      title: "Welcome",
+      description: "Get started with PoliGame",
+    },
     { key: "auth", title: "Account", description: "Sign up or sign in" },
-    { key: "userIds", title: "User IDs", description: "Configure your launcher IDs" },
+    {
+      key: "userIds",
+      title: "User IDs",
+      description: "Configure your launcher IDs",
+    },
     { key: "theme", title: "Theme", description: "Customize your colors" },
     { key: "profile", title: "Profile", description: "Set up your profile" },
     { key: "complete", title: "Complete", description: "You're all set!" },
   ];
 
-  const currentStepIndex = steps.findIndex(s => s.key === currentStep);
+  const currentStepIndex = steps.findIndex((s) => s.key === currentStep);
   const progress = ((currentStepIndex + 1) / steps.length) * 100;
 
   const canGoNext = () => {
@@ -348,13 +288,9 @@ export const Setup: React.FC = () => {
   };
 
   const handleNext = () => {
-    if (currentStep === "profile") {
-      handleComplete();
-    } else {
-      const nextIndex = currentStepIndex + 1;
-      if (nextIndex < steps.length) {
-        setCurrentStep(steps[nextIndex].key);
-      }
+    const nextIndex = currentStepIndex + 1;
+    if (nextIndex < steps.length) {
+      setCurrentStep(steps[nextIndex].key);
     }
   };
 
@@ -365,536 +301,1086 @@ export const Setup: React.FC = () => {
     }
   };
 
-  return (
-    <div className="w-full h-screen text-white flex flex-col drag-region">
-      <link rel="preconnect" href="https://fonts.googleapis.com" />
-      <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
-      <link href="https://fonts.googleapis.com/css2?family=Livvic:ital,wght@0,100;0,200;0,300;0,400;0,500;0,600;0,700;0,900;1,100;1,200;1,300;1,400;1,500;1,600;1,700;1,900&family=Unbounded:wght@200..900&display=swap" rel="stylesheet"></link>
-      <video 
-        ref={videoRef}
-        src={welcomeVideo} 
-        autoPlay 
-        loop 
-        playsInline 
-        muted
-        preload="auto"
-        className="w-full h-full object-cover absolute top-0 left-0 z-0" 
-      />
-      <div className="w-full h-full z-10 bg-black/50 backdrop-blur-sm absolute top-0 left-0">
-        <div className="absolute top-4 right-4 flex items-center gap-3">
-          {isMainWindow && (
-            <button
-              onClick={() => {
-                const audio = audioRef.current;
-                if (audio) {
-                  audio.muted = !audio.muted;
-                  setIsAudioMuted(audio.muted);
-                }
-              }}
-              className="text-white cursor-pointer hover:opacity-80 transition-opacity"
-              aria-label={isAudioMuted ? "Unmute audio" : "Mute audio"}
-            >
-              {isAudioMuted ? (
-                <VolumeX size={20} />
-              ) : (
-                <Volume2 size={20} />
-              )}
-            </button>
-          )}
-          <X size={20} className="text-white cursor-pointer hover:opacity-80 transition-opacity" onClick={() => {
-            invoke("close_setup_window");
-          }} />
-        </div>
+  const [showVideo, setShowVideo] = useState(false);
+  const [isFading, setIsFading] = useState(false);
 
-        <div className="flex flex-col items-center justify-center w-full h-full">
-          {isMainWindow && (
-            <audio 
-              ref={audioRef}
-              src={welcomeAudio} 
-              autoPlay 
-              loop 
-              onLoadedMetadata={() => {
-                if (audioRef.current) {
-                  setIsAudioMuted(audioRef.current.muted);
-                }
-              }}
-            />
-          )}
-          <Card className="no-drag-region dark p-0 min-w-3xl">
-            {/* Header */}
-            <div className="flex items-center justify-between p-4 border-b border-white/10 select-none">
-              <div className="flex items-center gap-4">
-                <img src={logo} alt="Logo" width={40} height={40} />
-                <div>
-                  <h1 className="text-xl font-bold uppercase italic" style={{ fontFamily: 'Unbounded, sans-serif' }}>
-                    PoliGame Setup
-                  </h1>
-                  <p className="text-sm text-white/60">{steps[currentStepIndex].description}</p>
-                </div>
-              </div>
-              <div className="flex items-center gap-2">
-                {steps.map((step, index) => (
-                  <div
-                    key={step.key}
-                    className={`w-2 h-2 rounded-full transition-all ${index <= currentStepIndex
-                      ? "bg-[var(--theme-accent)]"
-                      : "bg-white/20"
-                      }`}
-                  />
-                ))}
+  // Short delay before intro video starts
+  useEffect(() => {
+    const timer = setTimeout(() => setShowVideo(true), 700);
+    return () => clearTimeout(timer);
+  }, []);
+
+  const [previewButtonHovered, setPreviewButtonHovered] = useState(false);
+
+  if (currentStep === "video") {
+    const handleVideoEnd = () => {
+      // 2 second delay after video ends before transition
+      setTimeout(() => {
+        setIsFading(true);
+        setTimeout(() => setCurrentStep("welcome"), 500);
+      }, 2000);
+    };
+
+    return (
+      <div
+        className={`min-h-screen flex items-center justify-center bg-black transition-opacity duration-500 ${isFading ? "opacity-0" : "opacity-100"}`}
+      >
+        {showVideo && (
+          <video
+            autoPlay
+            muted={isAudioMuted}
+            playsInline
+            onEnded={handleVideoEnd}
+            className="w-full h-full object-cover"
+          >
+            <source src={welcomeVideo} type="video/mp4" />
+          </video>
+        )}
+
+        <button
+          onClick={() => {
+            setIsFading(true);
+            setTimeout(() => setCurrentStep("welcome"), 500);
+          }}
+          className="absolute bottom-8 right-8 px-6 py-2 bg-white/10 hover:bg-white/20 rounded-full text-white/70 hover:text-white transition-all"
+        >
+          Skip
+        </button>
+      </div>
+    );
+  } else {
+    return (
+      <div className="w-full h-screen text-white flex flex-col drag-region">
+        <link rel="preconnect" href="https://fonts.googleapis.com" />
+        <link rel="preconnect" href="https://fonts.gstatic.com" />
+        <link
+          href="https://fonts.googleapis.com/css2?family=Google+Sans+Flex:opsz,wght@6..144,1..1000&family=Oswald:wght@200..700&display=swap"
+          rel="stylesheet"
+        />
+        <audio
+          ref={audioRef}
+          src={welcomeAudio}
+          autoPlay
+          loop
+          muted={isAudioMuted}
+        />
+        <div className="w-full h-screen">
+          <video
+            autoPlay={true}
+            muted={true}
+            playsInline
+            loop
+            className="w-full h-full object-cover"
+          >
+            <source src={setupVideo} type="video/mp4" />
+          </video>
+          <div className="w-full h-full bg-black/50 z-10 absolute top-0 left-0">
+            <div
+              data-tauri-drag-region
+              className="drag-region backdrop-blur-lg fixed top-0 left-0 w-full h-10 bg-black/50 z-20 flex items-center justify-end px-2"
+            >
+              <div className="flex items-center gap-3">
+                {isMainWindow && (
+                  <button
+                    onClick={() => {
+                      const audio = audioRef.current;
+                      if (audio) {
+                        audio.muted = !audio.muted;
+                        setIsAudioMuted(audio.muted);
+                      }
+                    }}
+                    className="text-white cursor-pointer hover:opacity-80 transition-opacity"
+                    aria-label={isAudioMuted ? "Unmute audio" : "Mute audio"}
+                  >
+                    {isAudioMuted ? (
+                      <VolumeX size={20} />
+                    ) : (
+                      <Volume2 size={20} />
+                    )}
+                  </button>
+                )}
+                <X
+                  size={20}
+                  className="text-white cursor-pointer hover:opacity-80 transition-opacity"
+                  onClick={() => {
+                    invoke("close_setup_window");
+                  }}
+                />
               </div>
             </div>
 
-            {/* Content */}
-            <div className="flex-1 overflow-y-auto p-8">
-              <div className="max-w-2xl mx-auto">
-                {/* Welcome Step */}
-                {currentStep === "welcome" && (
-                  <div className="text-left space-y-3 select-none">
-                    <h2 className="text-xl font-bold uppercase italic" style={{ fontFamily: 'Unbounded, sans-serif' }}>
-                      The future of gaming.
-                    </h2>
-                    <p className="text-white/80 text-sm" style={{ fontFamily: 'Livvic, sans-serif' }}>
-                      Let's get you set up in just a few steps. We'll help you configure your account,
-                      launcher IDs, theme, and profile.
-                    </p>
-                    <div className="flex flex-col gap-4 mt-8">
-                      <div className="p-4 flex flex-row items-center gap-2">
-                        <User className="w-8 h-8" style={{ color: themeColors.accent }} />
-                        <div className="flex flex-col">
-                          <h3 className="font-semibold uppercase italic" style={{ fontFamily: 'Unbounded, sans-serif' }}>Account Setup</h3>
-                          <p className="text-sm text-white/60" style={{ fontFamily: 'Livvic, sans-serif' }}>Sign up or sign in</p>
-                        </div>
-                      </div>
-                      <div className="p-4 flex flex-row items-center gap-2">
-                        <Palette className="w-8 h-8" style={{ color: themeColors.accent }} />
-                        <div className="flex flex-col">
-                          <h3 className="font-semibold uppercase italic" style={{ fontFamily: 'Unbounded, sans-serif' }}>Customization</h3>
-                          <p className="text-sm text-white/60" style={{ fontFamily: 'Livvic, sans-serif' }}>Theme & profile</p>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
+            <div className="flex flex-col items-start p-4 justify-center w-full h-full">
+              <Card
+                className={cn(
+                  "no-drag-region dark p-0 rounded-2xl bg-black border border-transparent min-w-lg",
+                  currentStep === "theme" ? "w-full" : "max-w-lg",
                 )}
-
-                {/* Auth Step */}
-                {currentStep === "auth" && (
-                  <div className="space-y-6">
-                    <h2 className="text-2xl font-bold uppercase italic mb-6" style={{ fontFamily: 'Unbounded, sans-serif' }}>
-                      {authMode === "signup" ? "Create Account" : "Sign In"}
-                    </h2>
-
-                    <form onSubmit={handleAuthSubmit} className="space-y-4">
-                      {authMode === "signup" && (
-                        <div>
-                          <Label className="text-sm font-medium mb-2 select-none" style={{ fontFamily: 'Livvic, sans-serif' }}>Username (optional)</Label>
-                          <Input
-                            type="text"
-                            value={username}
-                            onChange={(e) => setUsername(e.target.value)}
-                            placeholder="Enter username"
-                          />
-                        </div>
-                      )}
-
-                      <div>
-                        <Label className="text-sm font-medium mb-2 select-none" style={{ fontFamily: 'Livvic, sans-serif' }}>Email</Label>
-                        <Input
-                          type="email"
-                          value={email}
-                          onChange={(e) => setEmail(e.target.value)}
-                          placeholder="Enter your email"
-                          required
-                        />
-                      </div>
-
-                      <div>
-                        <Label className="text-sm font-medium mb-2 select-none" style={{ fontFamily: 'Livvic, sans-serif' }}>Password</Label>
-                        <Input
-                          type="password"
-                          value={password}
-                          onChange={(e) => setPassword(e.target.value)}
-                          placeholder="Enter your password"
-                          required
-                        />
-                      </div>
-
-                      {authError && (
-                        <div className="p-3 bg-red-500/20 border border-red-500/50 rounded text-sm text-red-400">
-                          {authError}
-                        </div>
-                      )}
-
-                      <div className="flex items-center justify-between pt-4">
-                        <Button
-                          type="button"
-                          onClick={() => {
-                            setAuthMode(authMode === "signin" ? "signup" : "signin");
-                            setAuthError(null);
-                          }}
-                          variant="outline"
-                        >
-                          {authMode === "signin"
-                            ? "Don't have an account? Sign up"
-                            : "Already have an account? Sign in"}
-                        </Button>
-                        <Button
-                          type="submit"
-                          variant="default"
-                          disabled={isAuthLoading}
-                        >
-                          {isAuthLoading ? "Please wait..." : authMode === "signin" ? "Sign In" : "Sign Up"}
-                        </Button>
-                      </div>
-                    </form>
-                  </div>
-                )}
-
-                {/* User IDs Step */}
-                {currentStep === "userIds" && (
-                  <div className="space-y-6">
-                    <h2 className="text-2xl font-bold uppercase italic mb-6" style={{ fontFamily: 'Unbounded, sans-serif' }}>
-                      Configure User IDs
-                    </h2>
-                    <p className="text-white/60 mb-6" style={{ fontFamily: 'Livvic, sans-serif' }}>
-                      Enter your launcher user IDs to enable features like achievements and game tracking.
-                      These are optional and can be configured later.
-                    </p>
-
-                    <div className="space-y-4">
-                      <div>
-                        <label className="block text-sm font-medium mb-2 flex items-center gap-2" style={{ fontFamily: 'Livvic, sans-serif' }}>
-                          <FaSteam className="w-4 h-4" />
-                          Steam User ID
-                        </label>
-                        <Input
-                          type="text"
-                          value={steamUserId}
-                          onChange={(e) => setSteamUserId(e.target.value)}
-                          placeholder="Enter your Steam User ID (64-bit)"
-                        />
-                        <p className="text-xs text-white/50 mt-1" style={{ fontFamily: 'Livvic, sans-serif' }}>
-                          Find your Steam ID at steamid.io or check your Steam profile URL
-                        </p>
-                      </div>
-
-                      <div>
-                        <label className="block text-sm font-medium mb-2 flex items-center gap-2" style={{ fontFamily: 'Livvic, sans-serif' }}><SiEpicgames size={18} /> Epic Games User ID</label>
-                        <Input
-                          type="text"
-                          value={epicUserId}
-                          onChange={(e) => setEpicUserId(e.target.value)}
-                          placeholder="Enter your Epic Games User ID"
-                        />
-                        <p className="text-xs text-white/50 mt-1" style={{ fontFamily: 'Livvic, sans-serif' }}>Find your Epic Games ID at epicgames.com or check your Epic Games profile URL</p>
-                      </div>
-
-                      <div>
-                        <label className="block text-sm font-medium mb-2 flex items-center gap-2" style={{ fontFamily: 'Livvic, sans-serif' }}><TbBrandElectronicArts size={18} /> EA User ID</label>
-                        <Input
-                          type="text"
-                          value={eaUserId}
-                          onChange={(e) => setEaUserId(e.target.value)}
-                          placeholder="Enter your EA User ID"
-                        />
-                        <p className="text-xs text-white/50 mt-1" style={{ fontFamily: 'Livvic, sans-serif' }}>Find your EA User ID at ea.com or check your EA profile URL</p>
-                      </div>
-
-                      <div>
-                        <label className="block text-sm font-medium mb-2 flex items-center gap-2" style={{ fontFamily: 'Livvic, sans-serif' }}><SiRockstargames size={18} /> Rockstar User ID</label>
-                        <Input
-                          type="text"
-                          value={rockstarUserId}
-                          onChange={(e) => setRockstarUserId(e.target.value)}
-                          placeholder="Enter your Rockstar User ID"
-                        />
-                        <p className="text-xs text-white/50 mt-1" style={{ fontFamily: 'Livvic, sans-serif' }}>Find your Rockstar User ID at rockstar.com or check your Rockstar profile URL</p>
-                      </div>
-                    </div>
-                  </div>
-                )}
-
-                {/* Theme Step */}
-                {currentStep === "theme" && (
-                  <div className="space-y-6">
-                    <h2 className="text-2xl font-bold uppercase italic mb-6" style={{ fontFamily: 'Unbounded, sans-serif' }}>
-                      Customize Theme
-                    </h2>
-                    <p className="text-white/60 mb-6" style={{ fontFamily: 'Livvic, sans-serif' }}>
-                      Choose your preferred colors. You can change these anytime in settings.
-                    </p>
-
-                    <div className="grid grid-cols-2 gap-4">
-                      <div>
-                        <Label className="block text-sm font-medium mb-2 select-none" style={{ fontFamily: 'Livvic, sans-serif' }}>Accent Color</Label>
-                        <div className="flex gap-2">
-                          <input
-                            type="color"
-                            value={accentColor}
-                            onChange={(e) => setAccentColor(e.target.value)}
-                            className="w-16 h-10 rounded border border-white/20 cursor-pointer"
-                          />
-                          <Input
-                            type="text"
-                            value={accentColor}
-                            onChange={(e: React.ChangeEvent<HTMLInputElement>) => setAccentColor(e.target.value)}
-                            placeholder="#4CE4B1"
-                          />
-                        </div>
-                      </div>
-
-                      <div>
-                        <Label className="block text-sm font-medium mb-2 select-none" style={{ fontFamily: 'Livvic, sans-serif' }}>Button Color</Label>
-                        <div className="flex gap-2">
-                          <input
-                            type="color"
-                            value={buttonColor}
-                            onChange={(e) => setButtonColor(e.target.value)}
-                            className="w-16 h-10 rounded border border-white/20 cursor-pointer"
-                          />
-                          <Input
-                            type="text"
-                            value={buttonColor}
-                            onChange={(e: React.ChangeEvent<HTMLInputElement>) => setButtonColor(e.target.value)}
-                            placeholder="#006B4F"
-                          />
-                        </div>
-                      </div>
-
-                      <div>
-                        <Label className="block text-sm font-medium mb-2 select-none" style={{ fontFamily: 'Livvic, sans-serif' }}>Button Secondary</Label>
-                        <div className="flex gap-2">
-                          <input
-                            type="color"
-                            value={buttonSecondaryColor}
-                            onChange={(e) => setButtonSecondaryColor(e.target.value)}
-                            className="w-16 h-10 rounded border border-white/20 cursor-pointer"
-                          />
-                          <Input
-                            type="text"
-                            value={buttonSecondaryColor}
-                            onChange={(e: React.ChangeEvent<HTMLInputElement>) => setButtonSecondaryColor(e.target.value)}
-                            placeholder="#4CE4B1"
-                          />
-                        </div>
-                      </div>
-
-                      <div>
-                        <Label className="block text-sm font-medium mb-2 select-none" style={{ fontFamily: 'Livvic, sans-serif' }}>Background</Label>
-                        <div className="flex gap-2">
-                          <input
-                            type="color"
-                            value={backgroundColor}
-                            onChange={(e) => setBackgroundColor(e.target.value)}
-                            className="w-16 h-10 rounded border border-white/20 cursor-pointer"
-                          />
-                          <Input
-                            type="text"
-                            value={backgroundColor}
-                            onChange={(e: React.ChangeEvent<HTMLInputElement>) => setBackgroundColor(e.target.value)}
-                            placeholder="#111827"
-                          />
-                        </div>
-                      </div>
-
-                      <div>
-                        <Label className="block text-sm font-medium mb-2 select-none" style={{ fontFamily: 'Livvic, sans-serif' }}>Panel</Label>
-                        <div className="flex gap-2">
-                          <input
-                            type="color"
-                            value={panelColor}
-                            onChange={(e) => setPanelColor(e.target.value)}
-                            className="w-16 h-10 rounded border border-white/20 cursor-pointer"
-                          />
-                          <Input
-                            type="text"
-                            value={panelColor}
-                            onChange={(e: React.ChangeEvent<HTMLInputElement>) => setPanelColor(e.target.value)}
-                            placeholder="#1F2937"
-                          />
-                        </div>
-                      </div>
-                    </div>
-
-                    <div className="mt-6 p-4 bg-white/5 rounded-lg border border-white/10">
-                      <p className="text-sm font-medium mb-2" style={{ fontFamily: 'Livvic, sans-serif' }}>Preview</p>
-                      <div className="flex gap-2">
-                        <div
-                          className="px-4 py-2 rounded text-sm font-semibold"
-                          style={{
-                            background: `linear-gradient(to bottom right, ${buttonColor}, ${buttonSecondaryColor})`,
-                          }}
-                        >
-                          Button
-                        </div>
-                        <div
-                          className="px-4 py-2 rounded text-sm"
-                          style={{ color: accentColor, border: `1px solid ${accentColor}` }}
-                        >
-                          Accent
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                )}
-
-                {/* Profile Step */}
-                {currentStep === "profile" && (
-                  <div className="space-y-6">
-                    <h2 className="text-2xl font-bold uppercase italic mb-6" style={{ fontFamily: 'Unbounded, sans-serif' }}>
-                      Complete Your Profile
-                    </h2>
-                    <p className="text-white/60 mb-6" style={{ fontFamily: 'Livvic, sans-serif' }}>
-                      Add a bio and avatar to personalize your profile. These are optional.
-                    </p>
+              >
+                {/* Header */}
+                <div className="flex items-center justify-between p-4 border-white/10 select-none">
+                  <div className="flex items-center gap-4">
+                    <img src={logo} alt="Logo" width={40} height={40} />
                     <div>
-                        <Label className="block text-sm font-medium mb-2 select-none" style={{ fontFamily: 'Livvic, sans-serif' }}>Avatar</Label>
-                        <div className="flex items-center gap-4">
-                          {avatar ? (
-                            <div className="relative">
-                              <img
-                                src={avatar}
-                                alt="Avatar"
-                                className="w-24 h-24 rounded-full object-cover border-2 border-white/20"
-                              />
-                              <button
-                                onClick={() => setAvatar(null)}
-                                className="absolute top-0 right-0 w-6 h-6 bg-red-500 rounded-full flex items-center justify-center"
-                              >
-                                <X className="w-4 h-4" />
-                              </button>
-                            </div>
-                          ) : (
-                            <div className="w-24 h-24 rounded-full bg-white/10 border-2 border-white/20 flex items-center justify-center">
-                              <User className="w-12 h-12 text-white/40" />
-                            </div>
-                          )}
-                          <div>
-                            <input
-                              type="file"
-                              accept="image/*"
-                              onChange={handleAvatarChange}
-                              className="hidden"
-                              id="avatar-upload"
+                      <h1
+                        className="text-xl font-light"
+                        style={{ fontFamily: "Google Sans Flex, sans-serif" }}
+                      >
+                        Get setup to play
+                      </h1>
+                      <p
+                        className="text-sm text-white/60 font-thin"
+                        style={{ fontFamily: "Google Sans Flex, sans-serif" }}
+                      >
+                        {steps[currentStepIndex].description}
+                      </p>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    {steps.map((step, index) => (
+                      <div
+                        key={step.key}
+                        className={cn(
+                          "w-2 h-2 rounded-full transition-all",
+                          index <= currentStepIndex
+                            ? "bg-[var(--theme-accent)]"
+                            : "bg-white/20",
+                          index === currentStepIndex ? "animate-pulse" : "",
+                          index === currentStepIndex
+                            ? "shadow-[0_0_10px_var(--theme-accent)]"
+                            : "",
+                        )}
+                      />
+                    ))}
+                  </div>
+                </div>
+
+                {/* Content */}
+                <div className="flex-1 overflow-y-auto p-8">
+                  <div
+                    className={cn(
+                      "mx-auto",
+                      currentStep === "theme" ? "w-full" : "max-w-lg",
+                    )}
+                  >
+                    {/* Welcome Step */}
+                    {currentStep === "welcome" && (
+                      <div className="text-left space-y-3 select-none">
+                        <h2
+                          className="text-xl font-light"
+                          style={{ fontFamily: "Google Sans Flex, sans-serif" }}
+                        >
+                          A home for all your games.
+                        </h2>
+                        <p
+                          className="text-white/80 text-sm font-thin"
+                          style={{ fontFamily: "Google Sans Flex, sans-serif" }}
+                        >
+                          Ready to start gaming? Let's get you set up.
+                        </p>
+                        <div className="flex flex-col gap-4 mt-8">
+                          <div className="p-4 flex flex-row items-center gap-4">
+                            <User
+                              className="w-12 h-12"
+                              style={{ color: themeColors.accent }}
                             />
-                            <label htmlFor="avatar-upload">
-                              <Button variant="default">
-                                <Upload className="w-4 h-4 mr-2" />
-                                Upload Avatar
-                              </Button>
-                            </label>
-                            <p className="text-xs text-white/50 mt-1" style={{ fontFamily: 'Livvic, sans-serif' }}>Max 2MB</p>
+                            <div className="flex flex-col">
+                              <h3
+                                className="font-light text-lg"
+                                style={{
+                                  fontFamily: "Google Sans Flex, sans-serif",
+                                }}
+                              >
+                                Set up your account
+                              </h3>
+                              <p
+                                className="text-sm text-white/60 font-thin"
+                                style={{
+                                  fontFamily: "Google Sans Flex, sans-serif",
+                                }}
+                              >
+                                We'll help you login with your PoliGame account
+                                to access social features and account sync.
+                              </p>
+                            </div>
+                          </div>
+                          <div className="p-4 flex flex-row items-center gap-4">
+                            <Palette
+                              className="w-12 h-12"
+                              style={{ color: themeColors.accent }}
+                            />
+                            <div className="flex flex-col">
+                              <h3
+                                className="font-light text-lg"
+                                style={{
+                                  fontFamily: "Google Sans Flex, sans-serif",
+                                }}
+                              >
+                                Change your look
+                              </h3>
+                              <p
+                                className="text-sm text-white/60 font-thin"
+                                style={{
+                                  fontFamily: "Google Sans Flex, sans-serif",
+                                }}
+                              >
+                                Your launcher should reflect you. We'll help you
+                                setup a custom theme, or use the default.
+                              </p>
+                            </div>
                           </div>
                         </div>
                       </div>
-                    <div className="space-y-4">
-                      <div>
-                        <Label className="block text-sm font-medium mb-2 select-none" style={{ fontFamily: 'Livvic, sans-serif' }}>Username</Label>
-                        <Input
-                          type="text"
-                          value={username}
-                          onChange={(e) => setUsername(e.target.value)}
-                          placeholder="Enter username"
-                        />
+                    )}
+
+                    {/* Auth Step */}
+                    {currentStep === "auth" && (
+                      <div className="space-y-6">
+                        <h2
+                          className="text-2xl font-light mb-6"
+                          style={{ fontFamily: "Google Sans Flex, sans-serif" }}
+                        >
+                          {authMode === "signup"
+                            ? "Set up your account"
+                            : "Login to PoliGame"}
+                        </h2>
+
+                        <form onSubmit={handleAuthSubmit} className="space-y-4">
+                          <div className="flex flex-row items-center justify-between gap-2">
+                            {authMode === "signup" && (
+                              <div className="w-1/2">
+                                <Label
+                                  className="text-sm font-thin mb-2 select-none"
+                                  style={{
+                                    fontFamily: "Google Sans Flex, sans-serif",
+                                  }}
+                                >
+                                  Username
+                                </Label>
+                                <Input
+                                  type="text"
+                                  value={username}
+                                  onChange={(e) => setUsername(e.target.value)}
+                                  placeholder="Enter username"
+                                  className="p-4 border-none rounded-full"
+                                  style={{
+                                    fontFamily: "Google Sans Flex, sans-serif",
+                                  }}
+                                />
+                              </div>
+                            )}
+
+                            <div
+                              className={cn(
+                                authMode === "signup" ? "w-1/2" : "w-full",
+                              )}
+                            >
+                              <Label
+                                className="text-sm font-thin mb-2 select-none"
+                                style={{
+                                  fontFamily: "Google Sans Flex, sans-serif",
+                                }}
+                              >
+                                Email
+                              </Label>
+                              <Input
+                                type="email"
+                                value={email}
+                                onChange={(e) => setEmail(e.target.value)}
+                                placeholder="Enter your email"
+                                required
+                                className="p-4 border-none rounded-full"
+                                style={{
+                                  fontFamily: "Google Sans Flex, sans-serif",
+                                }}
+                              />
+                            </div>
+                          </div>
+
+                          <div>
+                            <Label
+                              className="text-sm font-thin mb-2 select-none"
+                              style={{
+                                fontFamily: "Google Sans Flex, sans-serif",
+                              }}
+                            >
+                              Password
+                            </Label>
+                            <Input
+                              type="password"
+                              value={password}
+                              onChange={(e) => setPassword(e.target.value)}
+                              placeholder="Enter your password"
+                              required
+                              className="p-4 border-none rounded-full"
+                              style={{
+                                fontFamily: "Google Sans Flex, sans-serif",
+                              }}
+                            />
+                          </div>
+
+                          {authError && (
+                            <div className="p-3 bg-red-500/20 border border-red-500/50 rounded text-sm text-red-400">
+                              {authError}
+                            </div>
+                          )}
+
+                          <div className="flex items-center justify-between pt-4">
+                            <Button
+                              type="button"
+                              onClick={() => {
+                                setAuthMode(
+                                  authMode === "signin" ? "signup" : "signin",
+                                );
+                                setAuthError(null);
+                              }}
+                              variant="outline"
+                              style={{
+                                fontFamily: "Google Sans Flex, sans-serif",
+                              }}
+                              className="text-xs font-thin rounded-full border-none px-4"
+                            >
+                              {authMode === "signin"
+                                ? "Don't have an account? Sign up"
+                                : "Already have an account? Sign in"}
+                            </Button>
+                            <Button
+                              type="submit"
+                              variant="default"
+                              style={{
+                                fontFamily: "Google Sans Flex, sans-serif",
+                              }}
+                              className="rounded-full px-6"
+                              disabled={isAuthLoading}
+                            >
+                              {isAuthLoading
+                                ? "Logging in..."
+                                : authMode === "signin"
+                                  ? "Sign In"
+                                  : "Sign Up"}
+                            </Button>
+                          </div>
+                        </form>
                       </div>
+                    )}
 
-                      <div>
-                        <Label className="block text-sm font-medium mb-2 select-none" style={{ fontFamily: 'Livvic, sans-serif' }}>Bio</Label>
-                        <Textarea
-                          value={bio}
-                          onChange={(e) => setBio(e.target.value)}
-                          placeholder="Tell us about yourself..."
-                          rows={4}
-                          className="w-full"
-                        />
+                    {/* User IDs Step */}
+                    {currentStep === "userIds" && (
+                      <div className="space-y-6">
+                        <h2
+                          className="text-2xl font-light mb-2"
+                          style={{ fontFamily: "Google Sans Flex, sans-serif" }}
+                        >
+                          Configure external accounts
+                        </h2>
+                        <p
+                          className="text-white/60 mb-6 font-thin"
+                          style={{ fontFamily: "Google Sans Flex, sans-serif" }}
+                        >
+                          Enter your launcher user IDs to enable features like
+                          achievements and game tracking. These are optional and
+                          can be configured later.
+                        </p>
+
+                        <div className="space-y-4 h-72 overflow-y-auto">
+                          <div>
+                            <label
+                              className="block text-sm font-light mb-2 flex items-center gap-2"
+                              style={{
+                                fontFamily: "Google Sans Flex, sans-serif",
+                              }}
+                            >
+                              <FaSteam className="w-4 h-4" />
+                              Steam User ID
+                            </label>
+                            <Input
+                              type="text"
+                              value={steamUserId}
+                              onChange={(e) => setSteamUserId(e.target.value)}
+                              placeholder="Enter your Steam User ID (64-bit)"
+                              className="p-4 border-none rounded-full"
+                            />
+                            <p
+                              className="text-xs text-white/50 font-thin mt-1"
+                              style={{
+                                fontFamily: "Google Sans Flex, sans-serif",
+                              }}
+                            >
+                              Find your Steam ID at steamid.io or check your
+                              Steam profile URL
+                            </p>
+                          </div>
+
+                          <div>
+                            <label
+                              className="block text-sm font-light mb-2 flex items-center gap-2"
+                              style={{
+                                fontFamily: "Google Sans Flex, sans-serif",
+                              }}
+                            >
+                              <SiEpicgames size={18} /> Epic Games User ID
+                            </label>
+                            <Input
+                              type="text"
+                              value={epicUserId}
+                              onChange={(e) => setEpicUserId(e.target.value)}
+                              placeholder="Enter your Epic Games User ID"
+                              className="p-4 border-none rounded-full"
+                            />
+                            <p
+                              className="text-xs text-white/50 font-thin mt-1"
+                              style={{
+                                fontFamily: "Google Sans Flex, sans-serif",
+                              }}
+                            >
+                              Find your Epic Games ID at epicgames.com or check
+                              your Epic Games profile URL
+                            </p>
+                          </div>
+
+                          <div>
+                            <label
+                              className="block text-sm font-light mb-2 flex items-center gap-2"
+                              style={{
+                                fontFamily: "Google Sans Flex, sans-serif",
+                              }}
+                            >
+                              <TbBrandElectronicArts size={18} /> EA User ID
+                            </label>
+                            <Input
+                              type="text"
+                              value={eaUserId}
+                              onChange={(e) => setEaUserId(e.target.value)}
+                              placeholder="Enter your EA User ID"
+                              className="p-4 border-none rounded-full"
+                            />
+                            <p
+                              className="text-xs text-white/50 font-thin mt-1"
+                              style={{
+                                fontFamily: "Google Sans Flex, sans-serif",
+                              }}
+                            >
+                              Find your EA User ID at ea.com or check your EA
+                              profile URL
+                            </p>
+                          </div>
+
+                          <div>
+                            <label
+                              className="block text-sm font-light mb-2 flex items-center gap-2"
+                              style={{
+                                fontFamily: "Google Sans Flex, sans-serif",
+                              }}
+                            >
+                              <SiRockstargames size={18} /> Rockstar User ID
+                            </label>
+                            <Input
+                              type="text"
+                              value={rockstarUserId}
+                              onChange={(e) =>
+                                setRockstarUserId(e.target.value)
+                              }
+                              placeholder="Enter your Rockstar User ID"
+                              className="p-4 border-none rounded-full"
+                            />
+                            <p
+                              className="text-xs text-white/50 font-thin mt-1"
+                              style={{
+                                fontFamily: "Google Sans Flex, sans-serif",
+                              }}
+                            >
+                              Find your Rockstar User ID at rockstar.com or
+                              check your Rockstar profile URL
+                            </p>
+                          </div>
+                        </div>
                       </div>
-                    </div>
+                    )}
+
+                    {/* Theme Step */}
+                    {currentStep === "theme" && (
+                      <div className="space-y-6 -mt-8">
+                        <h2
+                          className="text-2xl font-light mb-1"
+                          style={{ fontFamily: "Google Sans Flex, sans-serif" }}
+                        >
+                          Change your look
+                        </h2>
+                        <p
+                          className="text-white/60 font-thin mb-2"
+                          style={{ fontFamily: "Google Sans Flex, sans-serif" }}
+                        >
+                          Choose your preferred colors. You can change these
+                          anytime in settings.
+                        </p>
+
+                        <div className="flex items-start gap-4 -mb-4">
+                          <Tabs defaultValue="accent" className="w-full">
+                            <TabsList className="grid w-full grid-cols-5">
+                              <TabsTrigger
+                                value="accent"
+                                className="text-sm font-thin"
+                              >
+                                Accent
+                              </TabsTrigger>
+                              <TabsTrigger
+                                value="button"
+                                className="text-sm font-thin"
+                              >
+                                Button
+                              </TabsTrigger>
+                              <TabsTrigger
+                                value="buttonSecondary"
+                                className="text-sm font-thin"
+                              >
+                                Button Secondary
+                              </TabsTrigger>
+                              <TabsTrigger
+                                value="background"
+                                className="text-sm font-thin"
+                              >
+                                Background
+                              </TabsTrigger>
+                              <TabsTrigger
+                                value="panel"
+                                className="text-sm font-thin"
+                              >
+                                Panel
+                              </TabsTrigger>
+                            </TabsList>
+
+                            <TabsContent value="accent">
+                              <ColorPicker
+                                value={accentColor}
+                                onChange={setAccentColor}
+                              />
+                            </TabsContent>
+
+                            <TabsContent value="button">
+                              <ColorPicker
+                                value={buttonColor}
+                                onChange={setButtonColor}
+                              />
+                            </TabsContent>
+
+                            <TabsContent value="buttonSecondary">
+                              <ColorPicker
+                                value={buttonSecondaryColor}
+                                onChange={setButtonSecondaryColor}
+                              />
+                            </TabsContent>
+
+                            <TabsContent value="background">
+                              <ColorPicker
+                                value={backgroundColor}
+                                onChange={setBackgroundColor}
+                              />
+                            </TabsContent>
+
+                            <TabsContent value="panel">
+                              <ColorPicker
+                                value={panelColor}
+                                onChange={setPanelColor}
+                              />
+                            </TabsContent>
+                          </Tabs>
+                          <div className="p-4 w-120 bg-white/5 rounded-lg border border-white/10">
+                            <p
+                              className="text-sm font-light mb-2"
+                              style={{
+                                fontFamily: "Google Sans Flex, sans-serif",
+                              }}
+                            >
+                              Preview
+                            </p>
+                            <Card
+                              className="p-0 rounded-lg w-full overflow-hidden"
+                              style={{
+                                backgroundColor: backgroundColor,
+                                borderColor: panelColor,
+                              }}
+                            >
+                              <div
+                                className="flex-1 flex flex-row items-center gap-2 p-2"
+                                style={{
+                                  fontFamily: "Google Sans Flex, sans-serif",
+                                }}
+                              >
+                                <img
+                                  src={logo}
+                                  alt="PoliGame"
+                                  className="w-6 h-6 invert dark:invert-0"
+                                />
+                                {/* Friends Dropdown */}
+                                <div className="flex flex-row gap-0 ml-2">
+                                  <div
+                                    className="relative inline-block text-left no-drag-region"
+                                    data-tauri-drag-region="false"
+                                  >
+                                    <DropdownMenu>
+                                      <DropdownMenuTrigger>
+                                        <button
+                                          disabled
+                                          type="button"
+                                          className="px-3 pb-1 flex items-center gap-1 text-sm cursor-pointer text-foreground/70 hover:text-foreground transition-colors cursor-pointer"
+                                          title="General"
+                                          style={{
+                                            fontFamily: "Livvic, sans-serif",
+                                          }}
+                                        >
+                                          General
+                                        </button>
+                                      </DropdownMenuTrigger>
+                                      <DropdownMenuContent
+                                        className="z-[99] w-60 bg-muted border border-border overflow-hidden"
+                                        style={{
+                                          fontFamily: "Livvic, sans-serif",
+                                        }}
+                                      >
+                                        <div className="flex flex-col gap-1 p-2">
+                                          {user && (
+                                            <button
+                                              className="w-full text-left text-xs text-foreground/70 hover:underline cursor-pointer"
+                                              type="button"
+                                            >
+                                              Manage Account...
+                                            </button>
+                                          )}
+                                          {user ? (
+                                            <button
+                                              className="w-full text-left text-xs text-foreground/70 hover:underline cursor-pointer"
+                                              type="button"
+                                            >
+                                              Sign Out...
+                                            </button>
+                                          ) : (
+                                            <button
+                                              className="w-full text-left text-xs text-foreground/70 hover:underline cursor-pointer"
+                                              type="button"
+                                            >
+                                              Sign In...
+                                            </button>
+                                          )}
+                                          <div className="w-full h-px bg-foreground/10"></div>
+                                          <button
+                                            className="w-full text-left text-xs text-foreground/70 hover:underline cursor-pointer"
+                                            type="button"
+                                            onClick={() => {}}
+                                          >
+                                            Check For Updates
+                                          </button>
+                                          <button
+                                            className="w-full text-left text-xs text-foreground/70 hover:underline cursor-pointer"
+                                            type="button"
+                                          >
+                                            Exit
+                                          </button>
+                                        </div>
+                                      </DropdownMenuContent>
+                                    </DropdownMenu>
+                                  </div>
+                                  {user && (
+                                    <div
+                                      className="relative inline-block text-left no-drag-region"
+                                      data-tauri-drag-region="false"
+                                    >
+                                      <DropdownMenu>
+                                        <DropdownMenuTrigger>
+                                          <button
+                                            disabled
+                                            type="button"
+                                            className="px-3 pb-1 flex items-center gap-1 text-sm cursor-pointer text-foreground/70 hover:text-foreground transition-colors"
+                                            title="Friends"
+                                            style={{
+                                              fontFamily: "Livvic, sans-serif",
+                                            }}
+                                          >
+                                            Friends
+                                          </button>
+                                        </DropdownMenuTrigger>
+                                        <DropdownMenuContent
+                                          className="z-[99] w-60 bg-muted border border-border overflow-hidden"
+                                          style={{
+                                            fontFamily: "Livvic, sans-serif",
+                                          }}
+                                        >
+                                          <div className="flex flex-col gap-1 p-2">
+                                            <button
+                                              className="w-full text-left text-xs text-foreground/70 hover:underline cursor-pointer"
+                                              type="button"
+                                            >
+                                              View Friends
+                                            </button>
+                                          </div>
+                                        </DropdownMenuContent>
+                                      </DropdownMenu>
+                                    </div>
+                                  )}
+                                  <div
+                                    className="relative inline-block text-left no-drag-region"
+                                    data-tauri-drag-region="false"
+                                  >
+                                    <DropdownMenu>
+                                      <DropdownMenuTrigger>
+                                        <button
+                                          disabled
+                                          type="button"
+                                          className="px-3 pb-1 flex items-center gap-1 text-sm cursor-pointer text-foreground/70 hover:text-foreground transition-colors cursor-pointer"
+                                          title="View"
+                                          style={{
+                                            fontFamily: "Livvic, sans-serif",
+                                          }}
+                                        >
+                                          View
+                                        </button>
+                                      </DropdownMenuTrigger>
+                                      <DropdownMenuContent
+                                        className="z-[99] w-60 bg-muted border border-border overflow-hidden"
+                                        style={{
+                                          fontFamily: "Livvic, sans-serif",
+                                        }}
+                                      >
+                                        <div className="flex flex-col gap-1 p-2">
+                                          <button
+                                            className="w-full text-left text-xs text-foreground/70 hover:underline cursor-pointer"
+                                            type="button"
+                                          >
+                                            Switch to Overdrive Mode
+                                          </button>
+                                          <button
+                                            className="w-full text-left text-xs text-foreground/70 hover:underline cursor-pointer"
+                                            type="button"
+                                            onClick={() => {
+                                              // handleOpenAccessibilitySettings();
+                                            }}
+                                          >
+                                            Accessibility Settings
+                                          </button>
+                                        </div>
+                                      </DropdownMenuContent>
+                                    </DropdownMenu>
+                                  </div>
+                                  <div
+                                    className="relative inline-block text-left no-drag-region"
+                                    data-tauri-drag-region="false"
+                                  >
+                                    <DropdownMenu>
+                                      <DropdownMenuTrigger>
+                                        <button
+                                          disabled
+                                          type="button"
+                                          className="px-3 pb-1 flex items-center gap-1 text-sm cursor-pointer text-foreground/70 hover:text-foreground transition-colors cursor-pointer"
+                                          title="Help"
+                                          style={{
+                                            fontFamily: "Livvic, sans-serif",
+                                          }}
+                                        >
+                                          Help
+                                        </button>
+                                      </DropdownMenuTrigger>
+                                      <DropdownMenuContent
+                                        className="z-[99] w-60 bg-muted border border-border overflow-hidden"
+                                        style={{
+                                          fontFamily: "Livvic, sans-serif",
+                                        }}
+                                      >
+                                        <div className="flex flex-col gap-1 p-2">
+                                          <button
+                                            className="w-full text-left text-xs text-foreground/70 hover:underline cursor-pointer"
+                                            type="button"
+                                            onClick={() => {
+                                              // handleOpenHelp();
+                                            }}
+                                          >
+                                            Help Center
+                                          </button>
+                                        </div>
+                                      </DropdownMenuContent>
+                                    </DropdownMenu>
+                                  </div>
+                                </div>
+                              </div>
+                              <div className="p-2 -mt-3 w-full flex items-center justify-center">
+                                <div
+                                  className="w-fit rounded-full flex items-center gap-2 p-2"
+                                  style={{ backgroundColor: panelColor }}
+                                >
+                                  <Link to="#">
+                                    <Button
+                                      onMouseEnter={() =>
+                                        setPreviewButtonHovered(true)
+                                      }
+                                      onMouseLeave={() =>
+                                        setPreviewButtonHovered(false)
+                                      }
+                                      style={{
+                                        backgroundColor: previewButtonHovered
+                                          ? buttonSecondaryColor
+                                          : buttonColor,
+                                        color: previewButtonHovered
+                                          ? "white"
+                                          : accentColor,
+                                      }}
+                                      variant="ghost"
+                                      className={`p-3 flex flex-row items-center min-w-fit cursor-pointer border-none bg-transparent rounded-full`}
+                                    >
+                                      <span>
+                                        <Library className="w-5 h-5" />
+                                      </span>
+                                      <span
+                                        className={`font-light text-sm`}
+                                        style={{
+                                          fontFamily:
+                                            "Google Sans Flex, sans-serif",
+                                        }}
+                                      >
+                                        Library
+                                      </span>
+                                    </Button>
+                                  </Link>
+                                </div>
+                              </div>
+                            </Card>
+                          </div>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Profile Step */}
+                    {currentStep === "profile" && (
+                      <div className="space-y-6">
+                        <h2
+                          className="text-2xl font-light mb-2"
+                          style={{ fontFamily: "Google Sans Flex, sans-serif" }}
+                        >
+                          Customise your profile
+                        </h2>
+                        <p
+                          className="text-white/60 font-thin mb-4"
+                          style={{ fontFamily: "Google Sans Flex, sans-serif" }}
+                        >
+                          Add a bio and avatar to personalize your profile.
+                          These are optional.
+                        </p>
+                        <div>
+                          <div className="flex items-center gap-4">
+                            {avatar ? (
+                              <div className="relative">
+                                <img
+                                  src={avatar}
+                                  alt="Avatar"
+                                  className="w-24 h-24 rounded-full object-cover border-2 border-white/20"
+                                />
+                                <button
+                                  onClick={() => setAvatar(null)}
+                                  className="absolute top-0 right-0 w-6 h-6 bg-red-500/50 backdrop-blur-lg rounded-full flex items-center justify-center"
+                                >
+                                  <X className="w-4 h-4" />
+                                </button>
+                              </div>
+                            ) : (
+                              <div className="w-24 h-24 rounded-full bg-white/10 border-2 border-white/20 flex items-center justify-center">
+                                <User className="w-12 h-12 text-white/40" />
+                              </div>
+                            )}
+                            <div>
+                              <input
+                                type="file"
+                                accept="image/*"
+                                onChange={handleAvatarChange}
+                                className="hidden"
+                                id="avatar-upload"
+                              />
+                              <label htmlFor="avatar-upload">
+                                <Button
+                                  variant="default"
+                                  className="border-none rounded-full"
+                                  style={{
+                                    fontFamily: "Google Sans Flex, sans-serif",
+                                    backgroundColor: buttonColor,
+                                    color: accentColor,
+                                  }}
+                                >
+                                  <Upload className="w-4 h-4 mr-2" />
+                                  Upload Avatar
+                                </Button>
+                              </label>
+                              <p
+                                className="text-xs font-thin text-white/50 mt-1"
+                                style={{
+                                  fontFamily: "Google Sans Flex, sans-serif",
+                                }}
+                              >
+                                Max 2MB
+                              </p>
+                            </div>
+                          </div>
+                        </div>
+                        <div className="space-y-4">
+                          <div>
+                            <Label
+                              className="block text-sm font-light mb-2 select-none"
+                              style={{
+                                fontFamily: "Google Sans Flex, sans-serif",
+                              }}
+                            >
+                              Username
+                            </Label>
+                            <Input
+                              type="text"
+                              value={username}
+                              onChange={(e) => setUsername(e.target.value)}
+                              placeholder="Enter username"
+                              className="rounded-full border-none"
+                              style={{
+                                fontFamily: "Google Sans Flex, sans-serif",
+                              }}
+                            />
+                          </div>
+
+                          <div>
+                            <Label
+                              className="block text-sm font-light mb-2 select-none"
+                              style={{
+                                fontFamily: "Google Sans Flex, sans-serif",
+                              }}
+                            >
+                              Bio
+                            </Label>
+                            <Textarea
+                              value={bio}
+                              onChange={(e) => setBio(e.target.value)}
+                              placeholder="Tell us about yourself..."
+                              rows={4}
+                              className="w-full rounded-lg border-none"
+                              style={{
+                                fontFamily: "Google Sans Flex, sans-serif",
+                              }}
+                            />
+                          </div>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Complete Step */}
+                    {currentStep === "complete" && (
+                      <div className="text-center space-y-6">
+                        <CheckCircle2
+                          className="w-20 h-20 mx-auto"
+                          style={{ color: accentColor }}
+                        />
+                        <h2
+                          className="text-3xl font-light"
+                          style={{ fontFamily: "Google Sans Flex, sans-serif" }}
+                        >
+                          You're ready to play.
+                        </h2>
+                        <p
+                          className="text-white/80 text-lg font-thin"
+                          style={{ fontFamily: "Google Sans Flex, sans-serif" }}
+                        >
+                          You're all set! Let's get you into some games.
+                        </p>
+                        <Button
+                          onClick={async () => {
+                            try {
+                              await invoke("set_setup_complete", {
+                                completed: true,
+                              });
+                              console.log(
+                                "Setup marked as complete, navigating to home...",
+                              );
+                              window.location.reload();
+                            } catch (error) {
+                              console.error("Failed to complete setup:", error);
+                              window.location.reload();
+                            }
+                          }}
+                          variant="default"
+                          className="mt-6 rounded-full border-none"
+                          style={{
+                            fontFamily: "Google Sans Flex, sans-serif",
+                            backgroundColor: buttonColor,
+                            color: accentColor,
+                          }}
+                        >
+                          Get Started
+                        </Button>
+                      </div>
+                    )}
                   </div>
-                )}
-
-                {/* Complete Step */}
-                {currentStep === "complete" && (
-                  <div className="text-center space-y-6">
-                    <CheckCircle2 className="w-20 h-20 mx-auto" style={{ color: themeColors.accent }} />
-                    <h2 className="text-3xl font-bold uppercase italic" style={{ fontFamily: 'Unbounded, sans-serif' }}>
-                      Setup Complete!
-                    </h2>
-                    <p className="text-white/80 text-lg" style={{ fontFamily: 'Livvic, sans-serif' }}>
-                      You're all set! Welcome to PoliGame. You can start exploring your game library now.
-                    </p>
-                     <Button
-                       onClick={async () => {
-                         try {
-                           // Ensure setup is marked as complete (handleComplete already did this, but double-check)
-                           await invoke("set_setup_complete");
-                           console.log("Setup marked as complete, navigating to home...");
-                           // Wait a moment to ensure file is written to disk
-                           await new Promise(resolve => setTimeout(resolve, 200));
-                           // Force a full page reload to ensure AppShell re-checks setup
-                           window.location.reload();
-                         } catch (error) {
-                           console.error("Failed to complete setup:", error);
-                           // Still navigate even if there's an error
-                           window.location.reload();
-                         }
-                       }}
-                       variant="default"
-                       className="mt-6"
-                     >
-                       Get Started
-                     </Button>
-                  </div>
-                )}
-              </div>
-            </div>
-
-            {/* Footer Navigation */}
-            {currentStep !== "complete" && (
-              <div className="border-t border-white/10 p-6 flex items-center justify-between">
-                <Button
-                  onClick={handleBack}
-                  disabled={currentStepIndex === 0}
-                  variant="outline"
-                >
-                  <ArrowLeft className="w-4 h-4 mr-2" />
-                  Back
-                </Button>
-
-                <div className="text-sm text-white/60">
-                  Step {currentStepIndex + 1} of {steps.length - 1}
                 </div>
 
-                <Button
-                  onClick={handleNext}
-                  disabled={!canGoNext() || isSaving}
-                  variant="default"
-                >
-                  {currentStep === "profile" ? (
-                    isSaving ? "Saving..." : "Complete Setup"
-                  ) : (
-                    <>
-                      Next
-                      <ArrowRight className="w-4 h-4 ml-2" />
-                    </>
-                  )}
-                </Button>
-              </div>
-            )}
-          </Card>
+                {/* Footer Navigation */}
+                {currentStep !== "complete" && (
+                  <div className="p-6 flex items-center justify-between">
+                    <Button
+                      onClick={handleBack}
+                      disabled={currentStepIndex === 0}
+                      variant="outline"
+                      style={{
+                        fontFamily: "Google Sans Flex, sans-serif",
+                        backgroundColor: buttonSecondaryColor,
+                        color: accentColor,
+                      }}
+                      className={cn(
+                        "rounded-full border-none",
+                        currentStepIndex === 0
+                          ? "opacity-50 cursor-not-allowed"
+                          : "cursor-pointer",
+                      )}
+                    >
+                      <ArrowLeft className="w-4 h-4 mr-2" />
+                      Back
+                    </Button>
+
+                    <div className="text-sm text-white/60">
+                      Step {currentStepIndex + 1} of {steps.length - 1}
+                    </div>
+
+                    <Button
+                      onClick={
+                        currentStep === "profile" ? handleComplete : handleNext
+                      }
+                      disabled={!canGoNext() || isSaving}
+                      variant="default"
+                      className="rounded-full border-none cursor-pointer"
+                      style={{
+                        fontFamily: "Google Sans Flex, sans-serif",
+                        backgroundColor: buttonColor,
+                        color: accentColor,
+                      }}
+                    >
+                      {currentStep === "profile" ? (
+                        isSaving ? (
+                          "Saving..."
+                        ) : (
+                          "Complete Setup"
+                        )
+                      ) : (
+                        <>
+                          Next
+                          <ArrowRight className="w-4 h-4 ml-2" />
+                        </>
+                      )}
+                    </Button>
+                  </div>
+                )}
+              </Card>
+            </div>
+          </div>
+        </div>
+
+        {/* Progress Bar */}
+        <div className="w-full h-1.5 bg-white/10 z-10 absolute bottom-0 left-0 overflow-hidden">
+          <div
+            className="h-full transition-all rounded-full duration-300"
+            style={{
+              width: `${progress}%`,
+              background: `linear-gradient(to right, ${themeColors.accent}, ${themeColors.button})`,
+            }}
+          />
         </div>
       </div>
-
-      {/* Progress Bar */}
-      <div className="w-full h-1 bg-white/10 z-10 absolute bottom-0 left-0">
-        <div
-          className="h-full transition-all duration-300"
-          style={{
-            width: `${progress}%`,
-            background: `linear-gradient(to right, ${themeColors.accent}, ${themeColors.button})`
-          }}
-        />
-      </div>
-    </div>
-  );
+    );
+  }
 };
-

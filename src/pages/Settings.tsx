@@ -133,7 +133,7 @@ const Settings: React.FC = () => {
         </div>
       </div>
 
-      <div className="flex flex-row w-full h-full overflow-hidden">
+      <div className="flex flex-row w-full h-screen overflow-hidden">
         {/* Tabs List - Left Side */}
         <div className="w-48 border-r border-border bg-background/50 flex flex-col">
           <div className="p-2 space-y-1">
@@ -190,36 +190,6 @@ const Settings: React.FC = () => {
           <div className="p-6">
             {activeTab === "general" && (
               <>
-                <h2 className="text-foreground/70 font-medium uppercase italic text-lg" style={{ fontFamily: 'Unbounded, sans-serif' }}>General</h2>
-                <div className="flex flex-col gap-2">
-                  <label className="text-foreground/70 font-medium" style={{ fontFamily: 'Livvic, sans-serif' }}>Appearance</label>
-                  <div className="flex flex-col items-center gap-2 w-full">
-                    <Card className="w-full h-58 flex flex-row items-center justify-between p-0">
-                      <img src={lightAppearanceHeader} alt="Light" className="w-fit h-full object-contain" />
-                      <div className="flex flex-col items-end h-full p-2">
-                        <span className="text-foreground/70 font-medium text-2xl italic uppercase" style={{ fontFamily: 'Unbounded, sans-serif' }}>Light</span>
-                        <p className="text-foreground/70 font-medium text-right" style={{ fontFamily: 'Livvic, sans-serif' }}>
-                          Enjoy a bright, clean interface that feels fresh. Customize with your favorite accent.
-                        </p>
-                        <Button variant="default" onClick={() => handleThemeChange("light")} className="p-2 cursor-pointer font-medium place-self-end mt-auto dark:bg-[var(--theme-button)] bg-[var(--theme-button-secondary)]] text-foreground dark:border-[var(--theme-button)] border-[var(--theme-button-secondary)]" disabled={settings.theme === "light"}>
-                          {theme === "light" ? "You can't re-select light mode silly :)" : "Use Light mode"}
-                        </Button>
-                      </div>
-                    </Card>
-                    <Card className="w-full h-58 flex flex-row items-center justify-between p-0">
-                      <img src={darkAppearanceHeader} alt="Dark" className="w-fit h-full object-contain" />
-                      <div className="flex flex-col items-end h-full p-2">
-                        <span className="text-foreground/70 font-medium text-2xl italic uppercase" style={{ fontFamily: 'Unbounded, sans-serif' }}>Dark</span>
-                        <p className="text-foreground/70 font-medium text-right" style={{ fontFamily: 'Livvic, sans-serif' }}>
-                          Enjoy deep blacks, perfect for midnight gaming. Change up the look with a custom accent.
-                        </p>
-                        <Button variant="default" onClick={() => handleThemeChange("dark")} className="p-2 cursor-pointer font-medium place-self-end mt-auto dark:bg-[var(--theme-button)] bg-[var(--theme-button-secondary)] text-foreground dark:border-[var(--theme-button)] border-[var(--theme-button-secondary)]" disabled={theme === "dark"}>
-                          {theme === "dark" ? "You can't re-select dark mode silly :)" : "Use Dark mode"}
-                        </Button>
-                      </div>
-                    </Card>
-                  </div>
-                </div>
                 <div className="flex flex-col gap-2 mt-4">
                   <label className="text-foreground/70 font-medium" style={{ fontFamily: 'Livvic, sans-serif' }}>Theme</label>
                   <div className="flex flex-row items-center gap-2 w-full">

@@ -20,6 +20,7 @@ import {
   Send,
 } from "lucide-react";
 import { Button } from "./ui/button";
+import { Input } from "./ui/input";
 
 interface GameForumProps {
   gameId: string;
@@ -46,13 +47,19 @@ export const GameForum: React.FC<GameForumProps> = ({ gameId }) => {
   const { user, isAuthenticated } = useAuthStore();
   const [newPostTitle, setNewPostTitle] = useState("");
   const [newPostContent, setNewPostContent] = useState("");
-  const [newPostFormat, setNewPostFormat] = useState<"markdown" | "html">("html");
+  const [newPostFormat, setNewPostFormat] = useState<"markdown" | "html">(
+    "html",
+  );
   const [showNewPost, setShowNewPost] = useState(false);
   const [expandedPosts, setExpandedPosts] = useState<Set<string>>(new Set());
-  const [replyingTo, setReplyingTo] = useState<{ postId?: Id<"forumPosts">; commentId?: Id<"forumComments"> } | null>(null);
+  const [replyingTo, setReplyingTo] = useState<{
+    postId?: Id<"forumPosts">;
+    commentId?: Id<"forumComments">;
+  } | null>(null);
   const [replyContent, setReplyContent] = useState("");
   const [replyFormat] = useState<"markdown" | "html">("html");
-  const [editingComment, setEditingComment] = useState<Id<"forumComments"> | null>(null);
+  const [editingComment, setEditingComment] =
+    useState<Id<"forumComments"> | null>(null);
   const [editContent, setEditContent] = useState("");
 
   const posts = useQuery(api.forum.getPostsForGame, { gameId });
@@ -127,7 +134,12 @@ export const GameForum: React.FC<GameForumProps> = ({ gameId }) => {
   };
 
   const handleDeletePost = async (postId: Id<"forumPosts">) => {
-    if (!confirm("Are you sure you want to delete this post? This will also delete all comments.")) return;
+    if (
+      !confirm(
+        "Are you sure you want to delete this post? This will also delete all comments.",
+      )
+    )
+      return;
 
     try {
       await deletePost({ postId });
@@ -137,7 +149,10 @@ export const GameForum: React.FC<GameForumProps> = ({ gameId }) => {
     }
   };
 
-  const handleReply = async (postId: Id<"forumPosts">, parentCommentId?: Id<"forumComments">) => {
+  const handleReply = async (
+    postId: Id<"forumPosts">,
+    parentCommentId?: Id<"forumComments">,
+  ) => {
     if (!user?.userId || !isAuthenticated) {
       alert("Please sign in to reply");
       return;
@@ -160,7 +175,7 @@ export const GameForum: React.FC<GameForumProps> = ({ gameId }) => {
       setReplyContent("");
       setReplyingTo(null);
       // Expand the post to show comments
-      setExpandedPosts(prev => new Set(prev).add(postId));
+      setExpandedPosts((prev) => new Set(prev).add(postId));
     } catch (error: any) {
       console.error("Failed to create comment:", error);
       alert(error.message || "Failed to create comment");
@@ -199,7 +214,7 @@ export const GameForum: React.FC<GameForumProps> = ({ gameId }) => {
   };
 
   const togglePostExpanded = (postId: Id<"forumPosts">) => {
-    setExpandedPosts(prev => {
+    setExpandedPosts((prev) => {
       const next = new Set(prev);
       if (next.has(postId)) {
         next.delete(postId);
@@ -210,17 +225,24 @@ export const GameForum: React.FC<GameForumProps> = ({ gameId }) => {
     });
   };
 
-  const CommentComponent: React.FC<{ comment: Comment; postId: Id<"forumPosts">; depth?: number }> = ({
-    comment,
-    postId,
-    depth = 0,
-  }) => {
-    const isLiked = user?.userId && comment.likes && comment.likes.includes(user.userId as unknown as Id<"users">);
+  const CommentComponent: React.FC<{
+    comment: Comment;
+    postId: Id<"forumPosts">;
+    depth?: number;
+  }> = ({ comment, postId, depth = 0 }) => {
+    const isLiked =
+      user?.userId &&
+      comment.likes &&
+      comment.likes.includes(user.userId as unknown as Id<"users">);
     const isAuthor = user?.userId === comment.authorId;
     const isEditing = editingComment === comment._id;
 
     return (
-      <div className={`${depth > 0 ? "ml-8 mt-2 border-l-2 border-foreground/10 pl-4" : ""}`}>
+      <div
+        className={
+          "ml-8 mt-2 border-l-2 border-foreground/10 pl-4 h-[80px] overflow-y-auto"
+        }
+      >
         <div className="bg-foreground/5 p-3 border border-foreground/10">
           <div className="flex items-start gap-3">
             {comment.authorAvatar ? (
@@ -236,7 +258,9 @@ export const GameForum: React.FC<GameForumProps> = ({ gameId }) => {
             )}
             <div className="flex-1 min-w-0">
               <div className="flex items-center gap-2 mb-1">
-                <span className="font-semibold text-sm">{comment.authorUsername}</span>
+                <span className="font-semibold text-sm">
+                  {comment.authorUsername}
+                </span>
                 <span className="text-xs text-foreground/60">
                   {new Date(comment.createdAt).toLocaleString()}
                   {comment.updatedAt !== comment.createdAt && " (edited)"}
@@ -273,7 +297,10 @@ export const GameForum: React.FC<GameForumProps> = ({ gameId }) => {
               ) : (
                 <>
                   {comment.contentFormat === "markdown" ? (
-                    <MarkdownRenderer content={comment.content} className="text-sm" />
+                    <MarkdownRenderer
+                      content={comment.content}
+                      className="text-sm"
+                    />
                   ) : (
                     <div
                       className="text-sm prose prose-invert max-w-none"
@@ -297,15 +324,20 @@ export const GameForum: React.FC<GameForumProps> = ({ gameId }) => {
               <div className="flex items-center gap-4 mt-2">
                 <button
                   onClick={() => handleToggleLikeComment(comment._id)}
-                  className={`flex items-center gap-1 text-sm transition-colors ${isLiked ? "text-red-400" : "text-foreground/60 hover:text-foreground"
-                    }`}
+                  className={`flex items-center gap-1 text-sm transition-colors ${
+                    isLiked
+                      ? "text-red-400"
+                      : "text-foreground/60 hover:text-foreground"
+                  }`}
                 >
                   <Heart size={14} className={isLiked ? "fill-current" : ""} />
                   <span>{comment.likes.length}</span>
                 </button>
                 {depth < 3 && (
                   <button
-                    onClick={() => setReplyingTo({ postId, commentId: comment._id })}
+                    onClick={() =>
+                      setReplyingTo({ postId, commentId: comment._id })
+                    }
                     className="flex items-center gap-1 text-sm text-foreground/60 hover:text-foreground transition-colors"
                   >
                     <Reply size={14} />
@@ -383,12 +415,18 @@ export const GameForum: React.FC<GameForumProps> = ({ gameId }) => {
 
   const PostComponent: React.FC<{ post: any }> = ({ post }) => {
     const isExpanded = expandedPosts.has(post._id);
-    const comments = useQuery(api.forum.getCommentsForPost, isExpanded ? { postId: post._id } : "skip");
-    const isLiked = user?.userId && post.likes && post.likes.includes(user.userId as unknown as Id<"users">);
+    const comments = useQuery(
+      api.forum.getCommentsForPost,
+      isExpanded ? { postId: post._id } : "skip",
+    );
+    const isLiked =
+      user?.userId &&
+      post.likes &&
+      post.likes.includes(user.userId as unknown as Id<"users">);
     const isAuthor = user?.userId === post.authorId;
 
     return (
-      <div className="bg-foreground/5 p-4 border border-foreground/10">
+      <div className="p-2 border-b h-fit border-foreground/10" style={{ fontFamily: "Google Sans Flex, sans-serif" }}>
         <div className="flex items-start justify-between mb-3">
           <div className="flex items-center gap-3 flex-1">
             {post.authorAvatar ? (
@@ -406,7 +444,9 @@ export const GameForum: React.FC<GameForumProps> = ({ gameId }) => {
               <div className="flex items-center gap-2">
                 <h3 className="text-lg font-semibold">{post.title}</h3>
                 {post.isPinned && <Pin size={16} className="text-yellow-400" />}
-                {post.isLocked && <Lock size={16} className="text-foreground/60" />}
+                {post.isLocked && (
+                  <Lock size={16} className="text-foreground/60" />
+                )}
               </div>
               <div className="flex items-center gap-2 text-sm text-foreground/60">
                 <span>{post.authorUsername}</span>
@@ -443,8 +483,11 @@ export const GameForum: React.FC<GameForumProps> = ({ gameId }) => {
         <div className="flex items-center gap-4 mb-3">
           <button
             onClick={() => handleToggleLikePost(post._id)}
-            className={`flex items-center gap-1 text-sm transition-colors ${isLiked ? "text-red-400" : "text-foreground/60 hover:text-foreground"
-              }`}
+            className={`flex items-center gap-1 text-sm transition-colors ${
+              isLiked
+                ? "text-red-400"
+                : "text-foreground/60 hover:text-foreground"
+            }`}
           >
             <Heart size={16} className={isLiked ? "fill-current" : ""} />
             <span>{post.likes.length}</span>
@@ -455,7 +498,11 @@ export const GameForum: React.FC<GameForumProps> = ({ gameId }) => {
           >
             <MessageSquare size={16} />
             <span>{post.commentCount || 0} comments</span>
-            {isExpanded ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
+            {isExpanded ? (
+              <ChevronDown size={14} />
+            ) : (
+              <ChevronRight size={14} />
+            )}
           </button>
           {isAuthor && (
             <>
@@ -477,45 +524,54 @@ export const GameForum: React.FC<GameForumProps> = ({ gameId }) => {
           )}
         </div>
 
-        {replyingTo && replyingTo.postId === post._id && !replyingTo.commentId && (
-          <div className="mt-3 space-y-2">
-            <WysiwygEditor
-              key={`reply-${post._id}`}
-              content={replyContent}
-              onChange={setReplyContent}
-              placeholder="Write your comment..."
-            />
-            <div className="flex gap-2">
-              <MicaButton
-                variant="primary"
-                onClick={() => handleReply(post._id)}
-                className="text-sm"
-              >
-                <Send size={14} className="mr-1" />
-                Comment
-              </MicaButton>
-              <MicaButton
-                variant="default"
-                onClick={() => {
-                  setReplyingTo(null);
-                  setReplyContent("");
-                }}
-                className="text-sm"
-              >
-                Cancel
-              </MicaButton>
+        {replyingTo &&
+          replyingTo.postId === post._id &&
+          !replyingTo.commentId && (
+            <div className="mt-3 space-y-2">
+              <WysiwygEditor
+                key={`reply-${post._id}`}
+                content={replyContent}
+                onChange={setReplyContent}
+                className="rounded-xl"
+                placeholder="Write your comment..."
+              />
+              <div className="flex gap-2">
+                <Button
+                  variant="default"
+                  onClick={() => handleReply(post._id)}
+                  className="text-sm bg-[var(--theme-button)] text-white rounded-full flex flex-row items-center gap-2 cursor-pointer border-none"
+                >
+                  <Send size={14} className="mr-1" />
+                  Comment
+                </Button>
+                <Button
+                  variant="outline"
+                  onClick={() => {
+                    setReplyingTo(null);
+                    setReplyContent("");
+                  }}
+                  className="text-sm rounded-full font-light cursor-pointer"
+                >
+                  Cancel
+                </Button>
+              </div>
             </div>
-          </div>
-        )}
+          )}
 
         {isExpanded && comments && (
-          <div className="mt-4 space-y-3 border-t border-white/10 pt-4">
+          <div className="mt-4 h-full space-y-3 border-t border-white/10 pt-4">
             {comments.length > 0 ? (
               comments.map((comment: Comment) => (
-                <CommentComponent key={comment._id} comment={comment} postId={post._id} />
+                <CommentComponent
+                  key={comment._id}
+                  comment={comment}
+                  postId={post._id}
+                />
               ))
             ) : (
-              <div className="text-center text-foreground/60 py-4">No comments yet. Be the first!</div>
+              <div className="text-center text-foreground/60 py-4">
+                No comments yet. Be the first!
+              </div>
             )}
           </div>
         )}
@@ -524,41 +580,49 @@ export const GameForum: React.FC<GameForumProps> = ({ gameId }) => {
   };
 
   return (
-    <div className="flex flex-col gap-4">
+    <div className="flex flex-col w-full h-full gap-4">
       {isAuthenticated && (
         <div>
           {!showNewPost ? (
-            <MicaButton
-              variant="primary"
+            <Button
+              variant="outline"
               onClick={() => setShowNewPost(true)}
-              className="w-full flex flex-row items-center justify-center gap-2"
+              className="w-fit flex flex-row cursor-pointer items-center rounded-full justify-center gap-2"
             >
-              <span className="text-sm uppercase italic" style={{ fontFamily: 'Unbounded, sans-serif' }}>Create New Post</span>
-            </MicaButton>
+              <span
+                className="text-sm font-light"
+                style={{ fontFamily: "Google Sans Flex, sans-serif" }}
+              >
+                Create
+              </span>
+            </Button>
           ) : (
-            <form onSubmit={handleCreatePost} className="flex flex-col">
-              <MicaInput
+            <form
+              onSubmit={handleCreatePost}
+              className="flex flex-col bg-foreground/5 p-4 border border-foreground/10 rounded"
+            >
+              <Input
                 type="text"
-                className="w-full mb-2"
+                className="w-full mb-2 rounded-full border-none"
                 placeholder="Post title..."
                 value={newPostTitle}
                 onChange={(e) => setNewPostTitle(e.target.value)}
                 required
               />
-              <div className="flex gap-1">
+              <div className="flex gap-1 mb-1">
                 <button
                   type="button"
                   onClick={() => setNewPostFormat("html")}
-                  className={`px-3 py-1 rounded-t text-sm uppercase italic ${newPostFormat === "html"
+                  className={`px-3 py-1 rounded-full text-sm ${
+                    newPostFormat === "html"
                       ? "bg-foreground/20 text-foreground"
                       : "bg-foreground/10 text-foreground/60 hover:text-foreground"
-                    }`}
+                  }`}
                   style={{
-                    fontFamily: 'Unbounded, sans-serif',
-                    fontSize: '0.875rem',
-                    fontWeight: '600',
-                    cursor: 'pointer',
-                    transition: 'all 0.2s ease-in-out',
+                    fontFamily: "Google Sans Flex, sans-serif",
+                    fontSize: "0.875rem",
+                    cursor: "pointer",
+                    transition: "all 0.2s ease-in-out",
                   }}
                 >
                   Rich Text
@@ -566,16 +630,16 @@ export const GameForum: React.FC<GameForumProps> = ({ gameId }) => {
                 <button
                   type="button"
                   onClick={() => setNewPostFormat("markdown")}
-                  className={`px-3 py-1 rounded-t text-sm uppercase italic ${newPostFormat === "markdown"
+                  className={`px-3 py-1 rounded-full text-sm ${
+                    newPostFormat === "markdown"
                       ? "bg-foreground/20 text-foreground"
                       : "bg-foreground/10 text-foreground/60 hover:text-foreground"
-                    }`}
+                  }`}
                   style={{
-                    fontFamily: 'Unbounded, sans-serif',
-                    fontSize: '0.875rem',
-                    fontWeight: '600',
-                    cursor: 'pointer',
-                    transition: 'all 0.2s ease-in-out',
+                    fontFamily: "Google Sans Flex, sans-serif",
+                    fontSize: "0.875rem",
+                    cursor: "pointer",
+                    transition: "all 0.2s ease-in-out",
                   }}
                 >
                   Markdown
@@ -586,7 +650,7 @@ export const GameForum: React.FC<GameForumProps> = ({ gameId }) => {
                   content={newPostContent}
                   onChange={setNewPostContent}
                   placeholder="Write your post..."
-                  className="rounded-b rounded-tl-none text-foreground"
+                  className="rounded-xl text-foreground"
                 />
               ) : (
                 <textarea
@@ -594,7 +658,7 @@ export const GameForum: React.FC<GameForumProps> = ({ gameId }) => {
                   value={newPostContent}
                   onChange={(e) => setNewPostContent(e.target.value)}
                   rows={8}
-                  className="w-full px-3 py-2 bg-foreground/10 border border-foreground/20 text-foreground placeholder:text-foreground/50 resize-none focus:outline-none focus:border-foreground/40 rounded rounded-tl-none"
+                  className="w-full px-3 py-2 bg-foreground/10 border border-foreground/20 text-foreground placeholder:text-foreground/50 resize-none focus:outline-none focus:border-foreground/40 rounded-xl"
                   required
                 />
               )}
@@ -602,30 +666,32 @@ export const GameForum: React.FC<GameForumProps> = ({ gameId }) => {
                 <Button
                   variant="outline"
                   style={{
-                    padding: '0.5rem 1rem',
-                    color: 'var(--theme-foreground)',
-                    fontSize: '0.875rem',
-                    fontWeight: '600',
-                    fontFamily: 'Unbounded, sans-serif',
+                    padding: "0.5rem 1rem",
+                    color: "var(--theme-foreground)",
+                    fontSize: "0.875rem",
+                    fontFamily: "Google Sans Flex, sans-serif",
                   }}
                   onClick={() => {
                     setNewPostTitle("");
                     setNewPostContent("");
                     setShowNewPost(false);
                   }}
-                  className="text-sm uppercase italic cursor-pointer"
+                  className="text-sm rounded-full font-light cursor-pointer"
                 >
                   Cancel
                 </Button>
-                <Button type="submit" style={{
-                  background: 'linear-gradient(to bottom right, var(--theme-button), var(--theme-button-secondary))',
-                  padding: '0.5rem 1rem',
-                  color: 'white',
-                  fontSize: '0.875rem',
-                  fontWeight: '600',
-                  fontFamily: 'Unbounded, sans-serif',
-                  transition: 'all 0.2s ease-in-out',
-                }} className="flex flex-row items-center gap-2 text-sm uppercase italic cursor-pointer border-none">
+                <Button
+                  type="submit"
+                  variant="default"
+                  style={{
+                    padding: "0.5rem 1rem",
+                    color: "white",
+                    fontSize: "0.875rem",
+                    fontFamily: "Google Sans Flex, sans-serif",
+                    transition: "all 0.2s ease-in-out",
+                  }}
+                  className="bg-[var(--theme-button)] rounded-full flex flex-row items-center gap-2 text-sm cursor-pointer border-none"
+                >
                   <Send size={14} />
                   Post
                 </Button>
@@ -642,7 +708,10 @@ export const GameForum: React.FC<GameForumProps> = ({ gameId }) => {
           ))}
         </div>
       ) : (
-        <div className="text-center text-white/60 py-8">
+        <div
+          style={{ fontFamily: "Google Sans Flex, sans-serif" }}
+          className="text-center text-xs text-white/60 py-8"
+        >
           {isAuthenticated
             ? "No discussions yet. Be the first to post!"
             : "Sign in to view and participate in discussions."}

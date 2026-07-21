@@ -279,5 +279,19 @@ export default defineSchema({
     .index("by_user", ["userId"])
     .index("by_game", ["gameId"])
     .index("by_user_launcher", ["userId", "launcher"]),
+  themes: defineTable({
+    name: v.string(),
+    description: v.optional(v.string()),
+    authorId: v.id("users"),
+    background: v.string(),
+    accentColor: v.string(),
+    textColor: v.string(),
+    primaryButtonColor: v.string(),
+    secondaryButtonColor: v.string(),
+    mascotImage: v.optional(v.string()),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  })
+    .index("by_author", ["authorId"])
 });
 

@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { Filter, X, Grid, List, RefreshCw, Plus } from "lucide-react";
+import { Filter, X, Grid, List, RefreshCw, Plus, Search } from "lucide-react";
 import { invoke } from "@tauri-apps/api/core";
 import { useLibraryContext } from "@/contexts/LibraryContext";
 import { useGameStore } from "@/stores/gameStore";
@@ -82,7 +82,7 @@ export const LibrarySidebar: React.FC<LibrarySidebarProps> = ({
   const searchFilteredGames = searchQuery.trim()
     ? smartSearch(games, searchQuery)
     : games;
-  
+
   const filteredGames = searchFilteredGames.filter((game) => {
     const matchesLauncher =
       filterLauncher === "all" || game.launcher === filterLauncher;
@@ -113,7 +113,7 @@ export const LibrarySidebar: React.FC<LibrarySidebarProps> = ({
 
   return (
     <Card
-      className="flex flex-col gap-1 h-full border-b"
+      className="flex flex-col gap-1 bg-transparent backdrop-blur-xl h-full border-2 rounded-3xl"
       style={{
         width: "320px",
       }}
@@ -125,96 +125,74 @@ export const LibrarySidebar: React.FC<LibrarySidebarProps> = ({
         crossOrigin="anonymous"
       />
       <link
-        href="https://fonts.googleapis.com/css2?family=Livvic:ital,wght@0,100;0,200;0,300;0,400;0,500;0,600;0,700;0,900;1,100;1,200;1,300;1,400;1,500;1,600;1,700;1,900&display=swap"
+        href="https://fonts.googleapis.com/css2?family=Livvic:ital,wght@0,100;0,200;0,300;0,400;0,500;0,600;0,700;0,900;1,100;1,200;1,300;1,400;1,500;1,600;1,700;1,900&family=Unbounded:wght@200..900&display=swap"
         rel="stylesheet"
       />
       {/* Search Bar */}
-      <div className="mx-2 -mt-1">
+      <div className="-mt-4 border-b-2">
+        <Search
+          className="absolute ml-3 mt-2.75 text-foreground/60"
+          size={16}
+        />
         <Input
           type="text"
           placeholder="Search games..."
           value={searchQuery}
-          style={{ fontFamily: "Livvic, sans-serif" }}
+          style={{ fontFamily: "Google Sans Flex, sans-serif" }}
           onChange={(e) => onSearchChange(e.target.value)}
-          className="flex-1 text-sm"
+          className="flex-1 pl-8 text-sm font-light rounded-t-2xl h-10 border-none"
         />
       </div>
 
       {/* Filters Section */}
-      <div className="flex flex-row items-center justify-between p-2">
-        <div className="flex flex-row items-center gap-2">
-          <Badge
-            variant="ghost"
-            className="text-foreground/60 uppercase p-0"
-            style={{
-              fontFamily: "Livvic, sans-serif",
-              fontWeight: 600,
-              paddingTop: "8px",
-              paddingBottom: "8px",
-              paddingRight: "8px",
-              textAlign: "right",
-              fontSize: "12px",
-            }}
-          >
-            {filteredGames.length} games
-          </Badge>
+      <div className="flex flex-col items-center justify-between p-2">
+        <div className="flex flex-row items-center justify-between w-full gap-2">
+          <div className="flex flex-row items-center gap-2">
+            <Badge
+              variant="ghost"
+              className="text-foreground/60 uppercase p-0"
+              style={{
+                fontFamily: "Livvic, sans-serif",
+                fontWeight: 600,
+                paddingTop: "8px",
+                paddingBottom: "8px",
+                paddingRight: "8px",
+                textAlign: "right",
+                fontSize: "12px",
+              }}
+            >
+              {filteredGames.length} games
+            </Badge>
+          </div>
+          <div className="flex flex-row items-center gap-2">
+            <Button
+              variant={viewMode === "grid" ? "default" : "ghost"}
+              onClick={() => setViewMode("grid")}
+              className="py-0.5 px-2 h-fit cursor-pointer"
+              title="Grid View"
+            >
+              <Grid size={14} />
+            </Button>
+            <Button
+              variant={viewMode === "list" ? "default" : "ghost"}
+              onClick={() => setViewMode("list")}
+              className="py-0.5 px-2 h-fit cursor-pointer"
+              title="List View"
+            >
+              <List size={14} />
+            </Button>
+            <Button
+              variant="default"
+              onClick={() => setShowFilters(!showFilters)}
+              className="py-0.5 px-2 h-fit cursor-pointer"
+            >
+              {showFilters ? <X size={14} /> : <Filter size={14} />}
+            </Button>
+          </div>
         </div>
-        <div className="flex flex-row items-center gap-2">
-          <Button
-            variant="default"
-            onClick={() => setShowAddDialog(true)}
-            className="py-0.5 px-2 h-fit cursor-pointer"
-            title="Add Custom App"
-          >
-            <Plus size={14} />
-          </Button>
-          <Button
-            variant={viewMode === "grid" ? "default" : "ghost"}
-            onClick={() => setViewMode("grid")}
-            className="py-0.5 px-2 h-fit cursor-pointer"
-            title="Grid View"
-          >
-            <Grid size={14} />
-          </Button>
-          <Button
-            variant={viewMode === "list" ? "default" : "ghost"}
-            onClick={() => setViewMode("list")}
-            className="py-0.5 px-2 h-fit cursor-pointer"
-            title="List View"
-          >
-            <List size={14} />
-          </Button>
-          <Button
-            variant="default"
-            onClick={() => setShowFilters(!showFilters)}
-            className="py-0.5 px-2 h-fit cursor-pointer"
-          >
-            {showFilters ? <X size={14} /> : <Filter size={14} />}
-          </Button>
-          <Button
-            onClick={scanGames}
-            disabled={isScanning}
-            variant="default"
-            className="py-0.5 px-2 h-fit cursor-pointer"
-          >
-            <RefreshCw size={14} className={isScanning ? "animate-spin" : ""} />
-          </Button>
-        </div>
-
-        <AddCustomAppDialog
-          isOpen={showAddDialog}
-          onClose={() => setShowAddDialog(false)}
-          onSuccess={handleRefreshGames}
-        />
 
         {showFilters && (
-          <div className="flex flex-col gap-2 mt-2 px-2">
-            <div
-              className="text-xs text-foreground/60 mb-1 uppercase"
-              style={{ fontFamily: "Livvic, sans-serif" }}
-            >
-              Launcher
-            </div>
+          <div className="flex flex-col gap-2 mt-2">
             <div className="flex flex-row flex-wrap gap-2">
               <Button
                 variant={filterLauncher === "all" ? "default" : "outline"}
@@ -244,7 +222,7 @@ export const LibrarySidebar: React.FC<LibrarySidebarProps> = ({
       {/* Game List */}
       <div className="flex-1 overflow-y-auto content-view-scrollbar">
         <div>
-          <div className="flex flex-col gap-1 pl-2">
+          <div className="flex flex-col gap-1">
             {filteredGames.map((game) => (
               <LibrarySidebarGameItem
                 key={game.id}

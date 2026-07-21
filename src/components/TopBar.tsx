@@ -20,6 +20,9 @@ import {
   VscChromeMinimize,
 } from "react-icons/vsc";
 import { NovuInbox } from "./ui/inbox/NovuInbox";
+import { Id } from "node_modules/convex/dist/esm-types/values/value";
+import { useQuery } from "convex/react";
+import { api } from "../../convex/_generated/api";
 
 export const TopBar: React.FC = () => {
   const { user, isAuthenticated, signOut } = useAuthStore();
@@ -29,8 +32,19 @@ export const TopBar: React.FC = () => {
   const [showContentMenu, setShowContentMenu] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
   const contentMenuRef = useRef<HTMLDivElement>(null);
+
+  const gameCustomisation = useQuery(
+    api.gameCustomizations.getGameCustomization,
+    runningGame && user
+      ? {
+          userId: user.userId as unknown as Id<"users">,
+          gameId: runningGame?.id,
+        }
+      : "skip",
+  );
   // Close dropdown when clicking outside
   useEffect(() => {
+    console.log(runningGame);
     const handleClickOutside = (event: MouseEvent) => {
       if (
         dropdownRef.current &&
@@ -117,7 +131,7 @@ export const TopBar: React.FC = () => {
       // Silently fail in browser mode
       console.debug(
         "Window controls not available (running in browser)",
-        error
+        error,
       );
     }
   };
@@ -130,7 +144,7 @@ export const TopBar: React.FC = () => {
       // Silently fail in browser mode
       console.debug(
         "Window controls not available (running in browser)",
-        error
+        error,
       );
     }
   };
@@ -143,7 +157,7 @@ export const TopBar: React.FC = () => {
       // Silently fail in browser mode
       console.debug(
         "Window controls not available (running in browser)",
-        error
+        error,
       );
     }
   };
@@ -182,7 +196,7 @@ export const TopBar: React.FC = () => {
 
   return (
     <div
-      className="flex flex-col w-full fixed top-0 left-0 right-0 z-50 backdrop-blur-sm bg-muted"
+      className="flex flex-col w-full fixed bg-linear-to-b from-background to-transparent top-0 left-0 right-0 z-50"
       style={{
         margin: 0,
         padding: 0,
@@ -223,12 +237,6 @@ export const TopBar: React.FC = () => {
             alt="PoliGame"
             className="w-6 h-6 invert dark:invert-0"
           />
-          <span
-            className="select-none uppercase italic text-sm"
-            style={{ fontWeight: 600, color: "var(--theme-text)" }}
-          >
-            PoliGame <span className="text-xs text-foreground/60">BETA</span>
-          </span>
           {/* Friends Dropdown */}
           <div className="flex flex-row gap-0 ml-2">
             <div
@@ -239,7 +247,7 @@ export const TopBar: React.FC = () => {
                 <DropdownMenuTrigger>
                   <button
                     type="button"
-                    className="pt-3 px-3 pb-1 -mt-3 flex items-center gap-1 text-sm cursor-pointer text-foreground/70 bg-muted-foreground/10 hover:text-foreground transition-colors cursor-pointer"
+                    className="px-3 flex items-center gap-1 text-sm cursor-pointer text-foreground/70 hover:text-[var(--theme-accent)] transition-colors cursor-pointer"
                     title="General"
                     style={{ fontFamily: "Livvic, sans-serif" }}
                   >
@@ -313,7 +321,7 @@ export const TopBar: React.FC = () => {
                   <DropdownMenuTrigger>
                     <button
                       type="button"
-                      className="pt-3 px-3 pb-1 -mt-3 flex items-center gap-1 text-sm cursor-pointer text-foreground/70 bg-muted-foreground/10 hover:text-foreground transition-colors"
+                      className="px-3 flex items-center gap-1 text-sm cursor-pointer text-foreground/70 hover:text-[var(--theme-accent)] transition-colors cursor-pointer"
                       title="Friends"
                       style={{ fontFamily: "Livvic, sans-serif" }}
                     >
@@ -347,7 +355,7 @@ export const TopBar: React.FC = () => {
                 <DropdownMenuTrigger>
                   <button
                     type="button"
-                    className="pt-3 px-3 pb-1 -mt-3 flex items-center gap-1 text-sm cursor-pointer text-foreground/70 bg-muted-foreground/10 hover:text-foreground transition-colors cursor-pointer"
+                    className="px-3 flex items-center gap-1 text-sm cursor-pointer text-foreground/70 hover:text-[var(--theme-accent)] transition-colors cursor-pointer"
                     title="View"
                     style={{ fontFamily: "Livvic, sans-serif" }}
                   >
@@ -389,7 +397,7 @@ export const TopBar: React.FC = () => {
                 <DropdownMenuTrigger>
                   <button
                     type="button"
-                    className="pt-3 px-3 pb-1 -mt-3 flex items-center gap-1 text-sm cursor-pointer text-foreground/70 bg-muted-foreground/10 hover:text-foreground transition-colors cursor-pointer"
+                    className="px-3 flex items-center gap-1 text-sm cursor-pointer text-foreground/70 hover:text-[var(--theme-accent)] transition-colors cursor-pointer"
                     title="Help"
                     style={{ fontFamily: "Livvic, sans-serif" }}
                   >
@@ -416,103 +424,94 @@ export const TopBar: React.FC = () => {
             </div>
           </div>
         </div>
+        <div className="w-full ml-4">
+          <Sidebar />
+        </div>
         <div
-          className="flex items-center gap-1 no-drag-region"
+          className="flex items-center gap-1 mr-4 no-drag-region"
           data-tauri-drag-region="false"
         >
           <NovuInbox />
           <Button
-            variant="outline"
+            variant="link"
+            size="icon"
             onClick={(e) => {
               e.stopPropagation();
               handleEnterOverdrive();
             }}
-            className="py-1 px-2 h-fit cursor-pointer"
+            className="hover:text-[var(--theme-accent)] text-muted-foreground cursor-pointer"
             type="button"
           >
             <IoTvOutline size={14} />
           </Button>
           {isAuthenticated && user ? (
-            <div
-              className="relative text-xs bg-muted-foreground/10"
-              ref={dropdownRef}
-            >
-              <Button
-                onClick={() => setShowDropdown(!showDropdown)}
-                variant={runningGame ? "default" : "ghost"}
-                className={`py-0.5 px-1 flex flex-row items-center gap-1 min-w-fit h-fit cursor-pointer ${runningGame ? "bg-[var(--theme-accent)] text-foreground" : ""}`}
-                title={user.username || user.email}
+            <DropdownMenu>
+              <DropdownMenuTrigger
+                className={`py-1 flex flex-row items-center gap-1 rounded-full px-2 min-w-fit h-fit hover-[var(--theme-accent)]/40 cursor-pointer ${runningGame ? "bg-[var(--theme-accent)] text-foreground" : ""}`}
               >
-                {runningGame && runningGame.icon && (
+                {runningGame && (
                   <img
-                    src={runningGame.icon}
+                    src={runningGame.logo || gameCustomisation?.customLogo}
                     alt={runningGame.title}
                     className="w-5 h-5"
                     title={`Playing: ${runningGame.title}`}
                     style={{
-                      marginRight: "6px",
-                      border: "1px solid rgba(255, 255, 255, 0.2)",
+                      backgroundColor: "var(--theme-background)",
+                      padding: "1px",
+                      borderRadius: "360px",
                     }}
                   />
                 )}
+                {runningGame && (<hr className="h-4 border-l border-foreground/20" />)}
                 <img
                   src={
                     user.avatar ||
                     `https://ui-avatars.com/api/?name=${encodeURIComponent(user.username || user.email)}`
                   }
                   alt="Avatar"
-                  className="w-5 h-5"
+                  className="w-5 h-5 rounded-full"
                 />
                 <span
-                  className="text-sm"
-                  style={{ fontFamily: "Livvic, sans-serif" }}
+                  className="text-sm font-light"
+                  style={{ fontFamily: "Google Sans Flex, sans-serif" }}
                 >
                   {user.username || user.email}
                 </span>
-              </Button>
-
-              {showDropdown && (
-                <div
-                  className="absolute right-0 w-48 bg-background border border-border text-foreground overflow-hidden"
-                  data-tauri-drag-region="false"
-                  style={{
-                    backdropFilter: "blur(10px)",
-                    fontFamily: "Livvic, sans-serif",
-                    zIndex: 9999,
+              </DropdownMenuTrigger>
+              <DropdownMenuContent
+                align="end"
+                className="w-48 bg-muted border border-border overflow-hidden"
+              >
+                <button
+                  onClick={async (e) => {
+                    e.stopPropagation();
+                    setShowDropdown(false);
+                    try {
+                      await handleOpenSettings();
+                    } catch (error) {
+                      console.error("Failed to open settings window:", error);
+                    }
                   }}
-                  onClick={(e) => e.stopPropagation()}
+                  className="w-full flex items-center gap-2 px-3 py-2 text-sm hover:bg-white/10 transition-colors text-left"
+                  type="button"
                 >
-                  <button
-                    onClick={async (e) => {
-                      e.stopPropagation();
-                      setShowDropdown(false);
-                      try {
-                        await handleOpenSettings();
-                      } catch (error) {
-                        console.error("Failed to open settings window:", error);
-                      }
-                    }}
-                    className="w-full flex items-center gap-2 px-3 py-2 text-sm hover:bg-white/10 transition-colors text-left"
-                    type="button"
-                  >
-                    <Settings size={14} />
-                    Settings
-                  </button>
-                  <button
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      signOut();
-                      setShowDropdown(false);
-                    }}
-                    className="w-full flex items-center gap-2 px-3 py-2 text-sm text-foreground hover:bg-foreground/10 transition-colors text-left border-t border-foreground/10"
-                    type="button"
-                  >
-                    <LogOut size={14} />
-                    Sign Out
-                  </button>
-                </div>
-              )}
-            </div>
+                  <Settings size={14} />
+                  Settings
+                </button>
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    signOut();
+                    setShowDropdown(false);
+                  }}
+                  className="w-full flex items-center gap-2 px-3 py-2 text-sm text-foreground hover:bg-foreground/10 transition-colors text-left border-t border-foreground/10"
+                  type="button"
+                >
+                  <LogOut size={14} />
+                  Sign Out
+                </button>
+              </DropdownMenuContent>
+            </DropdownMenu>
           ) : (
             <Button
               variant="default"
@@ -546,15 +545,6 @@ export const TopBar: React.FC = () => {
           </button>
         </div>
       </div>
-      <Sidebar />
-      <div
-        className="w-full"
-        style={{
-          height: "2px",
-          background:
-            "linear-gradient(to right, transparent, var(--theme-button-secondary), transparent)",
-        }}
-      />
     </div>
   );
 };

@@ -14,6 +14,12 @@ import { Game } from "@/types";
 import { LauncherType } from "@/types";
 import NotificationListener from "./NotificationListener";
 import { NovuProvider } from "@novu/react";
+// @ts-ignore
+import welcomeBkg from "@/public/setup-bkg.png";
+import { getImageUrl } from "@/utils/imageUtils";
+import { useQuery } from "convex/react";
+import { api } from "../../convex/_generated/api";
+import { Id } from "node_modules/convex/dist/esm-types/values/value";
 
 interface AppShellProps {
   children: React.ReactNode;
@@ -24,8 +30,19 @@ export const AppShell: React.FC<AppShellProps> = ({ children }) => {
   const [isChecking, setIsChecking] = useState(true);
   const { runningGameId, runningGame, checkGameRunning, setRunningGame } =
     useRunningGameStore();
-  const { games, setGames, setLoading } = useGameStore();
+  const { games, setGames, setLoading, activeHoverGame } = useGameStore();
   const { user } = useAuthStore();
+  const activeHoverGameCust = useQuery(
+    api.gameCustomizations.getGameCustomization,
+    user && activeHoverGame
+      ? {
+          userId: user.userId as unknown as Id<"users">,
+          gameId: activeHoverGame?.id,
+        }
+      : "skip",
+  );
+
+  console.log(activeHoverGame);
 
   // Manage presence (online/away/offline)
   usePresence(user?.userId || null);
@@ -33,47 +50,13 @@ export const AppShell: React.FC<AppShellProps> = ({ children }) => {
   // Update currentGame fields when games start/stop
   useGamePresence();
 
-  // Load games from database when AppShell mounts (after setup check completes)
-  useEffect(() => {
-    const loadGames = async () => {
-      try {
-        setLoading(true);
-        const gameList = await invoke<Game[]>("get_all_games");
-        const normalizedGames = gameList.map((game) => ({
-          ...game,
-          launcher: game.launcher.toLowerCase() as LauncherType,
-        }));
-        setGames(normalizedGames);
-        console.log(
-          `[AppShell] Loaded ${normalizedGames.length} games from database`
-        );
-      } catch (error) {
-        console.error("[AppShell] Error loading games:", error);
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    // Load games once setup check is complete (even if setup is showing, we still want to load games)
-    if (!isChecking) {
-      loadGames();
-    }
-  }, [isChecking, setGames, setLoading]);
-
   useEffect(() => {
     const checkSetup = async () => {
       try {
-        const options = await invoke<{ skipSetup: boolean }>(
-          "get_setup_options"
-        );
-        console.log("Setup options check result:", options);
-        console.log("skipSetup value:", options.skipSetup);
-        // Only show setup if skipSetup is false (or file doesn't exist)
-        // If skipSetup is true, don't show setup
-        setShowSetup(!options.skipSetup);
-      } catch (error) {
-        console.error("Failed to check setup options:", error);
-        // If we can't check, show setup to be safe
+        const setupComplete = await invoke<boolean>("is_setup_complete");
+        setShowSetup(!setupComplete);
+      } catch (e) {
+        console.error("Failed to check setup options:", e);
         setShowSetup(true);
       } finally {
         setIsChecking(false);
@@ -85,8 +68,9 @@ export const AppShell: React.FC<AppShellProps> = ({ children }) => {
 
   // Periodically check for running games
   useEffect(() => {
-    let minuteInterval: NodeJS.Timeout | null = null;
-    let fiveMinuteInterval: NodeJS.Timeout | null = null;
+    console.log(games);
+    let minuteInterval: ReturnType<typeof setInterval> | null = null;
+    let fiveMinuteInterval: ReturnType<typeof setInterval> | null = null;
 
     const checkRunningGames = async () => {
       console.log("[AppShell] Checking for running games...");
@@ -94,12 +78,12 @@ export const AppShell: React.FC<AppShellProps> = ({ children }) => {
       // If we have a tracked running game, check if it's still running
       if (runningGameId && runningGame) {
         console.log(
-          `[AppShell] Checking if tracked game is still running: ${runningGame.title} (${runningGameId})`
+          `[AppShell] Checking if tracked game is still running: ${runningGame.title} (${runningGameId})`,
         );
         const isRunning = await checkGameRunning(runningGameId);
         if (!isRunning) {
           console.log(
-            `[AppShell] Game ${runningGame.title} is no longer running, clearing it`
+            `[AppShell] Game ${runningGame.title} is no longer running, clearing it`,
           );
           // Game stopped running, clear it
           setRunningGame(null);
@@ -108,20 +92,20 @@ export const AppShell: React.FC<AppShellProps> = ({ children }) => {
         }
       } else {
         console.log(
-          "[AppShell] No tracked game, checking all games for running processes..."
+          "[AppShell] No tracked game, checking all games for running processes...",
         );
         // Check all games to see if any are running
         // This helps detect games that were launched outside the app
         if (games && games.length > 0) {
           console.log(
-            `[AppShell] Checking ${games.length} games for running processes`
+            `[AppShell] Checking ${games.length} games for running processes`,
           );
           for (const game of games) {
             console.log(`[AppShell] Checking game: ${game.title} (${game.id})`);
             const isRunning = await checkGameRunning(game.id);
             if (isRunning) {
               console.log(
-                `[AppShell] Found running game: ${game.title} (${game.id})`
+                `[AppShell] Found running game: ${game.title} (${game.id})`,
               );
               // Found a running game, set it
               setRunningGame(game);
@@ -136,7 +120,7 @@ export const AppShell: React.FC<AppShellProps> = ({ children }) => {
 
     // Check immediately on mount
     console.log(
-      "[AppShell] Starting game process monitoring (checking every minute for first 5 minutes, then every 5 minutes)"
+      "[AppShell] Starting game process monitoring (checking every minute for first 5 minutes, then every 5 minutes)",
     );
     checkRunningGames();
 
@@ -145,7 +129,7 @@ export const AppShell: React.FC<AppShellProps> = ({ children }) => {
     minuteInterval = setInterval(() => {
       minuteCount++;
       console.log(
-        `[AppShell] Minute check #${minuteCount} (will switch to 5-minute intervals after 5 checks)`
+        `[AppShell] Minute check #${minuteCount} (will switch to 5-minute intervals after 5 checks)`,
       );
       checkRunningGames();
 
@@ -163,7 +147,7 @@ export const AppShell: React.FC<AppShellProps> = ({ children }) => {
             console.log("[AppShell] 5-minute interval check");
             checkRunningGames();
           },
-          5 * 60 * 1000
+          5 * 60 * 1000,
         );
       }
     }, 60 * 1000); // Every minute
@@ -227,12 +211,19 @@ export const AppShell: React.FC<AppShellProps> = ({ children }) => {
         <NotificationListener />
         <TopBar />
         <div
-          className="flex flex-col gap-0 w-full flex-1 overflow-hidden"
+          className="flex flex-col gap-0 w-full flex-1 overflow-hidden transition-all ease-in-out duration-300"
           style={{
-            paddingTop: "75px",
+            background: `url(${activeHoverGame ? activeHoverGameCust?.customHeroArt ? getImageUrl(activeHoverGameCust.customHeroArt) : getImageUrl(activeHoverGame.headerArt) : welcomeBkg}) center center / 100% 100% no-repeat`,
           }}
         >
-          <ContentView>{children}</ContentView>
+          <div
+            style={{
+              paddingTop: "45px",
+            }}
+            className="absolute top-0 left-0 w-full h-full backdrop-blur-md"
+          >
+            <ContentView>{children}</ContentView>
+          </div>
         </div>
         <Toaster className="rounded-none" closeButton />
       </div>

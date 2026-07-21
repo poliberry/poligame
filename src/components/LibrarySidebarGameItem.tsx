@@ -167,23 +167,17 @@ export const LibrarySidebarGameItem: React.FC<LibrarySidebarGameItemProps> = ({
       </div>
           </div>
         </ContextMenuTrigger>
-        <ContextMenuContent className="w-56 rounded-none">
-          <ContextMenuItem className="rounded-none p-2 bg-[var(--theme-accent)] text-white uppercase italic font-bold hover:bg-[var(--theme-accent)]/80 cursor-pointer" style={{ fontFamily: "Unbounded, sans-serif" }} onClick={handleQuickLaunch}>
+        <ContextMenuContent style={{ fontFamily: 'Google Sans Flex, sans-serif' }} className="w-64 rounded-2xl space-y-2 p-2">
+          <ContextMenuItem className="rounded-full p-2 bg-[var(--theme-accent)] text-white font-light hover:bg-[var(--theme-accent)]/80 cursor-pointer" style={{ fontFamily: "Google Sans Flex, sans-serif" }} onClick={handleQuickLaunch}>
             <Play className="mr-2 h-4 w-4" />
             Launch
           </ContextMenuItem>
           {game.launcher === "custom" && (
             <>
-              <ContextMenuSeparator />
-              <ContextMenuItem className="rounded-none" onClick={handleEditName}>
-                <Edit className="mr-2 h-4 w-4" />
-                Change Name
-              </ContextMenuItem>
               <ContextMenuItem className="rounded-none" onClick={handleCustomize}>
                 <Settings className="mr-2 h-4 w-4" />
-                Customize Properties
+                Customize {game?.title}
               </ContextMenuItem>
-              <ContextMenuSeparator />
               <ContextMenuItem onClick={handleDelete} className="text-red-400 focus:text-red-400 rounded-none">
                 <Trash2 className="mr-2 h-4 w-4" />
                 Remove App

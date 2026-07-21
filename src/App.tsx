@@ -24,10 +24,12 @@ import Overlay from "./pages/Overlay";
 import { useEffect } from "react";
 import { usePlaytimeTracking } from "@/hooks/usePlaytimeTracking";
 import { AccessibilityFilter } from "@/components/AccessibilityFilter";
+import { useTauriDragRegions } from "@/hooks/useTauriDragRegions";
 
 function AppContent() {
   // Track playtime for all games
   usePlaytimeTracking();
+  useTauriDragRegions();
   
   return (
     <Routes>

@@ -23,7 +23,7 @@ export const GameCustomizationWindow: React.FC<
   const { user } = useAuthStore();
   const [customCoverArt, setCustomCoverArt] = useState<string | null>(null);
   const [customGridCoverArt, setCustomGridCoverArt] = useState<string | null>(
-    null
+    null,
   );
   const [customLogo, setCustomLogo] = useState<string | null>(null);
   const [customHeroArt, setCustomHeroArt] = useState<string | null>(null);
@@ -33,7 +33,7 @@ export const GameCustomizationWindow: React.FC<
   const [executablePath, setExecutablePath] = useState("");
   const [isCustomApp, setIsCustomApp] = useState(false);
   const [selectedTab, setSelectedTab] = useState<"general" | "artwork">(
-    "general"
+    "general",
   );
 
   // Track original values to detect changes
@@ -46,7 +46,7 @@ export const GameCustomizationWindow: React.FC<
     string | null
   >(null);
   const [originalCustomLogo, setOriginalCustomLogo] = useState<string | null>(
-    null
+    null,
   );
   const [originalCustomHeroArt, setOriginalCustomHeroArt] = useState<
     string | null
@@ -77,13 +77,13 @@ export const GameCustomizationWindow: React.FC<
   const heroInputRef = useRef<HTMLInputElement>(null);
 
   const updateCustomization = useMutation(
-    api.gameCustomizations.updateGameCustomization
+    api.gameCustomizations.updateGameCustomization,
   );
   const customization = useQuery(
     api.gameCustomizations.getGameCustomization,
     user?.userId && gameId
       ? { userId: user.userId as unknown as Id<"users">, gameId }
-      : "skip"
+      : "skip",
   );
 
   // Fetch game details to check if it's a custom app
@@ -127,7 +127,7 @@ export const GameCustomizationWindow: React.FC<
 
   const handleImageUpload = (
     file: File | null,
-    setter: (value: string | null) => void
+    setter: (value: string | null) => void,
   ) => {
     if (!file) {
       setter(null);
@@ -183,7 +183,7 @@ export const GameCustomizationWindow: React.FC<
       console.error("Error selecting executable:", error);
       toast.error(
         error.message ||
-          "Failed to select executable. Please check the console for details."
+          "Failed to select executable. Please check the console for details.",
       );
     }
   };
@@ -288,11 +288,13 @@ export const GameCustomizationWindow: React.FC<
       const window = getCurrentWindow();
       const windowLabel = window.label;
       console.log("Window label:", windowLabel);
-      await invoke("close_game_customization_window", { windowLabel: windowLabel });
+      await invoke("close_game_customization_window", {
+        windowLabel: windowLabel,
+      });
     } catch (error) {
       console.debug(
         "Window controls not available (running in browser)",
-        error
+        error,
       );
       // Fallback to onClose callback
       onClose();
@@ -302,21 +304,24 @@ export const GameCustomizationWindow: React.FC<
   return (
     <div className="w-full h-screen flex flex-col bg-background text-white overflow-y-hidden">
       <link rel="preconnect" href="https://fonts.googleapis.com" />
+      <link rel="preconnect" href="https://fonts.gstatic.com" />
       <link
-        rel="preconnect"
-        href="https://fonts.gstatic.com"
-        crossOrigin="anonymous"
-      />
-      <link
-        href="https://fonts.googleapis.com/css2?family=Livvic:ital,wght@0,100;0,200;0,300;0,400;0,500;0,600;0,700;0,900;1,100;1,200;1,300;1,400;1,500;1,600;1,700;1,900&family=Unbounded:wght@200..900&display=swap"
+        href="https://fonts.googleapis.com/css2?family=Google+Sans+Flex:opsz,wght@6..144,1..1000&family=Oswald:wght@200..700&display=swap"
         rel="stylesheet"
       />
       {/* Header */}
       <div
-        className="flex items-center justify-between bg-transparent py-1 px-4 z-[50] drag-region"
+        className="flex items-center justify-between bg-[var(--theme-background)] py-0.5 px-2 z-[50] drag-region"
         data-tauri-drag-region
       >
-        <div className="flex-1 flex-grow"></div>
+        <div className="flex-1 flex-grow">
+          <h1
+            className="text-sm font-light text-muted-foreground p-2 select-none"
+            style={{ fontFamily: "Google Sans Flex, sans-serif" }}
+          >
+            Customise {game?.title}
+          </h1>
+        </div>
         <div
           className="flex items-center gap-2 no-drag-region"
           data-tauri-drag-region="false"
@@ -331,17 +336,16 @@ export const GameCustomizationWindow: React.FC<
         </div>
       </div>
       <div className="flex flex-row w-full h-full">
-        <div className="flex flex-col w-1/3 min-h-full bg-muted -mt-10 pt-10">
-          <h1
-            className="text-md font-bold text-white uppercase italic p-2"
-            style={{ fontFamily: "Unbounded, sans-serif" }}
-          >
-            {game?.title}
-          </h1>
-          <div className="flex flex-col py-4">
+        <div className="flex flex-col w-1/3 min-h-full">
+          <img
+            src={`${customHeroArt || game?.heroArt || game?.coverArt}`}
+            alt={`${game?.title} Cover Art`}
+            className="w-full h-full absolute top-0 left-0 object-cover"
+          />
+          <div className="flex flex-col backdrop-blur-md bg-black/40 p-4 gap-2 z-[10] relative h-full">
             <Button
               variant="outline"
-              className="w-full justify-start border-none cursor-pointer"
+              className="w-full justify-start border-none rounded-full cursor-pointer"
               onClick={() => setSelectedTab("general")}
             >
               <span
@@ -354,7 +358,7 @@ export const GameCustomizationWindow: React.FC<
             </Button>
             <Button
               variant="outline"
-              className="w-full justify-start border-none cursor-pointer"
+              className="w-full justify-start border-none rounded-full cursor-pointer"
               onClick={() => setSelectedTab("artwork")}
             >
               <span
@@ -367,13 +371,13 @@ export const GameCustomizationWindow: React.FC<
             </Button>
           </div>
         </div>
-        <div className="flex flex-col w-2/3 h-full -mt-10 bg-background pt-6">
+        <div className="flex flex-col w-2/3 h-full z-[10] bg-[var(--theme-background)] overflow-y-auto">
           <form className="flex flex-col gap-6 p-4">
             {selectedTab === "general" && (
               <div className="space-y-6">
                 <h2
-                  className="text-lg font-bold text-white uppercase italic"
-                  style={{ fontFamily: "Unbounded, sans-serif" }}
+                  className="text-lg font-light text-white"
+                  style={{ fontFamily: "Google Sans Flex, sans-serif" }}
                 >
                   General
                 </h2>
@@ -424,13 +428,13 @@ export const GameCustomizationWindow: React.FC<
             {selectedTab === "artwork" && (
               <div className="space-y-6 pb-20">
                 <h2
-                  className="text-lg font-bold text-white uppercase italic"
-                  style={{ fontFamily: "Unbounded, sans-serif" }}
+                  className="text-lg font-light text-white"
+                  style={{ fontFamily: "Google Sans Flex, sans-serif" }}
                 >
                   Artwork
                 </h2>
 
-                <div className="flex flex-col gap-4 overflow-y-auto max-h-[85vh] pb-10">
+                <div className="flex flex-col gap-4 pb-10">
                   {/* Cover Art */}
                   <div>
                     <label className="text-sm text-white/80 mb-2 block">
@@ -452,7 +456,7 @@ export const GameCustomizationWindow: React.FC<
                           onChange={(e) =>
                             handleImageUpload(
                               e.target.files?.[0] || null,
-                              setCustomCoverArt
+                              setCustomCoverArt,
                             )
                           }
                           className="hidden"
@@ -505,7 +509,7 @@ export const GameCustomizationWindow: React.FC<
                           onChange={(e) =>
                             handleImageUpload(
                               e.target.files?.[0] || null,
-                              setCustomGridCoverArt
+                              setCustomGridCoverArt,
                             )
                           }
                           className="hidden"
@@ -558,7 +562,7 @@ export const GameCustomizationWindow: React.FC<
                           onChange={(e) =>
                             handleImageUpload(
                               e.target.files?.[0] || null,
-                              setCustomLogo
+                              setCustomLogo,
                             )
                           }
                           className="hidden"
@@ -609,7 +613,7 @@ export const GameCustomizationWindow: React.FC<
                           onChange={(e) =>
                             handleImageUpload(
                               e.target.files?.[0] || null,
-                              setCustomHeroArt
+                              setCustomHeroArt,
                             )
                           }
                           className="hidden"
