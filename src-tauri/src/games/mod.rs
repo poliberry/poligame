@@ -16,15 +16,17 @@ pub async fn init_database() -> Result<(), String> {
     use std::fs;
     use std::path::PathBuf;
     
-    // Use app data directory or fallback to current directory
-    let db_path = if let Ok(app_data) = std::env::var("APPDATA") {
-        let app_dir = PathBuf::from(app_data).join("PoliGame");
-        fs::create_dir_all(&app_dir)
-            .map_err(|e| format!("Failed to create app directory: {}", e))?;
-        app_dir.join("poligame.db")
-    } else {
-        PathBuf::from("poligame.db")
-    };
+    // Use cross-platform data directory (dirs::data_dir handles Windows, macOS, Linux).
+    // On Linux/AppImage this resolves to ~/.local/share/PoliGame/ instead of the
+    // read-only AppImage mount, so SQLite can actually create and write the DB file.
+    let data_dir = dirs::data_dir()
+        .ok_or_else(|| "Failed to locate platform data directory".to_string())?
+        .join("PoliGame");
+
+    fs::create_dir_all(&data_dir)
+        .map_err(|e| format!("Failed to create app data directory: {}", e))?;
+
+    let db_path = data_dir.join("poligame.db");
     
     // Convert path to string with proper format for SQLite
     let db_path_str = db_path.to_string_lossy().replace('\\', "/");
