@@ -1,5 +1,5 @@
 import React from "react";
-import { useLocation, useNavigate, useParams } from "react-router-dom";
+import { useNavigate, useParams } from "react-router-dom";
 import { invoke } from "@tauri-apps/api/core";
 import { useQuery } from "convex/react";
 import { api } from "../../convex/_generated/api";
@@ -9,27 +9,24 @@ import { useControllerStore } from "@/stores/controllerStore";
 import { useResponsiveGamepad } from "@/hooks/useResponsiveGamepad";
 import { useGameWithCustomizations } from "@/hooks/useGameWithCustomizations";
 import { useRunningGameStore } from "@/stores/runningGameStore";
+import { useOverdriveStore } from "@/stores/overdriveStore";
 import ControllerButton from "@/components/overdrive/ControllerButton";
+import OverdriveTopBar from "@/components/overdrive/OverdriveTopBar";
+import OverdriveNavigationHints, { OverdriveHintItem } from "@/components/overdrive/OverdriveNavigationHints";
 import { Button } from "@/components/ui/button";
 import { getImageUrl } from "@/utils/imageUtils";
 import { Game } from "@/types";
 import { ArrowLeft, Loader2, Play, Rocket, Square } from "lucide-react";
 import { motion } from "framer-motion";
-import { Clock } from "@/components/Clock";
 import { cn } from "@/lib/utils";
 // @ts-ignore
 import moveSound from "@/public/sounds/move.wav";
 // @ts-ignore
 import gameLaunchSound from "@/public/sounds/gameLaunch.wav";
-// @ts-ignore
-import menuCloseSound from "@/public/sounds/menuClose.wav";
-// @ts-ignore
-import sectionChangeSound from "@/public/sounds/pageOpen.wav";
 
 const OverdriveGameDetails: React.FC = () => {
     const { user, isAuthenticated } = useAuthStore();
     const { gameId } = useParams<{ gameId: string }>();
-    const location = useLocation();
     const navigate = useNavigate();
     const { controllerType, isConnected } = useControllerStore();
     const {
@@ -41,15 +38,15 @@ const OverdriveGameDetails: React.FC = () => {
         stopRealtimeMonitoring,
         syncCurrentGame,
     } = useRunningGameStore();
+    const { toggleMenu } = useOverdriveStore();
 
     const [game, setGame] = React.useState<Game | null>(null);
     const [loading, setLoading] = React.useState(true);
     const [launching, setLaunching] = React.useState(false);
     const [focusedAction, setFocusedAction] = React.useState<"play" | "back">("play");
+    const [searchQuery, setSearchQuery] = React.useState("");
     const moveAudioRef = React.useRef<HTMLAudioElement | null>(null);
     const gameLaunchAudioRef = React.useRef<HTMLAudioElement | null>(null);
-    const menuCloseAudioRef = React.useRef<HTMLAudioElement | null>(null);
-    const sectionAudioRef = React.useRef<HTMLAudioElement | null>(null);
 
     const displayGame = useGameWithCustomizations(game);
     const isGameRunning = game?.id != null && runningGameId === game.id;
@@ -146,48 +143,25 @@ const OverdriveGameDetails: React.FC = () => {
         launchAudio.volume = 0.4;
         gameLaunchAudioRef.current = launchAudio;
 
-        const closeAudio = new Audio(menuCloseSound);
-        closeAudio.preload = "auto";
-        closeAudio.volume = 0.35;
-        menuCloseAudioRef.current = closeAudio;
-
-        const sectionAudio = new Audio(sectionChangeSound);
-        sectionAudio.preload = "auto";
-        sectionAudio.volume = 0.35;
-        sectionAudioRef.current = sectionAudio;
-
         return () => {
             moveAudio.pause();
             launchAudio.pause();
-            closeAudio.pause();
-            sectionAudio.pause();
             moveAudioRef.current = null;
             gameLaunchAudioRef.current = null;
-            menuCloseAudioRef.current = null;
-            sectionAudioRef.current = null;
         };
     }, []);
 
-    React.useEffect(() => {
-        const state = location.state as
-            | { overdriveSound?: "sectionChange" | "menuClose"; skipOverdriveIntro?: boolean }
-            | null;
-
-        if (state?.overdriveSound === "sectionChange") {
-            const audio = sectionAudioRef.current;
-            if (!audio) return;
-            audio.currentTime = 0;
-            void audio.play().catch((error) => {
-                console.debug("Failed to play section change sound", error);
-            });
-        }
-    }, [location.state]);
-
     const handleBack = React.useCallback(() => {
+        const state = window.history.state as { idx?: number } | null;
+        if (state && typeof state.idx === "number" && state.idx > 0) {
+            navigate(-1);
+            return;
+        }
+
         navigate("/overdrive", {
+            replace: true,
             state: {
                 skipOverdriveIntro: true,
-                overdriveSound: "menuClose",
             },
         });
     }, [navigate]);
@@ -302,6 +276,16 @@ const OverdriveGameDetails: React.FC = () => {
         return () => window.removeEventListener("keydown", handleKeyDown);
     }, [activateFocusedAction, handleBack, moveFocusLeft, moveFocusRight]);
 
+    const hints = React.useMemo<OverdriveHintItem[]>(
+        () => [
+            { id: "launch", label: isGameRunning ? "Quit" : "Launch", keyLabel: "Enter", controllerButton: "a", onActivate: () => void handleLaunch() },
+            { id: "back", label: "Back", keyLabel: "Esc", controllerButton: "b", onActivate: handleBack },
+            { id: "focus", label: "Switch Focus", keyLabel: "Arrows", controllerButton: "lb" },
+            { id: "menu", label: "Menu", keyLabel: "M", controllerButton: "menu", onActivate: toggleMenu },
+        ],
+        [handleBack, handleLaunch, isGameRunning, toggleMenu],
+    );
+
     if (loading) {
         return (
             <div className="w-full h-screen bg-black text-white flex items-center justify-center">
@@ -337,26 +321,18 @@ const OverdriveGameDetails: React.FC = () => {
             <link rel="preconnect" href="https://fonts.googleapis.com" />
             <link rel="preconnect" href="https://fonts.gstatic.com" />
             <link href="https://fonts.googleapis.com/css2?family=Google+Sans+Flex:opsz,wght@6..144,1..1000&display=swap" rel="stylesheet"></link>
-            <div style={{ fontFamily: "Google Sans Flex, sans-serif" }} className="absolute top-0 left-0 right-0 z-50 flex items-center justify-end p-4">
-                <div className="flex items-center gap-4">
-                    {/* Clock */}
-                    <Clock showSeconds={false} className="flex items-center" />
-
-                    {isAuthenticated && user && (
-                        <div className="flex items-center gap-2">
-                            {user.avatar ? (
-                                <img src={user.avatar} alt="User Avatar" className="w-8 h-8" />
-                            ) : (
-                                <div className="w-8 h-8 bg-white/20 flex items-center justify-center">
-                                    <span className="text-xs font-light">
-                                        {(user.username || user.email || "U")[0]?.toUpperCase()}
-                                    </span>
-                                </div>
-                            )}
-                        </div>
-                    )}
-                </div>
-            </div>
+            <OverdriveTopBar
+                searchQuery={searchQuery}
+                onSearchQueryChange={setSearchQuery}
+                onSearchSubmit={() => {
+                    const query = searchQuery.trim();
+                    if (query) {
+                        navigate(`/overdrive/library?query=${encodeURIComponent(query)}`);
+                        return;
+                    }
+                    navigate("/overdrive/library");
+                }}
+            />
             <div className="absolute inset-0">
                 <div
                     className={cn("absolute inset-x-0 top-0", launching ? "h-full" : "h-[44vh]")}
@@ -489,45 +465,7 @@ const OverdriveGameDetails: React.FC = () => {
                 </div>
             )}
 
-            {!launching && (
-                <div className="absolute bottom-0 w-full pointer-events-none select-none">
-                    <div
-                        className="flex items-center justify-end gap-3 px-6 py-3 bg-black/60 backdrop-blur-md border border-white/10"
-                        style={{
-                            fontFamily: "'Livvic', 'Unbounded', Arial, sans-serif",
-                            boxShadow: "0 4px 16px rgba(0,0,0,0.5)",
-                        }}
-                    >
-                        {/* Primary action button */}
-                        <div className="flex items-center gap-2">
-                            {isConnected && controllerType ? (
-                                <ControllerButton
-                                    controllerType={controllerType}
-                                    button="a"
-                                    size="sm"
-                                />
-                            ) : (
-                                <kbd className="px-3 py-1.5 rounded bg-white/90 text-black font-bold text-sm shadow-md" style={{ fontFamily: 'Livvic, sans-serif' }}>
-                                    Enter
-                                </kbd>
-                            )}
-                            <span className="text-white/90 text-sm font-medium">
-                                {isGameRunning ? "Quit" : "Launch"}
-                            </span>
-                        </div>
-                        <div className="flex items-center gap-2">
-                            {isConnected && controllerType ? (
-                                <ControllerButton controllerType={controllerType} button="b" size="sm" />
-                            ) : (
-                                <kbd className="px-3 py-1.5 rounded bg-white/90 text-black font-bold text-sm shadow-md" style={{ fontFamily: 'Livvic, sans-serif' }}>
-                                    ESC
-                                </kbd>
-                            )}
-                            <span className="text-white/90 text-sm font-medium">Back</span>
-                        </div>
-                    </div>
-                </div>
-            )}
+            {!launching && <OverdriveNavigationHints items={hints} />}
         </motion.div>
     );
 };

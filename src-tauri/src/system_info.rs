@@ -1,4 +1,5 @@
 use serde::{Deserialize, Serialize};
+use std::process::Command;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct SystemInfo {
@@ -8,6 +9,21 @@ pub struct SystemInfo {
     pub ram_gb: f64,
     pub gpu: Option<String>,
     pub gpu_vram_gb: Option<f64>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct StorageDriveInfo {
+    pub name: String,
+    pub mount_point: String,
+    pub file_system: String,
+    pub total_bytes: u64,
+    pub available_bytes: u64,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct NetworkOverview {
+    pub online: bool,
+    pub label: String,
 }
 
 #[tauri::command]
@@ -99,5 +115,85 @@ pub fn get_system_info() -> Result<SystemInfo, String> {
             gpu_vram_gb: None,
         })
     }
+}
+
+#[tauri::command]
+pub fn list_storage_drives() -> Result<Vec<StorageDriveInfo>, String> {
+    let disks = sysinfo::Disks::new_with_refreshed_list();
+
+    let mut drives = Vec::new();
+    for disk in disks.list() {
+        let name = disk.name().to_string_lossy().to_string();
+        let mount_point = disk.mount_point().to_string_lossy().to_string();
+        let file_system = disk.file_system().to_string_lossy().to_string();
+        let total_bytes = disk.total_space();
+        let available_bytes = disk.available_space();
+
+        drives.push(StorageDriveInfo {
+            name,
+            mount_point,
+            file_system,
+            total_bytes,
+            available_bytes,
+        });
+    }
+
+    Ok(drives)
+}
+
+#[tauri::command]
+pub async fn get_network_overview() -> Result<NetworkOverview, String> {
+    let client = reqwest::Client::builder()
+        .timeout(std::time::Duration::from_secs(3))
+        .build()
+        .map_err(|e| format!("Failed to build network checker: {}", e))?;
+
+    let online = client
+        .head("https://www.msftconnecttest.com/connecttest.txt")
+        .send()
+        .await
+        .map(|response| response.status().is_success())
+        .unwrap_or(false);
+
+    let label = if online {
+        "Connected".to_string()
+    } else {
+        "Offline or restricted".to_string()
+    };
+
+    Ok(NetworkOverview { online, label })
+}
+
+#[tauri::command]
+pub fn open_network_settings() -> Result<(), String> {
+    #[cfg(target_os = "windows")]
+    {
+        Command::new("cmd")
+            .args(["/C", "start", "", "ms-settings:network-status"])
+            .spawn()
+            .map_err(|e| format!("Failed to open Windows network settings: {}", e))?;
+        return Ok(());
+    }
+
+    #[cfg(target_os = "macos")]
+    {
+        Command::new("open")
+            .arg("x-apple.systempreferences:com.apple.NetworkSettings")
+            .spawn()
+            .map_err(|e| format!("Failed to open macOS network settings: {}", e))?;
+        return Ok(());
+    }
+
+    #[cfg(target_os = "linux")]
+    {
+        Command::new("xdg-open")
+            .arg("settings://network")
+            .spawn()
+            .map_err(|e| format!("Failed to open Linux network settings: {}", e))?;
+        return Ok(());
+    }
+
+    #[allow(unreachable_code)]
+    Err("Unsupported OS for opening network settings".to_string())
 }
 

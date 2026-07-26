@@ -19,13 +19,58 @@ type PresencePayload =
       startTimestamp?: number;
     };
 
+function normalizeDiscordArtworkUrl(value: unknown): string | undefined {
+  if (typeof value !== "string") {
+    return undefined;
+  }
+
+  const trimmed = value.trim();
+  if (!trimmed) {
+    return undefined;
+  }
+
+  if (trimmed.startsWith("http://") || trimmed.startsWith("https://")) {
+    return trimmed;
+  }
+
+  if (trimmed.startsWith("//")) {
+    return `https:${trimmed}`;
+  }
+
+  // Discord cannot fetch local files, blob URLs, or data URLs as RPC image assets.
+  return undefined;
+}
+
 function pickPublicArtworkUrl(game: Game): string | undefined {
   const artwork = game as Game & {
     logoArt?: string;
     customLogo?: string;
+    customCoverArt?: string;
+    customGridCoverArt?: string;
+    customHeroArt?: string;
   };
 
-  return artwork.icon || artwork.logoArt || artwork.customLogo || artwork.logo || undefined;
+  const candidates = [
+    artwork.icon,
+    artwork.customLogo,
+    artwork.logoArt,
+    artwork.logo,
+    artwork.headerArt,
+    artwork.customHeroArt,
+    artwork.coverArt,
+    artwork.customCoverArt,
+    artwork.gridCoverArt,
+    artwork.customGridCoverArt,
+  ];
+
+  for (const candidate of candidates) {
+    const normalized = normalizeDiscordArtworkUrl(candidate);
+    if (normalized) {
+      return normalized;
+    }
+  }
+
+  return undefined;
 }
 
 export function useDiscordRichPresence(enabled: boolean = true) {
@@ -102,7 +147,6 @@ export function useDiscordRichPresence(enabled: boolean = true) {
     const update = async () => {
       try {
         if (payload.mode === "game") {
-            console.log(payload);
           await invoke("discord_presence_update_game", {
             gameTitle: payload.gameTitle,
             launcher: payload.launcher,

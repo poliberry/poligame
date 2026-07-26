@@ -1,8 +1,9 @@
 import React, { useEffect } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { useLocation, useNavigate } from "react-router-dom";
+import { open } from "@tauri-apps/plugin-shell";
 import { useAuthStore } from "@/stores/authStore";
-import { Power, X, LogOut, MessageSquare, Calendar, ClockIcon, Users, ChevronRight, TrendingUp, ArrowLeft, ArrowRight } from "lucide-react";
+import { Power, MessageSquare, Calendar, ClockIcon, Users, ChevronRight, TrendingUp, ArrowLeft, ArrowRight, Newspaper, Plus, ExternalLink, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 // @ts-ignore
 import logo from "@/public/poligame-logo.svg";
@@ -10,11 +11,10 @@ import { useGameStore } from "@/stores/gameStore";
 import { useOverdriveStore } from "@/stores/overdriveStore";
 import { Game } from "@/types";
 import { LauncherType } from "@/types";
-import { Clock } from "@/components/Clock";
 import ControllerButton from "@/components/overdrive/ControllerButton";
 import ControllerIcon from "@/components/overdrive/ControllerIcon";
-import OverdriveMenu, { OverdriveMenuItem } from "@/components/overdrive/OverdriveMenu";
-import OverdrivePowerDialog from "@/components/overdrive/OverdrivePowerDialog";
+import OverdriveTopBar from "@/components/overdrive/OverdriveTopBar";
+import OverdriveNavigationHints, { OverdriveHintItem } from "@/components/overdrive/OverdriveNavigationHints";
 import { useControllerStore, detectControllerType } from "@/stores/controllerStore";
 import { motion, AnimatePresence, useMotionValue, animate } from "framer-motion";
 import { useResponsiveGamepad } from "@/hooks/useResponsiveGamepad";
@@ -41,13 +41,35 @@ import { toast } from "sonner";
 import { getImageUrl } from "@/utils/imageUtils";
 import { useGameWithCustomizations } from "@/hooks/useGameWithCustomizations";
 import { useRunningGameStore } from "@/stores/runningGameStore";
-import { useQuery } from "convex/react";
+import { useMutation, useQuery } from "convex/react";
 import { api } from "../../convex/_generated/api";
 import { Id } from "../../convex/_generated/dataModel";
 import { Trophy } from "lucide-react";
 import Marketplace from "./Marketplace";
 import Community from "./Community";
 import { cn } from "@/lib/utils";
+import { useOverdriveKeyboardStore } from "@/stores/overdriveKeyboardStore";
+
+interface OverdriveForumPost {
+  _id: Id<"forumPosts">;
+  title: string;
+  authorUsername?: string;
+  commentCount?: number;
+  likes?: Id<"users">[];
+  createdAt: number;
+  isPinned?: boolean;
+}
+
+interface SteamNewsItem {
+  gid: string;
+  title: string;
+  url?: string;
+  author?: string;
+  contents?: string;
+  date?: number;
+  feedLabel?: string;
+  appId?: string;
+}
 
 // GameItem component
 interface GameItemProps {
@@ -193,8 +215,22 @@ const GameItem: React.FC<GameItemProps> = ({
 };
 
 const Overdrive: React.FC = () => {
-  const { user, isAuthenticated, signOut } = useAuthStore();
-  const { selectedGame, setSelectedGame, setSelectedIndex } = useOverdriveStore();
+  const { user } = useAuthStore();
+  const {
+    selectedGame,
+    setSelectedGame,
+    setSelectedIndex,
+    isMenuOpen,
+    isPowerDialogOpen,
+    isTopBarFocused,
+    setTopBarFocused,
+    setMenuOpen,
+  } = useOverdriveStore();
+  const {
+    isOpen: isKeyboardOpen,
+    openKeyboard,
+    closeKeyboard,
+  } = useOverdriveKeyboardStore();
   const { games, setGames, setLoading } = useGameStore();
   const {
     runningGameId,
@@ -222,18 +258,6 @@ const Overdrive: React.FC = () => {
       }
       : "skip",
   );
-
-  useEffect(() => {
-    const getGameAchievements = async () => {
-      if (selectedGame?.launcher === "steam") {
-        const achievements = await invoke<any[]>("get_game_achievements", {
-          gameId: selectedGame.id,
-        });
-        setAchievements(achievements);
-      }
-    };
-    getGameAchievements();
-  }, [selectedGame]);
 
   const playtimeByGameId = React.useMemo(() => {
     const playtimeByGameId = new Map<string, number>();
@@ -271,6 +295,18 @@ const Overdrive: React.FC = () => {
 
   // Get achievements (if Steam game)
   const [achievements, setAchievements] = React.useState<any[]>([]);
+  const forumPosts = useQuery(
+    api.forum.getPostsForGame,
+    selectedGame?.id ? { gameId: selectedGame.id } : "skip",
+  ) as OverdriveForumPost[] | undefined;
+  const createForumPost = useMutation(api.forum.createPost);
+  const [steamNews, setSteamNews] = React.useState<SteamNewsItem[]>([]);
+  const [loadingSteamNews, setLoadingSteamNews] = React.useState(false);
+  const [isComposerOpen, setIsComposerOpen] = React.useState(false);
+  const [isSubmittingPost, setIsSubmittingPost] = React.useState(false);
+  const [composerTitle, setComposerTitle] = React.useState("");
+  const [composerContent, setComposerContent] = React.useState("");
+  const [composerField, setComposerField] = React.useState<"title" | "content">("title");
 
   // ======== MOVE ALL STATE DECLARATIONS HERE, BEFORE ANY HOOKS THAT USE THEM ========
 
@@ -286,7 +322,6 @@ const Overdrive: React.FC = () => {
     return initial ? [{ id: 0, src: initial }] : [];
   });
 
-  const [isDrawerOpen, setIsDrawerOpen] = React.useState(false);
   const [activeSection, setActiveSection] = React.useState<"library" | "store" | "community">("library");
   const [videoEnded, setVideoEnded] = React.useState(() => {
     const skipFromRouteState = Boolean((location.state as { skipOverdriveIntro?: boolean } | null)?.skipOverdriveIntro);
@@ -318,10 +353,10 @@ const Overdrive: React.FC = () => {
   const lastStickDirection = React.useRef<"left" | "right" | null>(null);
   const stickHoldStartTime = React.useRef<number>(0);
   const previousControllerConnectedRef = React.useRef<boolean>(false);
+  const previousTopBarFocusedRef = React.useRef<boolean>(isTopBarFocused);
   const suppressMenuUntilRef = React.useRef<number>(0);
   const tabCooldownRef = React.useRef<number>(0);
   const handledRouteSoundKeyRef = React.useRef<string | null>(null);
-  const reopenDrawerAfterPowerDialogRef = React.useRef(false);
 
   // Audio refs
   const navigateAudioRef = React.useRef<HTMLAudioElement | null>(null);
@@ -341,9 +376,23 @@ const Overdrive: React.FC = () => {
     const fetchAchievements = async () => {
       if (selectedGame?.launcher === "steam" && selectedGame.id) {
         try {
-          const steamAchievements = await invoke<any[]>("get_game_achievements", {
+          let steamAchievements = await invoke<any[]>("get_game_achievements", {
             gameId: selectedGame.id,
           });
+
+          // Fall back to direct Steam fetch when DB cache is empty.
+          if (
+            steamAchievements.length === 0 &&
+            selectedGame.metadata?.appId &&
+            user?.steamUserId
+          ) {
+            steamAchievements = await invoke<any[]>("fetch_steam_achievements_no_db", {
+              gameId: selectedGame.id,
+              steamUserId: user.steamUserId,
+              steamAppId: selectedGame.metadata.appId,
+            });
+          }
+
           setAchievements(steamAchievements || []);
         } catch (error) {
           console.error("Failed to fetch achievements:", error);
@@ -354,7 +403,105 @@ const Overdrive: React.FC = () => {
       }
     };
     fetchAchievements();
-  }, [selectedGame?.id, selectedGame?.launcher]);
+  }, [selectedGame?.id, selectedGame?.launcher, selectedGame?.metadata?.appId, user?.steamUserId]);
+
+  React.useEffect(() => {
+    const loadSteamNews = async () => {
+      if (selectedGame?.launcher !== "steam" || !selectedGame.metadata?.appId) {
+        setSteamNews([]);
+        setLoadingSteamNews(false);
+        return;
+      }
+
+      setLoadingSteamNews(true);
+      try {
+        const news = await invoke<SteamNewsItem[]>("fetch_steam_news", {
+          appId: selectedGame.metadata.appId,
+        });
+        setSteamNews(news || []);
+      } catch (error) {
+        console.error("Failed to fetch Steam news:", error);
+        setSteamNews([]);
+      } finally {
+        setLoadingSteamNews(false);
+      }
+    };
+
+    void loadSteamNews();
+  }, [selectedGame?.id, selectedGame?.launcher, selectedGame?.metadata?.appId]);
+
+  const stripHtml = React.useCallback((html: string | undefined) => {
+    if (!html) {
+      return "";
+    }
+
+    return html
+      .replace(/<[^>]+>/g, " ")
+      .replace(/\s+/g, " ")
+      .trim();
+  }, []);
+
+  const openKeyboardForField = React.useCallback((field: "title" | "content") => {
+    setComposerField(field);
+    openKeyboard({
+      title: field === "title" ? "Post Title" : "Post Content",
+      initialValue: field === "title" ? composerTitle : composerContent,
+      maxLength: field === "title" ? 120 : 2000,
+      onCommit: (nextValue) => {
+        if (field === "title") {
+          setComposerTitle(nextValue);
+          return;
+        }
+        setComposerContent(nextValue);
+      },
+    });
+  }, [composerContent, composerTitle, openKeyboard]);
+
+  const handleSubmitPost = React.useCallback(async () => {
+    const trimmedTitle = composerTitle.trim();
+    const trimmedContent = composerContent.trim();
+
+    if (!selectedGame?.id || !user?.userId) {
+      toast.error("Sign in required", {
+        description: "You need to be signed in to create a post.",
+      });
+      return;
+    }
+
+    if (!trimmedTitle || !trimmedContent) {
+      toast.error("Missing post details", {
+        description: "Add both a title and content before posting.",
+      });
+      return;
+    }
+
+    setIsSubmittingPost(true);
+    try {
+      await createForumPost({
+        gameId: selectedGame.id,
+        authorId: user.userId as unknown as Id<"users">,
+        title: trimmedTitle,
+        content: trimmedContent,
+        contentFormat: "markdown",
+        images: [],
+      });
+
+      toast.success("Post created", {
+        description: "Your discussion post is now live.",
+      });
+      setComposerTitle("");
+      setComposerContent("");
+      closeKeyboard(false);
+      setIsComposerOpen(false);
+    } catch (error) {
+      console.error("Failed to create forum post:", error);
+      toast.error("Failed to create post", {
+        description: "Try again in a moment.",
+      });
+    } finally {
+      setIsSubmittingPost(false);
+    }
+  }, [closeKeyboard, composerContent, composerTitle, createForumPost, selectedGame?.id, user?.userId]);
 
   // ... keep all your existing audio callback definitions (playNavigateSound, etc.) ...
 
@@ -448,27 +595,26 @@ const Overdrive: React.FC = () => {
   // ... keep existing handlers (toggleDrawerWithSound, etc.) ...
 
   const toggleDrawerWithSound = React.useCallback(() => {
-    setIsDrawerOpen((prev) => {
-      if (Date.now() < suppressMenuUntilRef.current) return prev;
-      if (prev) playMenuCloseSound(); else playMenuOpenSound();
-      return !prev;
-    });
-  }, [playMenuCloseSound, playMenuOpenSound]);
+    if (Date.now() < suppressMenuUntilRef.current) return;
+    if (isMenuOpen) {
+      playMenuCloseSound();
+      setMenuOpen(false);
+    } else {
+      playMenuOpenSound();
+      setMenuOpen(true);
+    }
+  }, [isMenuOpen, playMenuCloseSound, playMenuOpenSound, setMenuOpen]);
 
   const openDrawerWithSound = React.useCallback(() => {
-    setIsDrawerOpen((prev) => {
-      if (Date.now() < suppressMenuUntilRef.current) return prev;
-      if (!prev) playMenuOpenSound();
-      return true;
-    });
-  }, [playMenuOpenSound]);
+    if (Date.now() < suppressMenuUntilRef.current) return;
+    if (!isMenuOpen) playMenuOpenSound();
+    setMenuOpen(true);
+  }, [isMenuOpen, playMenuOpenSound, setMenuOpen]);
 
   const closeDrawerWithSound = React.useCallback(() => {
-    setIsDrawerOpen((prev) => {
-      if (prev) playMenuCloseSound();
-      return false;
-    });
-  }, [playMenuCloseSound]);
+    if (isMenuOpen) playMenuCloseSound();
+    setMenuOpen(false);
+  }, [isMenuOpen, playMenuCloseSound, setMenuOpen]);
 
   // ... keep existing useEffects for popstate, initialization, etc. ...
 
@@ -498,6 +644,36 @@ const Overdrive: React.FC = () => {
       }
     }
   }, [sortedGames, libraryFocusIndex, setSelectedGame, setSelectedIndex]);
+
+  React.useEffect(() => {
+    const wasTopBarFocused = previousTopBarFocusedRef.current;
+    const exitedTopBarToLibrary =
+      wasTopBarFocused &&
+      !isTopBarFocused &&
+      !isFullView &&
+      navigationMode === "library" &&
+      activeSection === "library";
+
+    if (exitedTopBarToLibrary && sortedGames.length > 0) {
+      setIsNavigationFocusActive(true);
+      setLibraryFocusIndex(0);
+      const firstGame = sortedGames[0];
+      if (firstGame) {
+        setSelectedGame(firstGame);
+        setSelectedIndex(0);
+      }
+    }
+
+    previousTopBarFocusedRef.current = isTopBarFocused;
+  }, [
+    activeSection,
+    isFullView,
+    isTopBarFocused,
+    navigationMode,
+    setSelectedGame,
+    setSelectedIndex,
+    sortedGames,
+  ]);
 
   React.useEffect(() => {
     const game = sortedGames[libraryFocusIndex];
@@ -678,66 +854,7 @@ const Overdrive: React.FC = () => {
 
   // ... keep existing handlers ...
 
-  const handleExitOverdrive = async () => {
-    try {
-      await invoke("exit_overdrive_mode");
-      closeDrawerWithSound();
-      navigate("/");
-    } catch (error) {
-      console.error("Failed to exit Overdrive mode:", error);
-    }
-  };
-
-  const handleExitPoliGame = async () => {
-    try {
-      reopenDrawerAfterPowerDialogRef.current = false;
-      await invoke("exit_overdrive_mode");
-      await invoke("close_window");
-    } catch (error) {
-      console.error("Failed to exit PoliGame:", error);
-    }
-  };
-
-  const handleSignOut = async () => {
-    try {
-      reopenDrawerAfterPowerDialogRef.current = false;
-      await signOut();
-      closeDrawerWithSound();
-      navigate("/auth");
-    } catch (error) {
-      console.error("Failed to sign out:", error);
-    }
-  };
-
-  const [isPowerDialogOpen, setIsPowerDialogOpen] = React.useState(false);
-
-  const handlePowerDialogOpenChange = React.useCallback((open: boolean) => {
-    setIsPowerDialogOpen(open);
-    if (open) {
-      closeDrawerWithSound();
-      return;
-    }
-    if (reopenDrawerAfterPowerDialogRef.current) {
-      reopenDrawerAfterPowerDialogRef.current = false;
-      openDrawerWithSound();
-    }
-  }, [closeDrawerWithSound, openDrawerWithSound]);
-
-  const handleOpenPowerOptions = React.useCallback(() => {
-    reopenDrawerAfterPowerDialogRef.current = true;
-    handlePowerDialogOpenChange(true);
-  }, [handlePowerDialogOpenChange]);
-
-  const menuItems = React.useMemo<OverdriveMenuItem[]>(() => {
-    return [
-      {
-        id: "power-options",
-        label: "Power Options",
-        icon: Power,
-        onSelect: handleOpenPowerOptions,
-      },
-    ];
-  }, [handleOpenPowerOptions]);
+  const [searchQuery, setSearchQuery] = React.useState("");
 
   const handleOpenGameDetails = React.useCallback(
     (gameId: string) => {
@@ -751,11 +868,60 @@ const Overdrive: React.FC = () => {
     [navigate],
   );
 
+  const handleOverdriveSearchSubmit = React.useCallback(() => {
+    const query = searchQuery.trim();
+    if (query) {
+      navigate(`/overdrive/library?query=${encodeURIComponent(query)}`);
+      return;
+    }
+
+    navigate("/overdrive/library");
+  }, [navigate, searchQuery]);
+
   React.useEffect(() => {
     if (videoEnded) {
       sessionStorage.setItem("overdriveIntroSeen", "1");
     }
   }, [videoEnded]);
+
+  const overdriveHints = React.useMemo<OverdriveHintItem[]>(() => {
+    if (isKeyboardOpen) {
+      return [
+        { id: "key-select", label: "Select Key", keyLabel: "Enter", controllerButton: "a" },
+        { id: "key-close", label: "Close Keyboard", keyLabel: "Esc", controllerButton: "b", onActivate: () => closeKeyboard(true) },
+        { id: "key-submit", label: "Submit", keyLabel: "X", controllerButton: "x" },
+      ];
+    }
+
+    if (isComposerOpen) {
+      return [
+        { id: "composer-close", label: "Close Composer", keyLabel: "Esc", controllerButton: "b", onActivate: () => setIsComposerOpen(false) },
+        { id: "composer-submit", label: "Post", keyLabel: "Enter", controllerButton: "a", onActivate: () => void handleSubmitPost() },
+      ];
+    }
+
+    if (isFullView && navigationMode === "tabs") {
+      return [
+        { id: "tab-open", label: "Open Tab", keyLabel: "Enter", controllerButton: "a" },
+        { id: "tab-switch", label: "Switch Tabs", keyLabel: "A/D", controllerButton: "lb" },
+        { id: "tab-back", label: "Back", keyLabel: "Esc", controllerButton: "b", onActivate: () => setIsFullView(false) },
+      ];
+    }
+
+    if (isFullView && navigationMode === "tabContent") {
+      return [
+        { id: "content-open", label: "Open Item", keyLabel: "Enter", controllerButton: "a" },
+        { id: "content-nav", label: "Navigate", keyLabel: "Arrows", controllerButton: "lb" },
+        { id: "content-back", label: "Back To Tabs", keyLabel: "Esc", controllerButton: "b", onActivate: () => setNavigationMode('tabs') },
+      ];
+    }
+
+    return [
+      { id: "menu", label: "Menu", keyLabel: "M", controllerButton: "menu", onActivate: toggleDrawerWithSound },
+      { id: "open", label: "Open", keyLabel: "Enter", controllerButton: "a" },
+      { id: "browse", label: "Browse Games", keyLabel: "Arrows", controllerButton: "lb" },
+    ];
+  }, [closeKeyboard, handleSubmitPost, isComposerOpen, isFullView, isKeyboardOpen, navigationMode, toggleDrawerWithSound]);
 
   const navigateLibrary = React.useCallback((direction: "next" | "prev") => {
     const now = Date.now();
@@ -781,7 +947,7 @@ const Overdrive: React.FC = () => {
 
   const handleLaunchGame = async (gameId: string) => {
     try {
-      if (isDrawerOpen) closeDrawerWithSound();
+      if (isMenuOpen) closeDrawerWithSound();
       if (runningGameId === gameId) {
         await killGame(gameId);
         return;
@@ -816,6 +982,68 @@ const Overdrive: React.FC = () => {
 
   // ======== TAB NAVIGATION HELPERS ========
 
+  const communityFocusItems = React.useMemo(() => {
+    const items: Array<
+      | { type: "compose" }
+      | { type: "news"; newsIndex: number }
+      | { type: "forum"; forumIndex: number }
+    > = [{ type: "compose" }];
+
+    const newsCount = steamNews.slice(0, 8).length;
+    for (let i = 0; i < newsCount; i += 1) {
+      items.push({ type: "news", newsIndex: i });
+    }
+
+    for (let i = 0; i < (forumPosts?.length || 0); i += 1) {
+      items.push({ type: "forum", forumIndex: i });
+    }
+
+    return items;
+  }, [forumPosts, steamNews]);
+
+  const communityNewsCount = React.useMemo(() => steamNews.slice(0, 8).length, [steamNews]);
+  const communityForumCount = React.useMemo(() => forumPosts?.length || 0, [forumPosts]);
+
+  const getNextCommunityIndex = React.useCallback((currentIndex: number, direction: "up" | "down" | "left" | "right") => {
+    const newsCount = communityNewsCount;
+    const forumCount = communityForumCount;
+    const forumStart = 1 + newsCount;
+
+    if (currentIndex === 0) {
+      if (direction === "up") return -1;
+      if (direction === "down") {
+        if (newsCount > 0) return 1;
+        if (forumCount > 0) return forumStart;
+        return null;
+      }
+      return null;
+    }
+
+    if (currentIndex >= 1 && currentIndex <= newsCount) {
+      const row = currentIndex - 1;
+      if (direction === "up") return row > 0 ? currentIndex - 1 : 0;
+      if (direction === "down") return row + 1 < newsCount ? currentIndex + 1 : null;
+      if (direction === "left") return null;
+
+      // right: switch to same row in right column when available
+      if (row < forumCount) return forumStart + row;
+      return null;
+    }
+
+    if (currentIndex >= forumStart) {
+      const row = currentIndex - forumStart;
+      if (direction === "up") return row === 0 ? 0 : currentIndex - 1;
+      if (direction === "down") return row + 1 < forumCount ? currentIndex + 1 : null;
+      if (direction === "right") return null;
+
+      // left: switch to same row in left column when available
+      if (row < newsCount) return 1 + row;
+      return null;
+    }
+
+    return null;
+  }, [communityForumCount, communityNewsCount]);
+
   const getTabContentLength = React.useCallback(() => {
     switch (activeTab) {
       case 'achievements':
@@ -823,11 +1051,11 @@ const Overdrive: React.FC = () => {
       case 'timeline':
         return (playtimeData?.sessions || []).length;
       case 'community':
-        return 6; // Forum threads
+        return communityFocusItems.length;
       default:
         return 0;
     }
-  }, [activeTab, achievements, playtimeData]);
+  }, [activeTab, achievements, communityFocusItems.length, playtimeData]);
 
   const scrollToTabContent = React.useCallback((index: number) => {
     const element = tabContentRefs.current.get(index);
@@ -836,6 +1064,26 @@ const Overdrive: React.FC = () => {
     }
   }, []);
 
+  const enterTabContentNavigation = React.useCallback(() => {
+    const contentLength = getTabContentLength();
+    if (contentLength <= 0) {
+      return false;
+    }
+
+    setNavigationMode('tabContent');
+    setTabContentIndex(0);
+    playNavigateSound();
+    lastNavigationTime.current = Date.now();
+    scrollToTabContent(0);
+
+    const activeElement = document.activeElement;
+    if (activeElement instanceof HTMLElement) {
+      activeElement.blur();
+    }
+
+    return true;
+  }, [getTabContentLength, playNavigateSound, scrollToTabContent]);
+
   const activateTabContent = React.useCallback((index: number) => {
     if (activeTab === 'achievements') {
       const achievement = achievements[index];
@@ -843,15 +1091,64 @@ const Overdrive: React.FC = () => {
         toast.info(achievement.name, { description: achievement.description });
       }
     } else if (activeTab === 'community') {
-      toast.info("Opening forum...", { description: "Navigating to community forum" });
+      const item = communityFocusItems[index];
+      if (!item) {
+        return;
+      }
+
+      if (item.type === "compose") {
+        setIsComposerOpen(true);
+        return;
+      }
+
+      if (item.type === "news") {
+        const news = steamNews[item.newsIndex];
+        if (news?.url) {
+          void open(news.url as string).catch((error) => {
+            console.error("Failed to open Steam news URL:", error);
+          });
+          return;
+        }
+        if (news) {
+          toast.info(news.title, {
+            description: news.author ? `By ${news.author}` : "Steam news",
+          });
+        }
+        return;
+      }
+
+      const post = forumPosts?.[item.forumIndex];
+      if (post) {
+        toast.info(post.title, {
+          description: `by ${post.authorUsername || "Unknown"}`,
+        });
+      }
     }
-  }, [activeTab, achievements]);
+  }, [activeTab, achievements, communityFocusItems, forumPosts, steamNews]);
 
   // ======== CONTROLLER HOOK ========
 
   useResponsiveGamepad({
     onButtonDown: (button) => {
-      if (isDrawerOpen || isPowerDialogOpen) return;
+      if (isTopBarFocused) {
+        return;
+      }
+
+      if (isKeyboardOpen) {
+        if (button === "B" || button === "CIRCLE" || button === "START") {
+          closeKeyboard(true);
+        }
+        return;
+      }
+
+      if (isComposerOpen) {
+        if (button === "B" || button === "CIRCLE" || button === "START") {
+          setIsComposerOpen(false);
+        }
+        return;
+      }
+
+      if (isMenuOpen || isPowerDialogOpen) return;
       const now = Date.now();
       if (now - lastNavigationTime.current < navigationCooldown) return;
 
@@ -874,7 +1171,7 @@ const Overdrive: React.FC = () => {
         }
 
         if (activeTab === 'achievements') {
-          const cols = window.innerWidth > 1280 ? 4 : window.innerWidth > 1024 ? 3 : 2;
+          const cols = 1;
           if (button === 'RIGHT') {
             if ((tabContentIndex + 1) % cols !== 0 && tabContentIndex < contentLength - 1) {
               setTabContentIndex(prev => prev + 1);
@@ -912,6 +1209,34 @@ const Overdrive: React.FC = () => {
               setNavigationMode('tabs');
               playNavigateSound();
               lastNavigationTime.current = now;
+            }
+            return;
+          }
+        } else if (activeTab === 'community') {
+          if (button === 'LEFT' || button === 'RIGHT' || button === 'UP' || button === 'DOWN') {
+            const direction = button === 'LEFT'
+              ? 'left'
+              : button === 'RIGHT'
+                ? 'right'
+                : button === 'UP'
+                  ? 'up'
+                  : 'down';
+
+            const nextIndex = getNextCommunityIndex(tabContentIndex, direction);
+
+            if (nextIndex === -1) {
+              setNavigationMode('tabs');
+              setTabContentIndex(0);
+              playNavigateSound();
+              lastNavigationTime.current = now;
+              return;
+            }
+
+            if (nextIndex != null && nextIndex >= 0 && nextIndex < contentLength) {
+              setTabContentIndex(nextIndex);
+              playNavigateSound();
+              lastNavigationTime.current = now;
+              scrollToTabContent(nextIndex);
             }
             return;
           }
@@ -954,14 +1279,7 @@ const Overdrive: React.FC = () => {
         }
 
         if (button === 'DOWN' || button === 'A' || button === 'X') {
-          const contentLength = getTabContentLength();
-          if (contentLength > 0) {
-            setNavigationMode('tabContent');
-            setTabContentIndex(0);
-            playNavigateSound();
-            lastNavigationTime.current = now;
-            scrollToTabContent(0);
-          }
+          enterTabContentNavigation();
           return;
         }
 
@@ -990,8 +1308,10 @@ const Overdrive: React.FC = () => {
 
       // NORMAL VIEW: Library
       if (!isFullView && navigationMode === 'library') {
-        if (button === "START") {
-          toggleDrawerWithSound();
+        if (button === "UP") {
+          playNavigateSound();
+          lastNavigationTime.current = now;
+          setTopBarFocused(true);
           return;
         }
 
@@ -1025,11 +1345,47 @@ const Overdrive: React.FC = () => {
     },
 
     onLeftStick: (x, y) => {
-      if (isDrawerOpen || isPowerDialogOpen) return;
+      if (isTopBarFocused) return;
+      if (isKeyboardOpen || isComposerOpen) return;
+      if (isMenuOpen || isPowerDialogOpen) return;
       const now = Date.now();
       const deadzone = 0.5;
 
+      if (isFullView && navigationMode === 'tabContent' && activeTab === 'community' && now - stickHoldStartTime.current > 200) {
+        if (Math.abs(x) > deadzone || Math.abs(y) > deadzone) {
+          const direction: "up" | "down" | "left" | "right" = Math.abs(x) >= Math.abs(y)
+            ? (x > 0 ? "right" : "left")
+            : (y > 0 ? "down" : "up");
+
+          const contentLength = getTabContentLength();
+          const nextIndex = getNextCommunityIndex(tabContentIndex, direction);
+
+          if (nextIndex === -1) {
+            setNavigationMode('tabs');
+            setTabContentIndex(0);
+            playNavigateSound();
+            stickHoldStartTime.current = now;
+            return;
+          }
+
+          if (nextIndex != null && nextIndex >= 0 && nextIndex < contentLength) {
+            setTabContentIndex(nextIndex);
+            playNavigateSound();
+            stickHoldStartTime.current = now;
+            scrollToTabContent(nextIndex);
+          }
+          return;
+        }
+      }
+
       if (Math.abs(y) > deadzone && now - stickHoldStartTime.current > 200) {
+        if (!isFullView && navigationMode === 'library' && y < -0.5) {
+          playNavigateSound();
+          setTopBarFocused(true);
+          stickHoldStartTime.current = now;
+          return;
+        }
+
         if (!isFullView && navigationMode === 'library' && y > 0.5) {
           setIsFullView(true);
           setNavigationMode('tabs');
@@ -1047,13 +1403,9 @@ const Overdrive: React.FC = () => {
           return;
         }
         if (isFullView && navigationMode === 'tabs' && y > 0.5) {
-          const contentLength = getTabContentLength();
-          if (contentLength > 0) {
-            setNavigationMode('tabContent');
-            setTabContentIndex(0);
-            playNavigateSound();
+          const moved = enterTabContentNavigation();
+          if (moved) {
             stickHoldStartTime.current = now;
-            scrollToTabContent(0);
           }
           return;
         }
@@ -1102,7 +1454,25 @@ const Overdrive: React.FC = () => {
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.altKey || e.ctrlKey || e.metaKey) return;
-      if (isDrawerOpen || isPowerDialogOpen) return;
+      if (isTopBarFocused) return;
+
+      if (isKeyboardOpen) {
+        if (e.key === "Escape") {
+          e.preventDefault();
+          closeKeyboard(true);
+        }
+        return;
+      }
+
+      if (isComposerOpen) {
+        if (e.key === "Escape") {
+          e.preventDefault();
+          setIsComposerOpen(false);
+        }
+        return;
+      }
+
+      if (isMenuOpen || isPowerDialogOpen) return;
 
       const now = Date.now();
       if (now - lastNavigationTime.current < navigationCooldown) return;
@@ -1139,7 +1509,7 @@ const Overdrive: React.FC = () => {
         }
 
         if (activeTab === 'achievements') {
-          const cols = window.innerWidth > 1280 ? 4 : window.innerWidth > 1024 ? 3 : 2;
+          const cols = 1;
           if (e.key === 'ArrowRight' || e.key === 'd' || e.key === 'D') {
             e.preventDefault();
             if ((tabContentIndex + 1) % cols !== 0 && tabContentIndex < contentLength - 1) {
@@ -1157,6 +1527,35 @@ const Overdrive: React.FC = () => {
               playNavigateSound();
               lastNavigationTime.current = now;
               scrollToTabContent(tabContentIndex - 1);
+            }
+            return;
+          }
+        } else if (activeTab === 'community') {
+          if (e.key === 'ArrowLeft' || e.key === 'a' || e.key === 'A' || e.key === 'ArrowRight' || e.key === 'd' || e.key === 'D' || e.key === 'ArrowUp' || e.key === 'w' || e.key === 'W' || e.key === 'ArrowDown' || e.key === 's' || e.key === 'S') {
+            e.preventDefault();
+
+            const direction = (e.key === 'ArrowLeft' || e.key === 'a' || e.key === 'A')
+              ? 'left'
+              : (e.key === 'ArrowRight' || e.key === 'd' || e.key === 'D')
+                ? 'right'
+                : (e.key === 'ArrowUp' || e.key === 'w' || e.key === 'W')
+                  ? 'up'
+                  : 'down';
+
+            const nextIndex = getNextCommunityIndex(tabContentIndex, direction);
+            if (nextIndex === -1) {
+              setNavigationMode('tabs');
+              setTabContentIndex(0);
+              playNavigateSound();
+              lastNavigationTime.current = now;
+              return;
+            }
+
+            if (nextIndex != null && nextIndex >= 0 && nextIndex < contentLength) {
+              setTabContentIndex(nextIndex);
+              playNavigateSound();
+              lastNavigationTime.current = now;
+              scrollToTabContent(nextIndex);
             }
             return;
           }
@@ -1180,6 +1579,12 @@ const Overdrive: React.FC = () => {
 
       // FULL VIEW: Tabs
       if (isFullView && navigationMode === 'tabs') {
+        if (e.key === 'Enter') {
+          e.preventDefault();
+          enterTabContentNavigation();
+          return;
+        }
+
         if (e.key === 'ArrowUp' || e.key === 'w' || e.key === 'W') {
           e.preventDefault();
           setIsFullView(false);
@@ -1192,14 +1597,7 @@ const Overdrive: React.FC = () => {
 
         if (e.key === 'ArrowDown' || e.key === 's' || e.key === 'S') {
           e.preventDefault();
-          const contentLength = getTabContentLength();
-          if (contentLength > 0) {
-            setNavigationMode('tabContent');
-            setTabContentIndex(0);
-            playNavigateSound();
-            lastNavigationTime.current = now;
-            scrollToTabContent(0);
-          }
+          enterTabContentNavigation();
           return;
         }
 
@@ -1230,6 +1628,14 @@ const Overdrive: React.FC = () => {
 
       // LIBRARY NAVIGATION
       if (!isFullView && navigationMode === 'library' && activeSection === "library") {
+        if (e.key === "ArrowUp" || e.key === "w" || e.key === "W") {
+          e.preventDefault();
+          playNavigateSound();
+          lastNavigationTime.current = now;
+          setTopBarFocused(true);
+          return;
+        }
+
         if (["ArrowRight", "d", "D"].includes(e.key)) {
           e.preventDefault();
           navigateLibrary("next");
@@ -1261,19 +1667,15 @@ const Overdrive: React.FC = () => {
           return;
         }
       }
-
-      if (e.key === "m" || e.key === "M") {
-        toggleDrawerWithSound();
-        return;
-      }
     };
 
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, [
-    isDrawerOpen, isPowerDialogOpen, activeSection, libraryFocusIndex,
+    closeKeyboard, isMenuOpen, isPowerDialogOpen, isTopBarFocused, activeSection, libraryFocusIndex,
     sortedGames, navigateLibrary, handleOpenGameDetails, navigationMode,
-    activeTab, tabContentIndex, playNavigateSound, isFullView
+    activeTab, tabContentIndex, playNavigateSound, isFullView, isKeyboardOpen, isComposerOpen,
+    enterTabContentNavigation, setTopBarFocused, getNextCommunityIndex, getTabContentLength, scrollToTabContent
   ]);
 
   // ... keep existing video handlers ...
@@ -1354,34 +1756,32 @@ const Overdrive: React.FC = () => {
               from { opacity: 0; transform: scale(1.05); }
               to { opacity: 1; transform: scale(1); }
             }
+            .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
             .no-scrollbar::-webkit-scrollbar { display: none; }
           `}</style>
           <link rel="preconnect" href="https://fonts.googleapis.com" />
           <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
           <link href="https://fonts.googleapis.com/css2?family=Livvic:ital,wght@0,100;0,200;0,300;0,400;0,500;0,600;0,700;0,900;1,100;1,200;1,300;1,400;1,500;1,600;1,700;1,900&family=Unbounded:wght@200..900&display=swap" rel="stylesheet" />
 
-          {/* Header */}
-          <div className={cn(isDrawerOpen ? "bg-black" : "", "absolute top-0 left-0 right-0 z-[999] flex items-center justify-end p-4 transition-all duration-300")}>
-            <div className="flex items-center gap-4">
-              <Clock showSeconds={false} className="flex items-center" />
-              {isAuthenticated && user && (
-                <div className="flex items-center gap-2">
-                  {user.avatar ? (
-                    <img src={user.avatar} alt="User Avatar" className="w-8 h-8" />
-                  ) : (
-                    <div className="w-8 h-8 bg-white/20 flex items-center justify-center">
-                      <span className="text-xs font-bold">
-                        {(user.username || user.email || "U")[0]?.toUpperCase()}
-                      </span>
-                    </div>
-                  )}
-                </div>
-              )}
-              <Button onClick={openDrawerWithSound} variant="ghost" className="flex items-center gap-2 dark">
-                <Power className="w-4 h-4" />
+          <OverdriveTopBar
+            searchQuery={searchQuery}
+            onSearchQueryChange={setSearchQuery}
+            onSearchSubmit={handleOverdriveSearchSubmit}
+            className={cn(isMenuOpen ? "bg-black/40" : "")}
+            rightSlot={(
+              <Button
+                onClick={openDrawerWithSound}
+                onMouseDown={(event) => {
+                  event.preventDefault();
+                }}
+                tabIndex={-1}
+                variant="ghost"
+                className="flex items-center gap-2 dark"
+              >
+                <Power className="h-4 w-4" />
               </Button>
-            </div>
-          </div>
+            )}
+          />
 
           {/* Main Content */}
           <div className="relative w-full h-full overflow-hidden bg-gray-900">
@@ -1498,9 +1898,18 @@ const Overdrive: React.FC = () => {
                             <motion.button
                               key={tab.id}
                               onClick={() => {
+                                if (isFullView && navigationMode === "tabs" && activeTab === tab.id) {
+                                  enterTabContentNavigation();
+                                  return;
+                                }
                                 setActiveTab(tab.id as typeof activeTab);
                                 if (!isFullView) setIsFullView(true);
                                 setNavigationMode('tabs');
+                              }}
+                              onKeyDown={(event) => {
+                                if (event.key === "Enter" || event.key === " ") {
+                                  event.preventDefault();
+                                }
                               }}
                               className={cn(
                                 "flex tracking-[0.15rem] items-center gap-2 px-6 py-3 border-2 border-transparent uppercase text-sm font-medium transition-all duration-200 rounded-full outline-none",
@@ -1531,7 +1940,7 @@ const Overdrive: React.FC = () => {
                       <div
                         ref={fullViewScrollRef}
                         className={cn(
-                          "flex-1 overflow-y-auto border-y transition-all duration-300",
+                          "flex-1 overflow-y-auto no-scrollbar border-y transition-all duration-300",
                           isFullView ? "bg-gray-900/40 border-white/20" : "bg-gray-900/60 border-white/10 max-h-[36vh]"
                         )}
                       >
@@ -1542,10 +1951,7 @@ const Overdrive: React.FC = () => {
                             <div className={isFullView ? "pb-20" : ""}>
                               {selectedGame?.launcher === 'steam' ? (
                                 achievements.length > 0 ? (
-                                  <div className={cn(
-                                    "grid gap-4",
-                                    isFullView ? "grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5" : "grid-cols-2 md:grid-cols-3 lg:grid-cols-4"
-                                  )}>
+                                  <div className="flex flex-col gap-3 max-w-4xl mx-auto">
                                     {achievements.map((achievement, idx) => {
                                       const isItemFocused = isFullView && navigationMode === 'tabContent' && tabContentIndex === idx;
                                       return (
@@ -1559,7 +1965,7 @@ const Overdrive: React.FC = () => {
                                             "flex items-start gap-4 p-4 rounded-xl border-2 transition-all duration-200",
                                             isItemFocused
                                               ? "bg-white/15 border-white shadow-lg scale-[1.02]"
-                                              : achievement.achieved
+                                              : achievement.unlocked
                                                 ? "bg-white/5 border-white/10"
                                                 : "bg-black/40 border-white/5 opacity-40"
                                           )}
@@ -1568,8 +1974,8 @@ const Overdrive: React.FC = () => {
                                           <div className="flex-1 min-w-0">
                                             <p className="text-base font-semibold text-white mb-1">{achievement.name}</p>
                                             <p className="text-sm text-white/60 line-clamp-2">{achievement.description}</p>
-                                            {achievement.achieved && achievement.unlockTime && (
-                                              <p className="text-sm text-[#107c10] mt-2">✓ Unlocked {new Date(achievement.unlockTime).toLocaleDateString()}</p>
+                                            {achievement.unlocked && achievement.unlockedDate && (
+                                              <p className="text-sm text-[#107c10] mt-2">✓ Unlocked {new Date(achievement.unlockedDate * 1000).toLocaleDateString()}</p>
                                             )}
                                           </div>
                                         </motion.div>
@@ -1648,49 +2054,213 @@ const Overdrive: React.FC = () => {
 
                           {/* Community */}
                           {activeTab === 'community' && (
-                            <div className={cn("max-w-4xl mx-auto", isFullView && "pb-20")}>
-                              <div className="space-y-3">
-                                {[
-                                  { title: "General Discussion", replies: 234, lastActive: "2 hours ago", tag: "Hot", color: "bg-red-500/20 text-red-400" },
-                                  { title: "Tips & Tricks", replies: 89, lastActive: "5 hours ago", tag: "Guide", color: "bg-blue-500/20 text-blue-400" },
-                                  { title: "Technical Support", replies: 45, lastActive: "1 day ago", tag: "Help", color: "bg-green-500/20 text-green-400" },
-                                  { title: "Modding", replies: 156, lastActive: "3 days ago", tag: "Mod", color: "bg-purple-500/20 text-purple-400" },
-                                  { title: "Showcase", replies: 312, lastActive: "4 hours ago", tag: "Media", color: "bg-yellow-500/20 text-yellow-400" },
-                                  { title: "Bug Reports", replies: 28, lastActive: "12 hours ago", tag: "Bug", color: "bg-orange-500/20 text-orange-400" },
-                                ].map((forum, idx) => {
-                                  const isItemFocused = isFullView && navigationMode === 'tabContent' && tabContentIndex === idx;
-                                  return (
-                                    <motion.div
-                                      key={forum.title}
-                                      ref={(el) => { if (el) tabContentRefs.current.set(idx, el); }}
-                                      initial={{ opacity: 0, y: 10 }}
-                                      animate={{ opacity: 1, y: 0 }}
-                                      transition={{ delay: idx * 0.05 }}
-                                      className={cn(
-                                        "flex items-center justify-between p-5 border-2 cursor-pointer transition-all",
-                                        isItemFocused ? "bg-white/10 border-[var(--theme-accent)] scale-[1.01] animate-pulse shadow-lg" : "bg-white/5 border-transparent"
-                                      )}
-                                    >
-                                      <div className="flex items-center gap-4">
-                                        <div className={cn("w-12 h-12 rounded-xl flex items-center justify-center", forum.color)}>
-                                          <MessageSquare className="w-6 h-6" />
-                                        </div>
-                                        <div>
-                                          <div className="flex items-center gap-3 mb-1">
-                                            <p className="text-lg font-medium text-white">{forum.title}</p>
-                                            <span className={cn("text-xs px-2 py-1 rounded-full font-medium", forum.color)}>{forum.tag}</span>
-                                          </div>
-                                          <p className="text-sm text-white/50">{forum.replies} replies • Last active {forum.lastActive}</p>
-                                        </div>
-                                      </div>
-                                      <ChevronRight className={cn("w-6 h-6 transition-all", isItemFocused ? "text-white translate-x-1" : "text-white/30")} />
-                                    </motion.div>
-                                  );
-                                })}
-                              </div>
-                              <button className="w-full mt-6 py-4 rounded-xl bg-[#107c10]/20 border border-[#107c10]/50 text-[#107c10] font-medium hover:bg-[#107c10]/30 transition-colors flex items-center justify-center gap-2">
-                                View Full Forum <ChevronRight className="w-5 h-5" />
+                            <div className={cn("mx-auto max-w-7xl", isFullView && "pb-20")}>
+                              <button
+                                type="button"
+                                onClick={() => setIsComposerOpen(true)}
+                                ref={(el) => { if (el) tabContentRefs.current.set(0, el); }}
+                                className={cn(
+                                  "mb-6 flex w-full items-center justify-center gap-3 rounded-2xl border px-6 py-5 text-lg font-semibold transition-all",
+                                  "border-[#107c10]/60 bg-[#107c10]/20 text-[#bdf8bd] hover:bg-[#107c10]/35",
+                                  isFullView && navigationMode === 'tabContent' && tabContentIndex === 0 && "ring-2 ring-[#9cf39c]",
+                                )}
+                              >
+                                <Plus className="h-5 w-5" />
+                                Create New Post
                               </button>
+
+                              <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
+                                <div className="rounded-xl border border-white/10 bg-black/30 p-4">
+                                  <div className="mb-4 flex items-center gap-2">
+                                    <Newspaper className="h-5 w-5 text-blue-300" />
+                                    <h3 className="text-sm uppercase tracking-[0.2rem] text-white/70">Steam News</h3>
+                                  </div>
+                                  {selectedGame?.launcher !== "steam" ? (
+                                    <div className="flex h-48 items-center justify-center text-white/40">
+                                      Steam news is only available for Steam games.
+                                    </div>
+                                  ) : loadingSteamNews ? (
+                                    <div className="flex h-48 flex-col items-center justify-center gap-2 text-white/50">
+                                      <Loader2 className="h-6 w-6 animate-spin" />
+                                      <span>Loading Steam news...</span>
+                                    </div>
+                                  ) : steamNews.length > 0 ? (
+                                    <div className="space-y-3">
+                                      {steamNews.slice(0, 8).map((item, newsIndex) => {
+                                        const focusIndex = 1 + newsIndex;
+                                        const isItemFocused = isFullView && navigationMode === 'tabContent' && tabContentIndex === focusIndex;
+                                        return (
+                                        <div
+                                          key={item.gid}
+                                          ref={(el) => { if (el) tabContentRefs.current.set(focusIndex, el); }}
+                                          className={cn(
+                                            "rounded-lg border p-3 transition-all",
+                                            isItemFocused ? "border-[var(--theme-accent)] bg-white/10" : "border-white/10 bg-white/5"
+                                          )}
+                                        >
+                                          <div className="mb-2 flex items-start justify-between gap-3">
+                                            <h4 className="text-sm font-medium text-white">{item.title}</h4>
+                                            <span className="shrink-0 text-xs text-white/50">
+                                              {item.date ? new Date(item.date * 1000).toLocaleDateString() : ""}
+                                            </span>
+                                          </div>
+                                          <p className="mb-2 text-xs uppercase tracking-[0.12rem] text-white/45">
+                                            {item.author ? `By ${item.author}` : "Steam"}
+                                            {item.feedLabel ? ` • ${item.feedLabel}` : ""}
+                                          </p>
+                                          <p className="line-clamp-3 text-sm text-white/70">
+                                            {stripHtml(item.contents).slice(0, 240)}
+                                          </p>
+                                          {item.url && (
+                                            <button
+                                              type="button"
+                                              onClick={() => {
+                                                void open(item.url as string).catch((error) => {
+                                                  console.error("Failed to open Steam news URL:", error);
+                                                });
+                                              }}
+                                              className="mt-3 inline-flex items-center gap-2 rounded-full border border-white/20 px-3 py-1.5 text-xs text-blue-200 hover:bg-white/10"
+                                            >
+                                              Open <ExternalLink className="h-3.5 w-3.5" />
+                                            </button>
+                                          )}
+                                        </div>
+                                      )})}
+                                    </div>
+                                  ) : (
+                                    <div className="flex h-48 items-center justify-center text-white/40">
+                                      No Steam news available.
+                                    </div>
+                                  )}
+                                </div>
+
+                                <div className="rounded-xl border border-white/10 bg-black/30 p-4">
+                                  <div className="mb-4 flex items-center justify-between gap-3">
+                                    <div className="flex items-center gap-2">
+                                      <MessageSquare className="h-5 w-5 text-emerald-300" />
+                                      <h3 className="text-sm uppercase tracking-[0.2rem] text-white/70">Forum Posts</h3>
+                                    </div>
+                                  </div>
+
+                                  {forumPosts && forumPosts.length > 0 ? (
+                                    <div className="space-y-3">
+                                      {forumPosts.map((forum, idx) => {
+                                        const focusIndex = 1 + Math.min(steamNews.length, 8) + idx;
+                                        const isItemFocused = isFullView && navigationMode === 'tabContent' && tabContentIndex === focusIndex;
+                                        return (
+                                          <motion.div
+                                            key={forum._id}
+                                            ref={(el) => { if (el) tabContentRefs.current.set(focusIndex, el); }}
+                                            initial={{ opacity: 0, y: 10 }}
+                                            animate={{ opacity: 1, y: 0 }}
+                                            transition={{ delay: idx * 0.04 }}
+                                            className={cn(
+                                              "flex items-center justify-between rounded-lg border-2 p-4 transition-all",
+                                              isItemFocused ? "border-[var(--theme-accent)] bg-white/10 shadow-lg" : "border-transparent bg-white/5"
+                                            )}
+                                          >
+                                            <div className="min-w-0">
+                                              <div className="mb-1 flex items-center gap-2">
+                                                <p className="truncate text-base font-medium text-white">{forum.title}</p>
+                                                {forum.isPinned && (
+                                                  <span className="rounded-full bg-yellow-500/20 px-2 py-0.5 text-[11px] text-yellow-300">Pinned</span>
+                                                )}
+                                              </div>
+                                              <p className="text-xs text-white/55">
+                                                {(forum.commentCount || 0)} replies • {(forum.likes?.length || 0)} likes • by {forum.authorUsername || "Unknown"}
+                                              </p>
+                                            </div>
+                                            <ChevronRight className={cn("ml-3 h-5 w-5 shrink-0", isItemFocused ? "text-white" : "text-white/35")} />
+                                          </motion.div>
+                                        );
+                                      })}
+                                    </div>
+                                  ) : (
+                                    <div className="flex h-48 flex-col items-center justify-center text-white/40">
+                                      <Users className="mb-3 h-10 w-10 opacity-60" />
+                                      <p>No forum posts for this game yet.</p>
+                                    </div>
+                                  )}
+                                </div>
+                              </div>
+
+                              {isComposerOpen && (
+                                <div className="mt-6 rounded-xl border border-white/20 bg-black/55 p-5 backdrop-blur-xl">
+                                  <div className="mb-4 flex items-center justify-between gap-3">
+                                    <h3 className="text-base font-semibold text-white">Create New Post</h3>
+                                    <button
+                                      type="button"
+                                      onClick={() => {
+                                        closeKeyboard(false);
+                                        setIsComposerOpen(false);
+                                      }}
+                                      className="rounded-full border border-white/20 px-3 py-1 text-xs text-white/80 hover:bg-white/10"
+                                    >
+                                      Close
+                                    </button>
+                                  </div>
+
+                                  <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+                                    <div className="space-y-2">
+                                      <p className="text-xs uppercase tracking-[0.18rem] text-white/60">Title</p>
+                                      <div className="min-h-[3rem] rounded-lg border border-white/15 bg-white/5 px-3 py-2 text-white">
+                                        {composerTitle || <span className="text-white/35">Enter a title...</span>}
+                                      </div>
+                                      <button
+                                        type="button"
+                                        onClick={() => openKeyboardForField("title")}
+                                        className={cn(
+                                          "rounded-full border px-3 py-1.5 text-xs",
+                                          composerField === "title" ? "border-[#107c10]/60 bg-[#107c10]/20 text-[#9cf39c]" : "border-white/20 text-white/70 hover:bg-white/10"
+                                        )}
+                                      >
+                                        Use On-Screen Keyboard
+                                      </button>
+                                    </div>
+
+                                    <div className="space-y-2">
+                                      <p className="text-xs uppercase tracking-[0.18rem] text-white/60">Content</p>
+                                      <div className="min-h-[8rem] rounded-lg border border-white/15 bg-white/5 px-3 py-2 text-white">
+                                        {composerContent || <span className="text-white/35">Write your message...</span>}
+                                      </div>
+                                      <button
+                                        type="button"
+                                        onClick={() => openKeyboardForField("content")}
+                                        className={cn(
+                                          "rounded-full border px-3 py-1.5 text-xs",
+                                          composerField === "content" ? "border-[#107c10]/60 bg-[#107c10]/20 text-[#9cf39c]" : "border-white/20 text-white/70 hover:bg-white/10"
+                                        )}
+                                      >
+                                        Use On-Screen Keyboard
+                                      </button>
+                                    </div>
+                                  </div>
+
+                                  <div className="mt-5 flex items-center justify-end gap-3">
+                                    <button
+                                      type="button"
+                                      onClick={() => {
+                                        setComposerTitle("");
+                                        setComposerContent("");
+                                        closeKeyboard(false);
+                                      }}
+                                      className="rounded-full border border-white/20 px-4 py-2 text-sm text-white/80 hover:bg-white/10"
+                                    >
+                                      Clear
+                                    </button>
+                                    <button
+                                      type="button"
+                                      onClick={() => {
+                                        void handleSubmitPost();
+                                      }}
+                                      disabled={isSubmittingPost}
+                                      className="rounded-full border border-[#107c10]/50 bg-[#107c10]/25 px-4 py-2 text-sm font-medium text-[#9cf39c] hover:bg-[#107c10]/35 disabled:cursor-not-allowed disabled:opacity-60"
+                                    >
+                                      {isSubmittingPost ? "Posting..." : "Post"}
+                                    </button>
+                                  </div>
+                                </div>
+                              )}
                             </div>
                           )}
                         </div>
@@ -1702,34 +2272,7 @@ const Overdrive: React.FC = () => {
             </div>
           </div>
 
-          {/* Footer */}
-          <div className="z-[999] absolute bottom-0 w-full">
-            <div className={cn("flex items-center justify-between gap-3 px-6 py-2 backdrop-blur-md border-t border-white/10", isDrawerOpen ? "bg-black" : "bg-black/60")} style={{ fontFamily: "'Livvic', 'Unbounded', Arial, sans-serif", boxShadow: "0 4px 16px rgba(0,0,0,0.5)" }}>
-              <button onClick={() => toggleDrawerWithSound()} className="hover:bg-white/10 py-1 px-2 rounded-full transition-colors">
-                <div className="flex items-center gap-2">
-                  {isConnected && controllerType ? (
-                    <ControllerButton controllerType={controllerType} button="menu" size="sm" />
-                  ) : (
-                    <kbd className="p-1.5 rounded-full bg-white/90 text-black font-bold text-sm shadow-md" style={{ fontFamily: 'Livvic, sans-serif' }}>M</kbd>
-                  )}
-                  <span className="text-white/90 text-sm font-medium">Menu</span>
-                </div>
-              </button>
-              <button onClick={() => handleOpenGameDetails(selectedGame?.id as string)} className="hover:bg-white/10 py-1 px-2 rounded-full transition-colors">
-                <div className="flex items-center gap-2">
-                  {isConnected && controllerType ? (
-                    <ControllerButton controllerType={controllerType} button="a" size="sm" />
-                  ) : (
-                    <kbd className="px-3 py-1.5 rounded-full bg-white/90 text-black font-bold uppercase text-sm shadow-md" style={{ fontFamily: 'Google Sans Flex, sans-serif' }}>Enter</kbd>
-                  )}
-                  <span className="text-white/90 text-sm font-medium">Open</span>
-                </div>
-              </button>
-            </div>
-          </div>
-
-          <OverdriveMenu isOpen={isDrawerOpen} onClose={closeDrawerWithSound} items={menuItems} controllerType={controllerType} isControllerConnected={isConnected} />
-          <OverdrivePowerDialog open={isPowerDialogOpen} onOpenChange={handlePowerDialogOpenChange} onExitOverdrive={handleExitOverdrive} onExitPoliGame={handleExitPoliGame} onSignOut={isAuthenticated ? handleSignOut : undefined} controllerType={controllerType} isControllerConnected={isConnected} />
+          <OverdriveNavigationHints items={overdriveHints} />
           <Toaster />
         </motion.div>
       )}

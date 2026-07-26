@@ -10,7 +10,6 @@ import { useGameStore } from "@/stores/gameStore";
 import { useAuthStore } from "@/stores/authStore";
 import { usePresence } from "@/hooks/usePresence";
 import { useGamePresence } from "@/hooks/useGamePresence";
-import { useDiscordRichPresence } from "@/hooks/useDiscordRichPresence";
 import { Game } from "@/types";
 import { LauncherType } from "@/types";
 import NotificationListener from "./NotificationListener";
@@ -47,9 +46,6 @@ export const AppShell: React.FC<AppShellProps> = ({ children }) => {
 
   // Update currentGame fields when games start/stop
   useGamePresence();
-
-  // Sync Discord Rich Presence with launcher browsing and running game state.
-  useDiscordRichPresence(true);
 
   useEffect(() => {
     const checkSetup = async () => {
