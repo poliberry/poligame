@@ -113,21 +113,11 @@ export const LibrarySidebar: React.FC<LibrarySidebarProps> = ({
 
   return (
     <Card
-      className="flex flex-col gap-1 bg-transparent backdrop-blur-xl h-full border-2 rounded-3xl"
+      className="flex flex-col gap-1 bg-background/35 backdrop-blur-xl h-full border rounded-3xl"
       style={{
         width: "320px",
       }}
     >
-      <link rel="preconnect" href="https://fonts.googleapis.com" />
-      <link
-        rel="preconnect"
-        href="https://fonts.gstatic.com"
-        crossOrigin="anonymous"
-      />
-      <link
-        href="https://fonts.googleapis.com/css2?family=Livvic:ital,wght@0,100;0,200;0,300;0,400;0,500;0,600;0,700;0,900;1,100;1,200;1,300;1,400;1,500;1,600;1,700;1,900&family=Unbounded:wght@200..900&display=swap"
-        rel="stylesheet"
-      />
       {/* Search Bar */}
       <div className="-mt-4 border-b-2">
         <Search
@@ -140,7 +130,7 @@ export const LibrarySidebar: React.FC<LibrarySidebarProps> = ({
           value={searchQuery}
           style={{ fontFamily: "Google Sans Flex, sans-serif" }}
           onChange={(e) => onSearchChange(e.target.value)}
-          className="flex-1 pl-8 text-sm font-light rounded-t-2xl h-10 border-none"
+          className="flex-1 pl-8 placeholder:text-foreground/60 text-sm font-light rounded-t-2xl h-10 border-none"
         />
       </div>
 
@@ -150,10 +140,9 @@ export const LibrarySidebar: React.FC<LibrarySidebarProps> = ({
           <div className="flex flex-row items-center gap-2">
             <Badge
               variant="ghost"
-              className="text-foreground/60 uppercase p-0"
+              className="text-foreground/60 font-light uppercase p-0"
               style={{
-                fontFamily: "Livvic, sans-serif",
-                fontWeight: 600,
+                fontFamily: "Google Sans Flex, sans-serif",
                 paddingTop: "8px",
                 paddingBottom: "8px",
                 paddingRight: "8px",

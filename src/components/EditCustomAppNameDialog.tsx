@@ -59,7 +59,7 @@ export const EditCustomAppNameDialog: React.FC<EditCustomAppNameDialogProps> = (
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80">
+    <div className="fixed inset-0 z-[200] flex items-center justify-center bg-black/80">
       <div className="bg-background border border-border rounded-lg p-6 w-full max-w-md shadow-xl">
         <div className="flex items-center justify-between mb-4">
           <h2 className="text-xl font-bold">Edit App Name</h2>

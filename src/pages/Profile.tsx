@@ -4,7 +4,7 @@ import React from "react";
 const Profile: React.FC = () => {
   const { user } = useAuthStore();
   // Get the base URL from environment or default to localhost
-  const baseUrl = import.meta.env.VITE_POLIGAME_BASE_URL || "http://localhost:3000";
+  const baseUrl = import.meta.env.VITE_POLIGAME_BASE_URL || "https://games.poliberry.com";
   const profileUrl = `${baseUrl}/desktop/profile/${user?.userId}`;
 
   return (

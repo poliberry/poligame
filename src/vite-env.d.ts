@@ -9,6 +9,7 @@ interface ImportMetaEnv {
   readonly VITE_FIREBASE_APP_ID: string;
   readonly VITE_FIREBASE_VAPID_KEY: string;
   readonly VITE_NOVU_APPLICATION_IDENTIFIER: string;
+  readonly VITE_NOVU_APP_ID: string;
 }
 
 interface ImportMeta {

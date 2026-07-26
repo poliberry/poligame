@@ -1,7 +1,11 @@
 import { useEffect } from "react";
 
-export function useTauriDragRegions() {
+export function useTauriDragRegions(enabled: boolean = true) {
   useEffect(() => {
+    if (!enabled) {
+      return;
+    }
+
     let disposed = false;
     let tauriWindow: { startDragging: () => Promise<void> } | null = null;
 
@@ -57,5 +61,5 @@ export function useTauriDragRegions() {
       disposed = true;
       document.removeEventListener("mousedown", onMouseDown);
     };
-  }, []);
+  }, [enabled]);
 }

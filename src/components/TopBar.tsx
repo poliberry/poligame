@@ -23,6 +23,8 @@ import { NovuInbox } from "./ui/inbox/NovuInbox";
 import { Id } from "node_modules/convex/dist/esm-types/values/value";
 import { useQuery } from "convex/react";
 import { api } from "../../convex/_generated/api";
+import { cn } from "@/lib/utils";
+import { Badge } from './ui/badge';
 
 export const TopBar: React.FC = () => {
   const { user, isAuthenticated, signOut } = useAuthStore();
@@ -37,9 +39,9 @@ export const TopBar: React.FC = () => {
     api.gameCustomizations.getGameCustomization,
     runningGame && user
       ? {
-          userId: user.userId as unknown as Id<"users">,
-          gameId: runningGame?.id,
-        }
+        userId: user.userId as unknown as Id<"users">,
+        gameId: runningGame?.id,
+      }
       : "skip",
   );
   // Close dropdown when clicking outside
@@ -152,7 +154,7 @@ export const TopBar: React.FC = () => {
   const handleClose = async (e: React.MouseEvent) => {
     e.stopPropagation();
     try {
-      await invoke("exit_app");
+      await invoke("close_window");
     } catch (error) {
       // Silently fail in browser mode
       console.debug(
@@ -214,20 +216,6 @@ export const TopBar: React.FC = () => {
           margin: 0,
         }}
       >
-        <link rel="preconnect" href="https://fonts.googleapis.com" />
-        <link
-          rel="preconnect"
-          href="https://fonts.gstatic.com"
-          crossOrigin="anonymous"
-        />
-        <link
-          href="https://fonts.googleapis.com/css2?family=Unbounded:wght@200..900&display=swap"
-          rel="stylesheet"
-        ></link>
-        <link
-          href="https://fonts.googleapis.com/css2?family=Livvic:wght@100..900&display=swap"
-          rel="stylesheet"
-        ></link>
         <div
           className="flex-1 flex flex-row items-center gap-2 p-2"
           style={{ fontFamily: "Unbounded, sans-serif" }}
@@ -237,8 +225,11 @@ export const TopBar: React.FC = () => {
             alt="PoliGame"
             className="w-6 h-6 invert dark:invert-0"
           />
+          <Badge variant="default" className="text-foreground/70 absolute text-[9px] px-1 py-0.25 bg-[var(--theme-button)] rounded-full top-4 left-4 font-light uppercase">
+            BETA
+          </Badge>
           {/* Friends Dropdown */}
-          <div className="flex flex-row gap-0 ml-2">
+          <div className="flex flex-row gap-0 ml-4">
             <div
               className="relative inline-block text-left no-drag-region"
               data-tauri-drag-region="false"
@@ -249,14 +240,14 @@ export const TopBar: React.FC = () => {
                     type="button"
                     className="px-3 flex items-center gap-1 text-sm cursor-pointer text-foreground/70 hover:text-[var(--theme-accent)] transition-colors cursor-pointer"
                     title="General"
-                    style={{ fontFamily: "Livvic, sans-serif" }}
+                    style={{ fontFamily: "Google Sans Flex, sans-serif" }}
                   >
                     General
                   </button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent
                   className="z-[99] w-60 bg-muted border border-border overflow-hidden"
-                  style={{ fontFamily: "Livvic, sans-serif" }}
+                  style={{ fontFamily: "Google Sans Flex, sans-serif" }}
                 >
                   <div className="flex flex-col gap-1 p-2">
                     {isAuthenticated && user && (
@@ -295,7 +286,7 @@ export const TopBar: React.FC = () => {
                     <button
                       className="w-full text-left text-xs text-foreground/70 hover:underline cursor-pointer"
                       type="button"
-                      onClick={() => {}}
+                      onClick={() => { }}
                     >
                       Check For Updates
                     </button>
@@ -323,14 +314,14 @@ export const TopBar: React.FC = () => {
                       type="button"
                       className="px-3 flex items-center gap-1 text-sm cursor-pointer text-foreground/70 hover:text-[var(--theme-accent)] transition-colors cursor-pointer"
                       title="Friends"
-                      style={{ fontFamily: "Livvic, sans-serif" }}
+                      style={{ fontFamily: "Google Sans Flex, sans-serif" }}
                     >
                       Friends
                     </button>
                   </DropdownMenuTrigger>
                   <DropdownMenuContent
                     className="z-[99] w-60 bg-muted border border-border overflow-hidden"
-                    style={{ fontFamily: "Livvic, sans-serif" }}
+                    style={{ fontFamily: "Google Sans Flex, sans-serif" }}
                   >
                     <div className="flex flex-col gap-1 p-2">
                       <button
@@ -357,14 +348,14 @@ export const TopBar: React.FC = () => {
                     type="button"
                     className="px-3 flex items-center gap-1 text-sm cursor-pointer text-foreground/70 hover:text-[var(--theme-accent)] transition-colors cursor-pointer"
                     title="View"
-                    style={{ fontFamily: "Livvic, sans-serif" }}
+                    style={{ fontFamily: "Google Sans Flex, sans-serif" }}
                   >
                     View
                   </button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent
                   className="z-[99] w-60 bg-muted border border-border overflow-hidden"
-                  style={{ fontFamily: "Livvic, sans-serif" }}
+                  style={{ fontFamily: "Google Sans Flex, sans-serif" }}
                 >
                   <div className="flex flex-col gap-1 p-2">
                     <button
@@ -399,14 +390,14 @@ export const TopBar: React.FC = () => {
                     type="button"
                     className="px-3 flex items-center gap-1 text-sm cursor-pointer text-foreground/70 hover:text-[var(--theme-accent)] transition-colors cursor-pointer"
                     title="Help"
-                    style={{ fontFamily: "Livvic, sans-serif" }}
+                    style={{ fontFamily: "Google Sans Flex, sans-serif" }}
                   >
                     Help
                   </button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent
                   className="z-[99] w-60 bg-muted border border-border overflow-hidden"
-                  style={{ fontFamily: "Livvic, sans-serif" }}
+                  style={{ fontFamily: "Google Sans Flex, sans-serif" }}
                 >
                   <div className="flex flex-col gap-1 p-2">
                     <button
@@ -428,7 +419,7 @@ export const TopBar: React.FC = () => {
           <Sidebar />
         </div>
         <div
-          className="flex items-center gap-1 mr-4 no-drag-region"
+          className={cn("flex items-center gap-1 no-drag-region", runningGame ? "mr-8" : "mr-4")}
           data-tauri-drag-region="false"
         >
           <NovuInbox />
@@ -447,11 +438,11 @@ export const TopBar: React.FC = () => {
           {isAuthenticated && user ? (
             <DropdownMenu>
               <DropdownMenuTrigger
-                className={`py-1 flex flex-row items-center gap-1 rounded-full px-2 min-w-fit h-fit hover-[var(--theme-accent)]/40 cursor-pointer ${runningGame ? "bg-[var(--theme-accent)] text-foreground" : ""}`}
+                className={`py-1 flex flex-row items-center gap-1 rounded-full px-2 min-w-fit h-fit hover-[var(--theme-accent)]/40 cursor-pointer ${runningGame ? "bg-[var(--theme-button)]" : ""}`}
               >
                 {runningGame && (
                   <img
-                    src={runningGame.logo || gameCustomisation?.customLogo}
+                    src={runningGame.icon || gameCustomisation?.customLogo}
                     alt={runningGame.title}
                     className="w-5 h-5"
                     title={`Playing: ${runningGame.title}`}
@@ -472,7 +463,7 @@ export const TopBar: React.FC = () => {
                   className="w-5 h-5 rounded-full"
                 />
                 <span
-                  className="text-sm font-light"
+                  className={cn("text-sm font-light", runningGame ? "text-[var(--theme-accent)]" : "text-foreground")}
                   style={{ fontFamily: "Google Sans Flex, sans-serif" }}
                 >
                   {user.username || user.email}
@@ -517,7 +508,7 @@ export const TopBar: React.FC = () => {
               variant="default"
               onClick={handleOpenAuth}
               className="h-fit py-1 px-2 text-xs cursor-pointer"
-              style={{ fontFamily: "Livvic, sans-serif" }}
+              style={{ fontFamily: "Google Sans Flex, sans-serif" }}
             >
               Sign In
             </Button>

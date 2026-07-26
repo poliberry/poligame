@@ -190,12 +190,14 @@ pub async fn scan_all_games() -> Result<String, String> {
                         launcher_game_id: app_id.clone(),
                         title: game.name.clone(),
                         install_path: Some(game.install_dir.clone()),
+                        executable_path: game.executable_path.clone(),
                         cover_art: game.cover_art.clone(),
                         griddb_id,
                         grid_cover_art: images.grid_cover_art,
                         logo: images.logo,
                         header_art: images.header_art,
                         icon: images.icon,
+                        launch_arguments: None,
                         metadata_json: Some(metadata_json),
                         playtime_minutes: 0,
                         last_played: None,
@@ -226,7 +228,51 @@ pub async fn scan_all_games() -> Result<String, String> {
     match ea::scan_ea_games().await {
         Ok(ea_game_ids) => {
             eprintln!("Found {} EA games", ea_game_ids.len());
-            // TODO: Get EA game details and insert
+            for ea_game_id in ea_game_ids {
+                if let Ok(game) = ea::get_ea_game_details(&ea_game_id).await {
+                    let game_id = Uuid::new_v4().to_string();
+                    let metadata_json = serde_json::json!({
+                        "eaGameId": game.id,
+                        "title": game.title,
+                        "installPath": game.install_path,
+                        "executablePath": game.executable_path,
+                    })
+                    .to_string();
+
+                    let record = games::database::GameRecord {
+                        id: game_id.clone(),
+                        launcher: "ea".to_string(),
+                        launcher_game_id: ea_game_id.clone(),
+                        title: game.title.clone(),
+                        install_path: Some(game.install_path.clone()),
+                        executable_path: game.executable_path.clone(),
+                        cover_art: None,
+                        griddb_id: None,
+                        grid_cover_art: None,
+                        logo: None,
+                        header_art: None,
+                        icon: None,
+                        launch_arguments: None,
+                        metadata_json: Some(metadata_json),
+                        playtime_minutes: 0,
+                        last_played: None,
+                        created_at: Utc::now(),
+                        updated_at: Utc::now(),
+                    };
+
+                    match games::database::insert_game(pool, &record).await {
+                        Ok(_) => {
+                            games_found += 1;
+                            eprintln!("Successfully inserted EA game: {}", game.title);
+                        }
+                        Err(e) => {
+                            eprintln!("ERROR: Failed to insert EA game {}: {:?}", game.title, e);
+                        }
+                    }
+                } else {
+                    eprintln!("Failed to get details for EA game ID: {}", ea_game_id);
+                }
+            }
         },
         Err(e) => eprintln!("EA scan error: {}", e),
     }
@@ -245,6 +291,7 @@ pub async fn scan_all_games() -> Result<String, String> {
                         "catalogItemId": game.id,
                         "title": game.title,
                         "installPath": game.install_path,
+                        "executablePath": game.executable_path,
                     }).to_string();
                     
                     // Search for game on SteamGridDB by name
@@ -300,12 +347,14 @@ pub async fn scan_all_games() -> Result<String, String> {
                         launcher_game_id: catalog_item_id.clone(),
                         title: game.title.clone(),
                         install_path: Some(game.install_path.clone()),
+                        executable_path: game.executable_path.clone(),
                         cover_art: None,
                         griddb_id,
                         grid_cover_art: images.grid_cover_art,
                         logo: images.logo,
                         header_art: images.header_art,
                         icon: images.icon,
+                        launch_arguments: None,
                         metadata_json: Some(metadata_json),
                         playtime_minutes: 0,
                         last_played: None,

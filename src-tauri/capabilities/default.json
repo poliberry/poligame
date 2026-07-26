@@ -20,7 +20,9 @@
     "fs:default",
     "shell:allow-open",
     "shell:default",
-    "dialog:default"
+    "dialog:default",
+    "notification:default",
+    "updater:default"
   ]
 }
 

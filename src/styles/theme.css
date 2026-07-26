@@ -1,3 +1,4 @@
+@import url('https://fonts.googleapis.com/css2?family=Google+Sans+Flex:opsz,wdth,wght@6..144,25..151,1..1000&display=swap');
 @import "tailwindcss";
 @import "tw-animate-css";
 
@@ -52,6 +53,47 @@
 
 .customButton:hover {
   background-color: rgba(255, 255, 255, 0.2);
+}
+
+.library-sidebar-game-title {
+  width: 100%;
+  overflow: hidden;
+  white-space: nowrap;
+}
+
+.library-sidebar-game-title-text {
+  display: block;
+  width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  transform: translateX(0);
+  will-change: transform;
+}
+
+.library-sidebar-item:hover .library-sidebar-game-title-text--marquee {
+  display: inline-block;
+  width: max-content;
+  min-width: 100%;
+  overflow: visible;
+  padding-right: 1rem;
+  text-overflow: clip;
+  animation-name: library-sidebar-marquee;
+  animation-timing-function: linear;
+  animation-iteration-count: infinite;
+  animation-direction: alternate;
+}
+
+@keyframes library-sidebar-marquee {
+  0%,
+  18% {
+    transform: translateX(0);
+  }
+
+  82%,
+  100% {
+    transform: translateX(calc(-1 * var(--marquee-distance, 0px)));
+  }
 }
 
 /* Markdown/Prose styling */
@@ -308,15 +350,16 @@
   transition:
     transform 0.3s ease,
     box-shadow 0.3s ease;
-  transform-origin: top center;
-  transform-style: preserve-3d;
+  transform-origin: center center;
+  backface-visibility: hidden;
+  will-change: transform;
 }
 
 .game-card:hover {
-  transform: perspective(1000px) rotateX(6deg) scale(1.02);
+  transform: translateY(-6px) scale(1.02);
   box-shadow:
-    0 20px 40px -10px rgba(0, 0, 0, 0.6),
-    0 15px 30px rgba(0, 0, 0, 0.4);
+    0 20px 40px -10px rgba(0, 0, 0, 0.3),
+    0 15px 30px rgba(0, 0, 0, 0.15);
   z-index: 50;
 }
 
@@ -346,4 +389,50 @@
 .figma-range::-moz-range-track {
   height: 100%;
   border-radius: 9999px;
+}
+
+@keyframes text-shimmer {
+  0% {
+    background-position: -200% center;
+  }
+  100% {
+    background-position: 200% center;
+  }
+}
+
+.text-shimmer {
+  background: linear-gradient(
+    90deg,
+    #6b7280 25%,
+    #ffffff 50%,
+    #6b7280 75%
+  );
+  background-size: 200% 100%;
+  animation: text-shimmer 1.8s linear infinite;
+
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+@keyframes kenBurns {
+  from {
+    opacity: 0;
+    transform: scale(1);
+  }
+
+  20% {
+    opacity: 0.2;
+  }
+
+  to {
+    opacity: 0.2;
+    transform: scale(1.08);
+  }
+}
+
+.expanded {
+  font-family: 'Google Sans Flex', sans-serif;
+  font-stretch: 150%;
+  font-variation-settings: "wdth" 150;
 }

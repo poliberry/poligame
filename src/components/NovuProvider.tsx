@@ -8,11 +8,15 @@ interface NovuProviderWrapperProps {
 
 export const NovuProviderWrapper: React.FC<NovuProviderWrapperProps> = ({ children }) => {
   const { user } = useAuthStore();
-  const applicationIdentifier = import.meta.env.VITE_NOVU_APP_ID;
+  const applicationIdentifier =
+    import.meta.env.VITE_NOVU_APPLICATION_IDENTIFIER ||
+    import.meta.env.VITE_NOVU_APP_ID;
 
   // Only wrap with NovuProvider if we have a subscriber ID and app ID
   if (!applicationIdentifier) {
-    console.warn("VITE_NOVU_APP_ID not set. Novu notifications will not work.");
+    console.warn(
+      "Missing Novu app identifier. Set VITE_NOVU_APPLICATION_IDENTIFIER (or VITE_NOVU_APP_ID).",
+    );
     return <>{children}</>;
   }
 

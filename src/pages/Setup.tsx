@@ -30,9 +30,9 @@ import logo from "@/public/poligame-logo.svg";
 // @ts-ignore
 import welcomeAudio from "@/public/setup-music.wav";
 // @ts-ignore
-import welcomeVideo from "@/public/intro-video.mp4";
+import welcomeVideo from "@/public/intro-video-h264.mp4";
 // @ts-ignore
-import setupVideo from "@/public/setup-video.mp4";
+import setupVideo from "@/public/setup-video-h264.mp4";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
@@ -72,7 +72,8 @@ export const Setup: React.FC = () => {
   const { colors: themeColors, setColors: setThemeColors } = useThemeStore();
   const [isMainWindow, setIsMainWindow] = useState(false);
   const [isAudioMuted, setIsAudioMuted] = useState(false);
-  const videoRef = React.useRef<HTMLVideoElement>(null);
+  const introVideoRef = React.useRef<HTMLVideoElement>(null);
+  const setupVideoRef = React.useRef<HTMLVideoElement>(null);
   const audioRef = React.useRef<HTMLAudioElement>(null);
   const isCompleteRef = React.useRef(false);
 
@@ -124,6 +125,17 @@ export const Setup: React.FC = () => {
       }
     };
     checkWindow();
+
+    const video = document.querySelector("video")!;
+
+    video?.addEventListener("error", () => {
+      console.log(video.error);
+    });
+
+    console.log(video?.readyState);
+    console.log(video?.videoWidth);
+    console.log(video?.videoHeight);
+    console.log(video?.currentSrc);
   }, []);
 
   // Load user data if already authenticated
@@ -327,13 +339,32 @@ export const Setup: React.FC = () => {
       >
         {showVideo && (
           <video
+            ref={introVideoRef}
+            src={welcomeVideo}
             autoPlay
             muted={isAudioMuted}
             playsInline
+            preload="auto"
+            disablePictureInPicture
+            controls={false}
             onEnded={handleVideoEnd}
+            onLoadedData={(event) => {
+              const video = event.currentTarget;
+
+              console.log({
+                src: video.currentSrc,
+                readyState: video.readyState,
+                videoWidth: video.videoWidth,
+                videoHeight: video.videoHeight,
+                error: video.error,
+                paused: video.paused,
+              });
+
+              video.play().catch(console.error);
+            }}
             className="w-full h-full object-cover"
           >
-            <source src={welcomeVideo} type="video/mp4" />
+            Your browser does not support the video tag.
           </video>
         )}
 
@@ -366,13 +397,34 @@ export const Setup: React.FC = () => {
         />
         <div className="w-full h-screen">
           <video
+            ref={setupVideoRef}
+            src={setupVideo}
             autoPlay={true}
             muted={true}
             playsInline
             loop
+            preload="auto"
+            disablePictureInPicture
+            height={1080}
+            width={1920}
+            controls={false}
+            onLoadedData={(event) => {
+              const video = event.currentTarget;
+
+              console.log({
+                src: video.currentSrc,
+                readyState: video.readyState,
+                videoWidth: video.videoWidth,
+                videoHeight: video.videoHeight,
+                error: video.error,
+                paused: video.paused,
+              });
+
+              video.play().catch(console.error);
+            }}
             className="w-full h-full object-cover"
           >
-            <source src={setupVideo} type="video/mp4" />
+            Your browser does not support the video tag.
           </video>
           <div className="w-full h-full bg-black/50 z-10 absolute top-0 left-0">
             <div
@@ -964,7 +1016,7 @@ export const Setup: React.FC = () => {
                                           <button
                                             className="w-full text-left text-xs text-foreground/70 hover:underline cursor-pointer"
                                             type="button"
-                                            onClick={() => {}}
+                                            onClick={() => { }}
                                           >
                                             Check For Updates
                                           </button>

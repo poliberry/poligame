@@ -33,6 +33,7 @@ export interface Game {
 
 export interface GameMetadata {
   appId?: string;
+  launchArguments?: string;
   storeUrl?: string;
   dlc?: DLCEntry[];
   updates?: UpdateEntry[];

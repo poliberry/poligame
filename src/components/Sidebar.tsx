@@ -13,11 +13,6 @@ interface NavItem {
 const navItems: NavItem[] = [
   { path: "/", label: "Library", icon: <Library size={20} /> },
   { path: "/community", label: "Community", icon: <Users size={20} /> },
-  {
-    path: "/marketplace",
-    label: "Marketplace",
-    icon: <ShoppingBag size={20} />,
-  },
   { path: "/profile", label: "Profile", icon: <CircleUser size={20} /> },
 ];
 

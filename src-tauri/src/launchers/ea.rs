@@ -2,11 +2,25 @@ use serde::{Deserialize, Serialize};
 use std::path::PathBuf;
 use std::fs;
 
+fn sanitize_executable_field(raw: &str) -> String {
+    let trimmed = raw.trim().trim_matches('"');
+
+    if trimmed.contains(".exe") {
+        let lower = trimmed.to_lowercase();
+        if let Some(idx) = lower.find(".exe") {
+            return trimmed[..idx + 4].trim_matches('"').to_string();
+        }
+    }
+
+    trimmed.to_string()
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct EAGame {
     pub id: String,
     pub title: String,
     pub install_path: String,
+    pub executable_path: Option<String>,
 }
 
 #[cfg(target_os = "windows")]
@@ -44,7 +58,7 @@ pub fn get_ea_path() -> Result<PathBuf, String> {
                 let program_files = std::env::var("ProgramFiles(x86)")
                     .or_else(|_| std::env::var("ProgramFiles"))
                     .ok()?;
-                let path = PathBuf::from(program_files).join("Electronic Arts/EA Desktop");
+                let path = PathBuf::from(&program_files).join("Electronic Arts/EA Desktop");
                 if path.exists() {
                     Some(path)
                 } else {
@@ -103,11 +117,30 @@ fn parse_ea_manifest(path: &PathBuf) -> Option<EAGame> {
         .get("installPath")
         .and_then(|v| v.as_str())
         .unwrap_or("");
+
+    let executable = json
+        .get("executablePath")
+        .or_else(|| json.get("launchPath"))
+        .or_else(|| json.get("executable"))
+        .and_then(|v| v.as_str());
+
+    let executable_path = executable.map(|exe| {
+        let sanitized = sanitize_executable_field(exe);
+        let exe_path = PathBuf::from(&sanitized);
+        if exe_path.is_absolute() {
+            exe_path
+        } else {
+            PathBuf::from(install_path).join(exe_path)
+        }
+        .to_string_lossy()
+        .to_string()
+    });
     
     Some(EAGame {
         id: id.to_string(),
         title: title.to_string(),
         install_path: install_path.to_string(),
+        executable_path,
     })
 }
 

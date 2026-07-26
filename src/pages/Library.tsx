@@ -1,9 +1,12 @@
 import React, { useEffect, useState } from "react";
+import { listen } from "@tauri-apps/api/event";
 import { useGameStore } from "@/stores/gameStore";
 import { useLibraryContext } from "@/contexts/LibraryContext";
 import { Button } from "@/components/ui/button";
 import { invoke } from "@tauri-apps/api/core";
 import {
+  ChevronLeft,
+  ChevronRight,
   RefreshCw,
   Plus,
   Shuffle,
@@ -25,6 +28,121 @@ import { Id } from "../../convex/_generated/dataModel";
 import { useNavigate } from "react-router-dom";
 // @ts-ignore
 import welcomeBkg from "@/public/setup-bkg.png";
+
+interface HorizontalGameRailProps {
+  games: any[];
+  onCardClick?: (gameId: string) => void;
+  onRefresh: () => void;
+}
+
+const HorizontalGameRail: React.FC<HorizontalGameRailProps> = ({
+  games,
+  onCardClick,
+  onRefresh,
+}) => {
+  const railRef = React.useRef<HTMLDivElement>(null);
+  const [canScrollLeft, setCanScrollLeft] = useState(false);
+  const [canScrollRight, setCanScrollRight] = useState(false);
+
+  const updateScrollButtons = React.useCallback(() => {
+    const rail = railRef.current;
+    if (!rail) return;
+
+    const maxScrollLeft = rail.scrollWidth - rail.clientWidth;
+    setCanScrollLeft(rail.scrollLeft > 8);
+    setCanScrollRight(rail.scrollLeft < maxScrollLeft - 8);
+  }, []);
+
+  useEffect(() => {
+    updateScrollButtons();
+  }, [games, updateScrollButtons]);
+
+  useEffect(() => {
+    const rail = railRef.current;
+    if (!rail) return;
+
+    const handleScroll = () => updateScrollButtons();
+    rail.addEventListener("scroll", handleScroll, { passive: true });
+
+    const resizeObserver = new ResizeObserver(() => updateScrollButtons());
+    resizeObserver.observe(rail);
+
+    return () => {
+      rail.removeEventListener("scroll", handleScroll);
+      resizeObserver.disconnect();
+    };
+  }, [updateScrollButtons]);
+
+  const scrollByCards = (direction: "left" | "right") => {
+    const rail = railRef.current;
+    if (!rail) return;
+    const amount = Math.max(rail.clientWidth * 0.75, 260);
+    rail.scrollBy({
+      left: direction === "left" ? -amount : amount,
+      behavior: "smooth",
+    });
+  };
+
+  const handleWheelScroll = (event: React.WheelEvent<HTMLDivElement>) => {
+    const rail = railRef.current;
+    if (!rail) return;
+
+    const isMostlyVertical = Math.abs(event.deltaY) > Math.abs(event.deltaX);
+    if (isMostlyVertical) {
+      rail.scrollBy({
+        left: event.deltaY,
+        behavior: "auto",
+      });
+      event.preventDefault();
+    }
+  };
+
+  return (
+    <div className="relative group">
+      {canScrollLeft && (
+        <Button
+          type="button"
+          size="icon"
+          variant="secondary"
+          className="absolute left-0 top-1/2 z-10 -translate-y-1/2 rounded-full bg-black/50 hover:bg-black/70 backdrop-blur-sm"
+          onClick={() => scrollByCards("left")}
+          aria-label="Scroll left"
+        >
+          <ChevronLeft className="h-4 w-4" />
+        </Button>
+      )}
+
+      <div
+        ref={railRef}
+        className="scrollbar-hide flex flex-row gap-5 overflow-x-auto overflow-y-hidden px-5 py-5 -mx-5"
+        onWheel={handleWheelScroll}
+      >
+        {games.map((game) => (
+          <div
+            key={game.id}
+            onClick={() => onCardClick?.(game.id)}
+            className={`flex-shrink-0 ${onCardClick ? "cursor-pointer hover:opacity-80 transition-opacity" : ""}`}
+          >
+            <GameCard game={game} viewMode="grid" onRefresh={onRefresh} />
+          </div>
+        ))}
+      </div>
+
+      {canScrollRight && (
+        <Button
+          type="button"
+          size="icon"
+          variant="secondary"
+          className="absolute right-0 top-1/2 z-10 -translate-y-1/2 rounded-full bg-black/50 hover:bg-black/70 backdrop-blur-sm"
+          onClick={() => scrollByCards("right")}
+          aria-label="Scroll right"
+        >
+          <ChevronRight className="h-4 w-4" />
+        </Button>
+      )}
+    </div>
+  );
+};
 
 const Library: React.FC = () => {
   const { games, isLoading, setGames } = useGameStore();
@@ -52,6 +170,39 @@ const Library: React.FC = () => {
       setGames(allGames);
     } catch (error) {
       console.error("Error refreshing games:", error);
+    }
+  };
+
+  useEffect(() => {
+    let unlisten: (() => void) | undefined;
+
+    const setup = async () => {
+      try {
+        unlisten = await listen("custom-app-updated", async () => {
+          await handleRefreshGames();
+        });
+      } catch (error) {
+        console.debug("Custom app update listener unavailable", error);
+      }
+    };
+
+    setup();
+
+    return () => {
+      if (unlisten) {
+        unlisten();
+      }
+    };
+  }, []);
+
+  const handleOpenAddCustomApp = async () => {
+    try {
+      await invoke("create_custom_app_dialog_window", {
+        action: "add",
+      });
+    } catch (error) {
+      console.debug("Custom dialog window unavailable, falling back inline", error);
+      setShowAddDialog(true);
     }
   };
 
@@ -182,7 +333,7 @@ const Library: React.FC = () => {
           <Button
             variant="outline"
             size="icon"
-            onClick={() => setShowAddDialog(true)}
+            onClick={handleOpenAddCustomApp}
             className="cursor-pointer rounded-full hover:text-[var(--theme-accent)] transition-colors"
             title="Add a custom game to your library"
           >
@@ -230,31 +381,11 @@ const Library: React.FC = () => {
                 Let's jump back in
               </h2>
             </div>
-            <div className="flex flex-row gap-4 overflow-visible z-50 scrollbar-hide">
-              {" "}
-              {jumpBackInGames.map((game) => (
-                <div
-                  key={game.id}
-                  onClick={() => navigate(`/game/${game.id}`)}
-                  className="flex-shrink-0 cursor-pointer hover:opacity-80 transition-opacity"
-                >
-                  <GameCard
-                    game={game}
-                    viewMode="grid"
-                    onRefresh={handleRefreshGames}
-                  />
-                </div>
-              ))}
-            </div>
-            <style>{`
-            .scrollbar-hide {
-              -ms-overflow-style: none;
-              scrollbar-width: none;
-            }
-            .scrollbar-hide::-webkit-scrollbar {
-              display: none;
-            }
-          `}</style>
+            <HorizontalGameRail
+              games={jumpBackInGames}
+              onCardClick={(gameId) => navigate(`/game/${gameId}`)}
+              onRefresh={handleRefreshGames}
+            />
           </div>
         )}
 
@@ -308,16 +439,10 @@ const Library: React.FC = () => {
                     Your most played games
                   </h2>
                 </div>
-                <div className="flex flex-row flex-wrap gap-4">
-                  {mostPlayedGames.map((game) => (
-                    <GameCard
-                      key={game.id}
-                      game={game}
-                      viewMode="grid"
-                      onRefresh={handleRefreshGames}
-                    />
-                  ))}
-                </div>
+                <HorizontalGameRail
+                  games={mostPlayedGames}
+                  onRefresh={handleRefreshGames}
+                />
               </div>
             )}
 
@@ -426,6 +551,16 @@ const Library: React.FC = () => {
           </div>
         </div>
       )}
+
+      <style>{`
+        .scrollbar-hide {
+          -ms-overflow-style: none;
+          scrollbar-width: none;
+        }
+        .scrollbar-hide::-webkit-scrollbar {
+          display: none;
+        }
+      `}</style>
     </div>
   );
 };

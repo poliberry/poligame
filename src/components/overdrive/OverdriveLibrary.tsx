@@ -283,7 +283,7 @@ const OverdriveLibrary: React.FC<OverdriveLibraryProps> = ({
       animate(scrollX, targetScrollLeft, {
         duration: 0.3,
         ease: [0.4, 0, 0.2, 1],
-        onUpdate: (latest) => {
+        onUpdate: (latest: any) => {
           if (scrollContainer) {
             scrollContainer.scrollLeft = latest;
           }

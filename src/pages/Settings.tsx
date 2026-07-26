@@ -22,6 +22,14 @@ import { LibraryHygiene } from "@/components/LibraryHygiene";
 
 type TabId = "general" | "library" | "browser" | "accessibility" | "about";
 
+interface UpdateCheckResult {
+  available: boolean;
+  current_version: string;
+  version: string | null;
+  notes: string | null;
+  date: string | null;
+}
+
 const Settings: React.FC = () => {
   const { settings, setSettings, updateSettings } = useSettingsStore();
   const { theme, setTheme } = useTheme();
@@ -33,6 +41,10 @@ const Settings: React.FC = () => {
   const [buttonSecondaryColor, setButtonSecondaryColor] = useState(themeColors.buttonSecondary || themeColors.accent);
   const [backgroundColor, setBackgroundColor] = useState(themeColors.background);
   const [panelColor, setPanelColor] = useState(themeColors.panel);
+  const [updateInfo, setUpdateInfo] = useState<UpdateCheckResult | null>(null);
+  const [isCheckingUpdates, setIsCheckingUpdates] = useState(false);
+  const [isInstallingUpdate, setIsInstallingUpdate] = useState(false);
+  const [updateMessage, setUpdateMessage] = useState<string | null>(null);
 
   useEffect(() => {
     loadSettings();
@@ -94,6 +106,44 @@ const Settings: React.FC = () => {
     } catch (error) {
       console.error("Failed to close settings window:", error);
       alert("Failed to close settings window");
+    }
+  };
+
+  const handleCheckForUpdates = async () => {
+    setIsCheckingUpdates(true);
+    setUpdateMessage(null);
+
+    try {
+      const result = await invoke<UpdateCheckResult>("check_for_app_update");
+      setUpdateInfo(result);
+
+      if (result.available) {
+        setUpdateMessage(`Update available: ${result.version}`);
+      } else {
+        setUpdateMessage("You are up to date.");
+      }
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Failed to check for updates.";
+      setUpdateMessage(message);
+    } finally {
+      setIsCheckingUpdates(false);
+    }
+  };
+
+  const handleInstallUpdate = async () => {
+    setIsInstallingUpdate(true);
+    setUpdateMessage(null);
+
+    try {
+      const updated = await invoke<boolean>("install_app_update");
+      if (!updated) {
+        setUpdateMessage("No update available right now.");
+      }
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Failed to install update.";
+      setUpdateMessage(message);
+    } finally {
+      setIsInstallingUpdate(false);
     }
   };
 
@@ -456,6 +506,32 @@ const Settings: React.FC = () => {
                   </p>
                   <p>Version 1.0.0</p>
                   <p>Game aggregator with marketplace functionality</p>
+                </div>
+                <div className="mt-6 space-y-3">
+                  <h3 className="text-sm uppercase tracking-wide text-foreground/70">Updates</h3>
+                  <div className="flex flex-wrap gap-2">
+                    <Button
+                      onClick={() => void handleCheckForUpdates()}
+                      disabled={isCheckingUpdates || isInstallingUpdate}
+                    >
+                      {isCheckingUpdates ? "Checking..." : "Check for Updates"}
+                    </Button>
+                    <Button
+                      variant="outline"
+                      onClick={() => void handleInstallUpdate()}
+                      disabled={!updateInfo?.available || isCheckingUpdates || isInstallingUpdate}
+                    >
+                      {isInstallingUpdate ? "Installing..." : "Install Update"}
+                    </Button>
+                  </div>
+                  {updateInfo?.available && (
+                    <p className="text-sm text-foreground/70">
+                      New version {updateInfo.version} is available. Current version: {updateInfo.current_version}
+                    </p>
+                  )}
+                  {updateMessage && (
+                    <p className="text-sm text-foreground/70">{updateMessage}</p>
+                  )}
                 </div>
               </MicaCard>
             )}

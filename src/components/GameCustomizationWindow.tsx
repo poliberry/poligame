@@ -1,16 +1,28 @@
 import React, { useState, useEffect, useRef } from "react";
 import { useMutation, useQuery } from "convex/react";
 import { invoke } from "@tauri-apps/api/core";
+import { listen } from "@tauri-apps/api/event";
 import { getCurrentWindow } from "@tauri-apps/api/window";
 import { open } from "@tauri-apps/plugin-dialog";
 import { api } from "../../convex/_generated/api";
 import { Id } from "../../convex/_generated/dataModel";
 import { useAuthStore } from "@/stores/authStore";
-import { X, Upload, Palette, Settings } from "lucide-react";
+import { ExternalLink, Palette, Search, Settings, Upload, X } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
 import { Button } from "./ui/button";
+
+interface SteamGridDbArtworkSelectionEvent {
+  requestId: string;
+  artwork?: {
+    customLogo?: string;
+    customHeroArt?: string;
+    customGridCoverArt?: string;
+  };
+  gameId?: number;
+  gameName?: string;
+}
 
 interface GameCustomizationWindowProps {
   gameId: string;
@@ -31,7 +43,11 @@ export const GameCustomizationWindow: React.FC<
   const [isSaving, setIsSaving] = useState(false);
   const [game, setGame] = useState<any>(null);
   const [executablePath, setExecutablePath] = useState("");
+  const [launchArguments, setLaunchArguments] = useState("");
   const [isCustomApp, setIsCustomApp] = useState(false);
+  const [steamGridDbGameId, setSteamGridDbGameId] = useState<number | null>(null);
+  const [steamGridDbSearchQuery, setSteamGridDbSearchQuery] = useState("");
+  const [pickerRequestId, setPickerRequestId] = useState<string | null>(null);
   const [selectedTab, setSelectedTab] = useState<"general" | "artwork">(
     "general",
   );
@@ -39,6 +55,7 @@ export const GameCustomizationWindow: React.FC<
   // Track original values to detect changes
   const [originalGame, setOriginalGame] = useState<any>(null);
   const [originalExecutablePath, setOriginalExecutablePath] = useState("");
+  const [originalLaunchArguments, setOriginalLaunchArguments] = useState("");
   const [originalCustomCoverArt, setOriginalCustomCoverArt] = useState<
     string | null
   >(null);
@@ -61,6 +78,9 @@ export const GameCustomizationWindow: React.FC<
 
     // Check executable path changes (for custom apps)
     if (isCustomApp && executablePath !== originalExecutablePath) return true;
+
+    // Check launch argument changes (for custom apps)
+    if (isCustomApp && launchArguments !== originalLaunchArguments) return true;
 
     // Check artwork changes
     if (customCoverArt !== originalCustomCoverArt) return true;
@@ -98,6 +118,9 @@ export const GameCustomizationWindow: React.FC<
           setExecutablePath(gameData.path);
           setOriginalExecutablePath(gameData.path);
         }
+        const gameLaunchArguments = gameData?.metadata?.launchArguments || "";
+        setLaunchArguments(gameLaunchArguments);
+        setOriginalLaunchArguments(gameLaunchArguments);
       } catch (error) {
         console.error("Error fetching game:", error);
       }
@@ -124,6 +147,14 @@ export const GameCustomizationWindow: React.FC<
       setOriginalCustomHeroArt(heroArt);
     }
   }, [customization]);
+
+  useEffect(() => {
+    if (!game?.title) {
+      return;
+    }
+
+    setSteamGridDbSearchQuery((currentQuery) => currentQuery || game.title);
+  }, [game?.title]);
 
   const handleImageUpload = (
     file: File | null,
@@ -188,6 +219,73 @@ export const GameCustomizationWindow: React.FC<
     }
   };
 
+  const openSteamGridDbPicker = async () => {
+    const requestId =
+      typeof crypto !== "undefined" && "randomUUID" in crypto
+        ? crypto.randomUUID()
+        : `sgdb-${Date.now()}`;
+
+    setPickerRequestId(requestId);
+
+    try {
+      await invoke("create_steamgriddb_picker_window", {
+        requestId,
+        query: steamGridDbSearchQuery || game?.title,
+        gameTitle: game?.title,
+      });
+    } catch (error: any) {
+      console.error("Failed to open SteamGridDB picker", error);
+      toast.error(error?.message || "Failed to open SteamGridDB picker");
+    }
+  };
+
+  useEffect(() => {
+    if (!pickerRequestId) {
+      return;
+    }
+
+    let unlisten: (() => void) | undefined;
+
+    const setupListener = async () => {
+      unlisten = await listen<SteamGridDbArtworkSelectionEvent>(
+        "steamgriddb-artwork-selected",
+        (event) => {
+          const payload = event.payload;
+          if (!payload || payload.requestId !== pickerRequestId) {
+            return;
+          }
+
+          if (payload.artwork?.customGridCoverArt) {
+            setCustomGridCoverArt(payload.artwork.customGridCoverArt);
+          }
+          if (payload.artwork?.customLogo) {
+            setCustomLogo(payload.artwork.customLogo);
+          }
+          if (payload.artwork?.customHeroArt) {
+            setCustomHeroArt(payload.artwork.customHeroArt);
+          }
+
+          if (payload.gameId) {
+            setSteamGridDbGameId(payload.gameId);
+          }
+          if (payload.gameName) {
+            setSteamGridDbSearchQuery(payload.gameName);
+          }
+
+          toast.success("SteamGridDB artwork applied");
+        },
+      );
+    };
+
+    void setupListener();
+
+    return () => {
+      if (unlisten) {
+        unlisten();
+      }
+    };
+  }, [pickerRequestId]);
+
   const handleSave = async () => {
     if (!user?.userId) {
       setError("You must be logged in to customize games");
@@ -232,6 +330,21 @@ export const GameCustomizationWindow: React.FC<
         }
       }
 
+      // Update launch arguments if it's a custom app and arguments changed
+      if (isCustomApp && launchArguments !== originalLaunchArguments) {
+        try {
+          await invoke("update_custom_app_arguments", {
+            gameId,
+            launchArguments: launchArguments.trim() || null,
+          });
+          setOriginalLaunchArguments(launchArguments);
+          toast.success("Launch arguments updated");
+        } catch (err: any) {
+          console.error("Error updating launch arguments:", err);
+          toast.error(err.message || "Failed to update launch arguments");
+        }
+      }
+
       // For both custom apps and launcher games, save artwork to Convex
       await updateCustomization({
         gameId,
@@ -265,6 +378,7 @@ export const GameCustomizationWindow: React.FC<
     // Revert executable path
     if (isCustomApp) {
       setExecutablePath(originalExecutablePath);
+      setLaunchArguments(originalLaunchArguments);
     }
 
     // Revert artwork
@@ -422,6 +536,23 @@ export const GameCustomizationWindow: React.FC<
                     </p>
                   </div>
                 )}
+
+                {isCustomApp && (
+                  <div className="space-y-2">
+                    <Label className="text-sm text-white/80">
+                      Launch Arguments
+                    </Label>
+                    <Input
+                      value={launchArguments}
+                      onChange={(e) => setLaunchArguments(e.target.value)}
+                      placeholder='Example: -novid +exec "my config.cfg"'
+                      className="bg-black/40 border-white/20 text-white"
+                    />
+                    <p className="text-xs text-white/50">
+                      Optional command line arguments passed when this app launches
+                    </p>
+                  </div>
+                )}
               </div>
             )}
 
@@ -498,7 +629,7 @@ export const GameCustomizationWindow: React.FC<
                         <img
                           src={customGridCoverArt}
                           alt="Grid Cover Art Preview"
-                          className="w-32 h-48 object-cover rounded border border-white/20"
+                          className="w-[200px] h-[300px] max-w-full object-contain rounded border border-white/20 bg-white/5 p-1"
                         />
                       )}
                       <div className="flex flex-col gap-2 flex-1">
@@ -643,6 +774,53 @@ export const GameCustomizationWindow: React.FC<
                         )}
                       </div>
                     </div>
+                  </div>
+
+                  <div className="rounded-lg border border-white/10 bg-black/20 p-4 space-y-4">
+                    <div className="flex items-start justify-between gap-4">
+                      <div>
+                        <h3 className="text-sm font-medium text-white">
+                          SteamGridDB search
+                        </h3>
+                        <p className="text-xs text-white/50">
+                          Search community artwork, preview the match, and apply grid, logo, hero, and icon assets.
+                        </p>
+                      </div>
+                      {steamGridDbGameId ? (
+                        <a
+                          href={`https://www.steamgriddb.com/game/${steamGridDbGameId}`}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="text-xs text-cyan-300 hover:text-cyan-200 flex items-center gap-1 shrink-0"
+                        >
+                          Open source
+                          <ExternalLink className="h-3 w-3" />
+                        </a>
+                      ) : null}
+                    </div>
+
+                    <div className="flex gap-2">
+                      <Input
+                        value={steamGridDbSearchQuery}
+                        onChange={(e) => setSteamGridDbSearchQuery(e.target.value)}
+                        placeholder="Search by game title (used by picker)"
+                        className="flex-1 bg-black/40 border-white/20 text-white"
+                      />
+                      <Button
+                        type="button"
+                        variant="outline"
+                        onClick={openSteamGridDbPicker}
+                      >
+                        <Search className="mr-2 h-4 w-4" />
+                        Open Picker
+                      </Button>
+                    </div>
+
+                    {steamGridDbGameId && (
+                      <p className="text-xs text-white/50">
+                        Selected SteamGridDB entry: {steamGridDbGameId}
+                      </p>
+                    )}
                   </div>
                 </div>
               </div>

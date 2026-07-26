@@ -2,7 +2,12 @@ import { useNovu } from "@novu/react";
 import { useEffect } from "react";
 import type { Notification as INotification } from "@novu/react";
 import { toast } from "sonner";
-import { sendNotification, isPermissionGranted, requestPermission } from "@tauri-apps/plugin-notification";
+import { invoke } from "@tauri-apps/api/core";
+import {
+  sendNotification,
+  isPermissionGranted,
+  requestPermission,
+} from "@tauri-apps/plugin-notification";
 
 function NotificationListener() {
   const novu = useNovu();
@@ -28,6 +33,15 @@ function NotificationListener() {
         description: body,
         duration: 5000,
       });
+
+      try {
+        // Route all desktop notifications through the backend so they keep
+        // working consistently while the app is hidden to tray.
+        await invoke("show_native_notification", { title, body });
+        return;
+      } catch (error) {
+        console.warn("Backend native notification failed, using JS fallback", error);
+      }
 
       let permissionGranted = await isPermissionGranted();
 

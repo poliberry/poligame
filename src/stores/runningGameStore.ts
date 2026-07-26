@@ -2,29 +2,146 @@ import { create } from "zustand";
 import { invoke } from "@tauri-apps/api/core";
 import { Game } from "@/types";
 
+interface CurrentGamePayload {
+  gameId: string;
+  name: string;
+}
+
 interface RunningGameStore {
   runningGameId: string | null;
   runningGame: Game | null;
+  runningGameStartedAt: number | null;
   isChecking: boolean;
+  isMonitoring: boolean;
   setRunningGame: (game: Game | null) => void;
+  setKnownGames: (games: Game[]) => void;
+  syncCurrentGame: () => Promise<void>;
+  startRealtimeMonitoring: () => void;
+  stopRealtimeMonitoring: () => void;
   checkGameRunning: (gameId: string) => Promise<boolean>;
   killGame: (gameId: string) => Promise<void>;
   startPolling: (gameId: string, game: Game) => void;
   stopPolling: () => void;
 }
 
-let pollingInterval: NodeJS.Timeout | null = null;
+let monitoringInterval: ReturnType<typeof setInterval> | null = null;
+let monitoringInFlight = false;
+let pendingSyncRequested = false;
+let knownGames: Game[] = [];
+
+const MONITOR_INTERVAL_MS = 1500;
+
+function resolveRunningGame(payload: CurrentGamePayload): Game {
+  const known = knownGames.find((game) => game.id === payload.gameId);
+  if (known) {
+    return known;
+  }
+
+  return {
+    id: payload.gameId,
+    title: payload.name,
+    launcher: "unknown",
+    installed: true,
+  };
+}
 
 export const useRunningGameStore = create<RunningGameStore>((set, get) => ({
   runningGameId: null,
   runningGame: null,
+  runningGameStartedAt: null,
   isChecking: false,
+  isMonitoring: false,
   
   setRunningGame: (game) => {
+    const previousGameId = get().runningGameId;
     set({ 
       runningGameId: game?.id || null, 
-      runningGame: game 
+      runningGame: game,
+      runningGameStartedAt:
+        game === null
+          ? null
+          : previousGameId === game.id
+            ? get().runningGameStartedAt
+            : Date.now(),
     });
+  },
+
+  setKnownGames: (games) => {
+    knownGames = games;
+  },
+
+  syncCurrentGame: async () => {
+    if (monitoringInFlight) {
+      pendingSyncRequested = true;
+      return;
+    }
+
+    monitoringInFlight = true;
+    pendingSyncRequested = false;
+
+    try {
+      const currentGame = await invoke<CurrentGamePayload | null>("get_current_game");
+
+      if (!currentGame) {
+        if (get().runningGameId !== null) {
+          set({ runningGameId: null, runningGame: null, runningGameStartedAt: null });
+        }
+        return;
+      }
+
+      const resolvedGame = resolveRunningGame(currentGame);
+      const previous = get().runningGame;
+
+      const shouldUpdate =
+        get().runningGameId !== resolvedGame.id ||
+        !previous ||
+        previous.title !== resolvedGame.title ||
+        previous.icon !== resolvedGame.icon;
+
+      if (shouldUpdate) {
+        const isSameGame = get().runningGameId === resolvedGame.id;
+        set({
+          runningGameId: resolvedGame.id,
+          runningGame: resolvedGame,
+          runningGameStartedAt: isSameGame
+            ? get().runningGameStartedAt
+            : Date.now(),
+        });
+      }
+    } catch (error) {
+      console.error("Failed to sync current game:", error);
+    } finally {
+      monitoringInFlight = false;
+
+      // If a sync was requested while this run was in-flight, run one more pass
+      // immediately so state transitions are not dropped between intervals.
+      if (pendingSyncRequested) {
+        pendingSyncRequested = false;
+        void get().syncCurrentGame();
+      }
+    }
+  },
+
+  startRealtimeMonitoring: () => {
+    if (monitoringInterval) {
+      return;
+    }
+
+    set({ isMonitoring: true });
+
+    monitoringInterval = setInterval(() => {
+      void get().syncCurrentGame();
+    }, MONITOR_INTERVAL_MS);
+
+    void get().syncCurrentGame();
+  },
+
+  stopRealtimeMonitoring: () => {
+    if (monitoringInterval) {
+      clearInterval(monitoringInterval);
+      monitoringInterval = null;
+    }
+    set({ isMonitoring: false });
   },
   
   checkGameRunning: async (gameId: string) => {
@@ -43,67 +160,23 @@ export const useRunningGameStore = create<RunningGameStore>((set, get) => ({
   killGame: async (gameId: string) => {
     try {
       await invoke("kill_game_process", { gameId });
-      set({ runningGameId: null, runningGame: null });
-      get().stopPolling();
+      set({ runningGameId: null, runningGame: null, runningGameStartedAt: null });
+      void get().syncCurrentGame();
     } catch (error) {
       console.error("Failed to kill game:", error);
       throw error;
     }
   },
   
-  startPolling: (gameId: string, game: Game) => {
-    // Stop any existing polling
-    get().stopPolling();
-    
-    let checkCount = 0;
-    const maxQuickChecks = 6; // 6 checks * 10 seconds = 60 seconds of quick polling
-    
-    const poll = async () => {
-      checkCount++;
-      const isRunning = await get().checkGameRunning(gameId);
-      
-      if (isRunning) {
-        // Game is running - set state
-        set({ runningGameId: gameId, runningGame: game });
-        
-        // After initial quick checks, switch to slower polling (3 minutes)
-        if (checkCount >= maxQuickChecks && pollingInterval) {
-          clearInterval(pollingInterval);
-          pollingInterval = setInterval(async () => {
-            const stillRunning = await get().checkGameRunning(gameId);
-            if (!stillRunning) {
-              // Game stopped running
-              set({ runningGameId: null, runningGame: null });
-              get().stopPolling();
-            } else {
-              // Still running, ensure state is set
-              set({ runningGameId: gameId, runningGame: game });
-            }
-          }, 3000); // 3 minutes
-        }
-      } else {
-        // Game not running
-        if (checkCount >= maxQuickChecks) {
-          // After initial checks, if still not running, stop tracking
-          set({ runningGameId: null, runningGame: null });
-          get().stopPolling();
-        }
-        // During initial checks, keep checking even if not running yet
-      }
-    };
-    
-    // Start with frequent checks (every 10 seconds) to catch the game starting
-    pollingInterval = setInterval(poll, 10000);
-    
-    // Also check immediately
-    poll();
+  startPolling: (_gameId: string, game: Game) => {
+    // Legacy API kept for compatibility with existing call sites.
+    set({ runningGameId: game.id, runningGame: game, runningGameStartedAt: Date.now() });
+    get().startRealtimeMonitoring();
+    void get().syncCurrentGame();
   },
   
   stopPolling: () => {
-    if (pollingInterval) {
-      clearInterval(pollingInterval);
-      pollingInterval = null;
-    }
+    // Legacy no-op to avoid accidentally disabling app-wide monitoring.
   },
 }));
 

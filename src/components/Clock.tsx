@@ -46,7 +46,7 @@ export const Clock: React.FC<ClockProps> = ({
 
   return (
     <div className={className} style={style}>
-      <div className="text-white" style={{ fontFamily: "'Unbounded', sans-serif" }}>
+      <div className="text-white expanded">
         <div className="text-lg font-semibold tabular-nums">{formatTime()}</div>
         {showSeconds && (
           <div className="text-xs text-white/60 mt-0.5">{formatDate()}</div>

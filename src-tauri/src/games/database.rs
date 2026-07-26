@@ -9,12 +9,14 @@ pub struct GameRecord {
     pub launcher_game_id: String,
     pub title: String,
     pub install_path: Option<String>,
+    pub executable_path: Option<String>,
     pub cover_art: Option<String>,
     pub griddb_id: Option<u32>,
     pub grid_cover_art: Option<String>,
     pub logo: Option<String>,
     pub header_art: Option<String>,
     pub icon: Option<String>,
+    pub launch_arguments: Option<String>,
     pub metadata_json: Option<String>,
     pub playtime_minutes: i64,
     pub last_played: Option<DateTime<Utc>>,
@@ -45,12 +47,14 @@ pub async fn init_database(pool: &SqlitePool) -> Result<(), sqlx::Error> {
             launcher_game_id TEXT NOT NULL,
             title TEXT NOT NULL,
             install_path TEXT,
+            executable_path TEXT,
             cover_art TEXT,
             griddb_id INTEGER,
             grid_cover_art TEXT,
             logo TEXT,
             header_art TEXT,
             icon TEXT,
+            launch_arguments TEXT,
             metadata_json TEXT,
             playtime_minutes INTEGER DEFAULT 0,
             last_played DATETIME,
@@ -77,6 +81,12 @@ pub async fn init_database(pool: &SqlitePool) -> Result<(), sqlx::Error> {
         .execute(pool)
         .await;
     let _ = sqlx::query("ALTER TABLE games ADD COLUMN icon TEXT")
+        .execute(pool)
+        .await;
+    let _ = sqlx::query("ALTER TABLE games ADD COLUMN executable_path TEXT")
+        .execute(pool)
+        .await;
+    let _ = sqlx::query("ALTER TABLE games ADD COLUMN launch_arguments TEXT")
         .execute(pool)
         .await;
 
@@ -114,9 +124,9 @@ pub async fn insert_game(pool: &SqlitePool, game: &GameRecord) -> Result<(), sql
     let result = sqlx::query(
         r#"
         INSERT OR REPLACE INTO games 
-        (id, launcher, launcher_game_id, title, install_path, cover_art, griddb_id, grid_cover_art, logo, header_art, icon, metadata_json, 
+        (id, launcher, launcher_game_id, title, install_path, executable_path, cover_art, griddb_id, grid_cover_art, logo, header_art, icon, launch_arguments, metadata_json, 
          playtime_minutes, last_played, created_at, updated_at)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         "#,
     )
     .bind(&game.id)
@@ -124,12 +134,14 @@ pub async fn insert_game(pool: &SqlitePool, game: &GameRecord) -> Result<(), sql
     .bind(&game.launcher_game_id)
     .bind(&game.title)
     .bind(&game.install_path)
+    .bind(&game.executable_path)
     .bind(&game.cover_art)
     .bind(game.griddb_id)
     .bind(&game.grid_cover_art)
     .bind(&game.logo)
     .bind(&game.header_art)
     .bind(&game.icon)
+    .bind(&game.launch_arguments)
     .bind(&game.metadata_json)
     .bind(game.playtime_minutes)
     .bind(game.last_played)
@@ -154,6 +166,7 @@ pub async fn get_all_games(pool: &SqlitePool) -> Result<Vec<GameRecord>, sqlx::E
     let rows = sqlx::query(
         r#"
         SELECT id, launcher, launcher_game_id, title, install_path, cover_art, griddb_id, grid_cover_art, logo, header_art, icon,
+               executable_path, launch_arguments,
                metadata_json, playtime_minutes, last_played, created_at, updated_at
         FROM games
         ORDER BY title
@@ -170,12 +183,60 @@ pub async fn get_all_games(pool: &SqlitePool) -> Result<Vec<GameRecord>, sqlx::E
             launcher_game_id: row.get("launcher_game_id"),
             title: row.get("title"),
             install_path: row.get("install_path"),
+            executable_path: row.get("executable_path"),
             cover_art: row.get("cover_art"),
             griddb_id: row.get("griddb_id"),
             grid_cover_art: row.get("grid_cover_art"),
             logo: row.get("logo"),
             header_art: row.get("header_art"),
             icon: row.get("icon"),
+            launch_arguments: row.get("launch_arguments"),
+            metadata_json: row.get("metadata_json"),
+            playtime_minutes: row.get("playtime_minutes"),
+            last_played: row.get("last_played"),
+            created_at: row.get("created_at"),
+            updated_at: row.get("updated_at"),
+        })
+        .collect();
+
+    Ok(games)
+}
+
+pub async fn get_recently_played_games(
+    pool: &SqlitePool,
+    limit: i64,
+) -> Result<Vec<GameRecord>, sqlx::Error> {
+    let rows = sqlx::query(
+        r#"
+        SELECT id, launcher, launcher_game_id, title, install_path, cover_art, griddb_id, grid_cover_art, logo, header_art, icon,
+               executable_path, launch_arguments,
+               metadata_json, playtime_minutes, last_played, created_at, updated_at
+        FROM games
+        WHERE last_played IS NOT NULL
+        ORDER BY last_played DESC
+        LIMIT ?
+        "#,
+    )
+    .bind(limit)
+    .fetch_all(pool)
+    .await?;
+
+    let games = rows
+        .iter()
+        .map(|row| GameRecord {
+            id: row.get("id"),
+            launcher: row.get("launcher"),
+            launcher_game_id: row.get("launcher_game_id"),
+            title: row.get("title"),
+            install_path: row.get("install_path"),
+            executable_path: row.get("executable_path"),
+            cover_art: row.get("cover_art"),
+            griddb_id: row.get("griddb_id"),
+            grid_cover_art: row.get("grid_cover_art"),
+            logo: row.get("logo"),
+            header_art: row.get("header_art"),
+            icon: row.get("icon"),
+            launch_arguments: row.get("launch_arguments"),
             metadata_json: row.get("metadata_json"),
             playtime_minutes: row.get("playtime_minutes"),
             last_played: row.get("last_played"),
@@ -191,6 +252,7 @@ pub async fn get_game_by_id(pool: &SqlitePool, game_id: &str) -> Result<Option<G
     let row = sqlx::query(
         r#"
         SELECT id, launcher, launcher_game_id, title, install_path, cover_art, griddb_id, grid_cover_art, logo, header_art, icon,
+               executable_path, launch_arguments,
                metadata_json, playtime_minutes, last_played, created_at, updated_at
         FROM games
         WHERE id = ?
@@ -207,12 +269,14 @@ pub async fn get_game_by_id(pool: &SqlitePool, game_id: &str) -> Result<Option<G
             launcher_game_id: row.get("launcher_game_id"),
             title: row.get("title"),
             install_path: row.get("install_path"),
+            executable_path: row.get("executable_path"),
             cover_art: row.get("cover_art"),
             griddb_id: row.get("griddb_id"),
             grid_cover_art: row.get("grid_cover_art"),
             logo: row.get("logo"),
             header_art: row.get("header_art"),
             icon: row.get("icon"),
+            launch_arguments: row.get("launch_arguments"),
             metadata_json: row.get("metadata_json"),
             playtime_minutes: row.get("playtime_minutes"),
             last_played: row.get("last_played"),

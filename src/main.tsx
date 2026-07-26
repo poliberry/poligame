@@ -3,7 +3,6 @@ import React from "react";
 import ReactDOM from "react-dom/client";
 import App from "./App";
 import { ConvexProviderWrapper } from "./components/ConvexProvider";
-import { NovuProvider } from "@novu/react";
 
 console.log("main.tsx: Starting React app initialization");
 console.log(

@@ -2,11 +2,25 @@ use serde::{Deserialize, Serialize};
 use std::path::PathBuf;
 use std::fs;
 
+fn sanitize_executable_field(raw: &str) -> String {
+    let trimmed = raw.trim().trim_matches('"');
+
+    if trimmed.contains(".exe") {
+        let lower = trimmed.to_lowercase();
+        if let Some(idx) = lower.find(".exe") {
+            return trimmed[..idx + 4].trim_matches('"').to_string();
+        }
+    }
+
+    trimmed.to_string()
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct EpicGame {
     pub id: String,
     pub title: String,
     pub install_path: String,
+    pub executable_path: Option<String>,
 }
 
 #[cfg(target_os = "windows")]
@@ -129,12 +143,31 @@ fn parse_epic_manifest(manifest_path: &PathBuf) -> Option<EpicGame> {
         .or_else(|| json.get("InstallPath"))
         .or_else(|| json.get("ManifestLocation"))
         .and_then(|v| v.as_str());
+
+    let launch_executable = json
+        .get("LaunchExecutable")
+        .or_else(|| json.get("Executable"))
+        .or_else(|| json.get("AppExecutable"))
+        .and_then(|v| v.as_str());
     
     if let (Some(id), Some(name), Some(path)) = (catalog_item_id, display_name, install_location) {
+        let executable_path = launch_executable.map(|exe| {
+            let sanitized = sanitize_executable_field(exe);
+            let exe_path = PathBuf::from(&sanitized);
+            if exe_path.is_absolute() {
+                exe_path
+            } else {
+                PathBuf::from(path).join(exe_path)
+            }
+            .to_string_lossy()
+            .to_string()
+        });
+
         Some(EpicGame {
             id: id.to_string(),
             title: name.to_string(),
             install_path: path.to_string(),
+            executable_path,
         })
     } else {
         eprintln!("Missing required fields in manifest {:?}", manifest_path);

@@ -3,11 +3,14 @@ pub mod requirements;
 
 use serde::{Deserialize, Serialize};
 use sqlx::sqlite::SqlitePool;
+use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::OnceLock;
 use uuid::Uuid;
 use chrono::Utc;
+use std::path::PathBuf;
 
 static DB_POOL: OnceLock<SqlitePool> = OnceLock::new();
+static LAUNCH_IN_PROGRESS: AtomicBool = AtomicBool::new(false);
 
 pub async fn init_database() -> Result<(), String> {
     use std::fs;
@@ -58,6 +61,10 @@ fn executable_name_candidates(path: &str) -> Vec<String> {
     let mut candidates = Vec::new();
     let p = std::path::Path::new(path);
 
+    if p.is_dir() {
+        return candidates;
+    }
+
     if let Some(file_name) = p.file_name().and_then(|n| n.to_str()) {
         let file_name_lower = file_name.to_lowercase();
         if !file_name_lower.is_empty() {
@@ -85,39 +92,641 @@ fn executable_name_candidates(path: &str) -> Vec<String> {
     candidates
 }
 
-fn process_matches_executable(process: &sysinfo::Process, path: &str, candidates: &[String]) -> bool {
-    let proc_name = process.name().to_lowercase();
-    if candidates
-        .iter()
-        .any(|name| proc_name == *name || proc_name.contains(name))
-    {
-        return true;
+fn push_name_variants(candidates: &mut Vec<String>, value: &str) {
+    let trimmed = value.trim().trim_matches('"');
+    if trimmed.is_empty() {
+        return;
     }
 
-    let target_path = path.to_lowercase();
+    let lower = trimmed.to_lowercase();
+    candidates.push(lower.clone());
 
-    if let Some(exe_path) = process.exe().and_then(|p| p.to_str()) {
-        let exe_path = exe_path.to_lowercase();
+    if let Some(stem) = lower.strip_suffix(".exe") {
+        if !stem.is_empty() {
+            candidates.push(stem.to_string());
+        }
+    }
+}
 
-        if target_path.ends_with(".app") {
-            let bundle_exec_prefix = format!("{}/contents/macos/", target_path);
-            if exe_path.starts_with(&bundle_exec_prefix) || exe_path.starts_with(&target_path) {
+fn metadata_process_name_candidates(game: &database::GameRecord) -> Vec<String> {
+    let mut candidates = Vec::new();
+
+    let metadata_json = match &game.metadata_json {
+        Some(metadata_json) => metadata_json,
+        None => return candidates,
+    };
+
+    let metadata = match serde_json::from_str::<serde_json::Value>(metadata_json) {
+        Ok(metadata) => metadata,
+        Err(_) => return candidates,
+    };
+
+    for key in ["process_names", "processNames"] {
+        if let Some(values) = metadata.get(key).and_then(|value| value.as_array()) {
+            for value in values {
+                if let Some(name) = value.as_str() {
+                    push_name_variants(&mut candidates, name);
+                }
+            }
+        }
+    }
+
+    candidates.sort();
+    candidates.dedup();
+    candidates
+}
+
+fn runtime_process_candidates(game: &database::GameRecord) -> Vec<String> {
+    let mut candidates = Vec::new();
+
+    if let Some(path) = runtime_executable_path(game) {
+        candidates.extend(executable_name_candidates(path));
+    }
+
+    candidates.extend(metadata_process_name_candidates(game));
+
+    candidates.sort();
+    candidates.dedup();
+    candidates
+}
+
+fn is_game_running_record(game: &database::GameRecord) -> bool {
+    let Some(path) = runtime_executable_path(game) else {
+        return false;
+    };
+
+    let candidates = runtime_process_candidates(game);
+    if candidates.is_empty() {
+        return false;
+    }
+
+    let mut system = System::new_all();
+    system.refresh_all();
+
+    system
+        .processes()
+        .values()
+        .any(|process| process_matches_executable(process, path, &candidates))
+}
+
+fn latest_matching_process_start_time(
+    game: &database::GameRecord,
+    system: &System,
+) -> Option<u64> {
+    let path = runtime_executable_path(game)?;
+    let candidates = runtime_process_candidates(game);
+    if candidates.is_empty() {
+        return None;
+    }
+
+    system
+        .processes()
+        .values()
+        .filter(|process| {
+            !is_launcher_process(process.name())
+                && process_matches_executable(process, path, &candidates)
+        })
+        .map(|process| process.start_time())
+        .max()
+}
+
+fn process_matches_executable(process: &sysinfo::Process, path: &str, candidates: &[String]) -> bool {
+    let target = std::path::Path::new(path);
+
+    let normalize = |s: &str| s.to_lowercase().replace('\\', "/");
+    let target_norm = normalize(path).trim_end_matches('/').to_string();
+    let target_dir_prefix = format!("{}/", target_norm);
+    let proc_name = normalize(process.name());
+    let proc_stem = process
+        .exe()
+        .and_then(|p| p.file_stem())
+        .and_then(|s| s.to_str())
+        .map(normalize)
+        .unwrap_or_default();
+    let proc_file = process
+        .exe()
+        .and_then(|p| p.file_name())
+        .and_then(|s| s.to_str())
+        .map(normalize)
+        .unwrap_or_default();
+
+    let name_matches = |candidate: &str| {
+        let candidate = normalize(candidate);
+        !candidate.is_empty()
+            && (proc_name == candidate
+                || proc_name.contains(&candidate)
+                || proc_stem == candidate
+                || proc_stem.contains(&candidate)
+                || proc_file == candidate
+                || proc_file.contains(&candidate))
+    };
+
+    // If only a game install directory is available, match processes whose executable
+    // lives inside that directory (prevents sticky false positives from launcher args).
+    if target.is_dir() {
+        if let Some(exe_path) = process.exe().and_then(|p| p.to_str()) {
+            let exe_norm = normalize(exe_path);
+            if exe_norm.starts_with(&target_dir_prefix) {
                 return true;
             }
-        } else if exe_path == target_path {
+        }
+    }
+
+    // macOS app bundle support.
+    if target_norm.ends_with(".app") {
+        if let Some(exe_path) = process.exe().and_then(|p| p.to_str()) {
+            let exe_norm = normalize(exe_path);
+            let bundle_exec_prefix = format!("{}/contents/macos/", target_norm);
+            return exe_norm.starts_with(&bundle_exec_prefix) || exe_norm.starts_with(&target_norm);
+        }
+        return false;
+    }
+
+    if let Some(exe_path) = process.exe().and_then(|p| p.to_str()) {
+        let exe_norm = normalize(exe_path);
+        if exe_norm == target_norm {
             return true;
         }
     }
 
-    let cmd = process.cmd();
-    if !cmd.is_empty() {
-        let cmd_str = cmd.join(" ").to_lowercase();
-        if cmd_str.contains(&target_path) {
-            return true;
+    candidates.iter().any(|candidate| name_matches(candidate))
+}
+
+fn runtime_executable_path(game: &database::GameRecord) -> Option<&str> {
+    game.executable_path
+        .as_deref()
+        .or(game.install_path.as_deref())
+}
+
+fn is_launcher_process(name: &str) -> bool {
+    let name = name.to_lowercase();
+    name.contains("steam")
+        || name.contains("epicgameslauncher")
+        || name.contains("eadesktop")
+        || name.contains("origin")
+        || name.contains("rockstar")
+        || name.contains("launcher")
+}
+
+fn parse_command_arguments(input: &str) -> Result<Vec<String>, String> {
+    let mut args = Vec::new();
+    let mut current = String::new();
+    let mut in_single = false;
+    let mut in_double = false;
+    let mut chars = input.chars().peekable();
+
+    while let Some(ch) = chars.next() {
+        if ch == '\\' {
+            if in_single {
+                current.push(ch);
+                continue;
+            }
+
+            let next = chars.peek().copied();
+            let should_escape = matches!(next, Some('"')) || (in_double && matches!(next, Some('\\')));
+
+            if should_escape {
+                current.push(chars.next().unwrap());
+            } else {
+                current.push(ch);
+            }
+
+            continue;
+        }
+
+        match ch {
+            '"' if !in_single => in_double = !in_double,
+            '\'' if !in_double => in_single = !in_single,
+            c if c.is_whitespace() && !in_single && !in_double => {
+                if !current.is_empty() {
+                    args.push(std::mem::take(&mut current));
+                }
+            }
+            _ => current.push(ch),
         }
     }
 
-    false
+    if in_single || in_double {
+        return Err("Launch arguments contain unmatched quotes".to_string());
+    }
+
+    if !current.is_empty() {
+        args.push(current);
+    }
+
+    Ok(args)
+}
+
+fn normalize_launch_arguments(input: Option<String>) -> Option<String> {
+    input
+        .map(|value| value.trim().to_string())
+        .filter(|value| !value.is_empty())
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct InstalledProgram {
+    pub name: String,
+    pub executable_path: String,
+    pub install_location: Option<String>,
+    pub publisher: Option<String>,
+    pub source: String,
+}
+
+#[cfg(target_os = "windows")]
+#[derive(Debug, Clone)]
+struct InstalledProgramMetadata {
+    name: String,
+    install_location: Option<String>,
+    publisher: Option<String>,
+}
+
+#[cfg(target_os = "windows")]
+fn normalize_registry_path_key(path: &str) -> String {
+    path
+        .trim()
+        .trim_matches('"')
+        .replace('/', "\\")
+        .to_lowercase()
+}
+
+#[cfg(target_os = "windows")]
+fn parse_launchable_executable(raw: &str) -> Option<String> {
+    let trimmed = raw.trim().trim_matches('"').split(',').next().unwrap_or("").trim();
+    if trimmed.is_empty() {
+        return None;
+    }
+
+    let path = PathBuf::from(trimmed);
+    if path.exists() && path.is_file() {
+        return Some(path.to_string_lossy().to_string());
+    }
+
+    if trimmed.to_lowercase().ends_with(".exe") {
+        return Some(trimmed.to_string());
+    }
+
+    None
+}
+
+#[cfg(target_os = "windows")]
+fn push_installed_program(
+    programs: &mut Vec<InstalledProgram>,
+    name: String,
+    executable_path: String,
+    install_location: Option<String>,
+    publisher: Option<String>,
+    source: &str,
+) {
+    if name.trim().is_empty() || executable_path.trim().is_empty() {
+        return;
+    }
+
+    programs.push(InstalledProgram {
+        name,
+        executable_path,
+        install_location,
+        publisher,
+        source: source.to_string(),
+    });
+}
+
+#[cfg(target_os = "windows")]
+fn scan_registry_uninstall_entries(
+    root: &winreg::RegKey,
+    key_path: &str,
+    executable_metadata: &mut std::collections::HashMap<String, InstalledProgramMetadata>,
+    install_metadata: &mut std::collections::HashMap<String, InstalledProgramMetadata>,
+) {
+    if let Ok(uninstall_root) = root.open_subkey(key_path) {
+        for entry in uninstall_root.enum_keys().flatten() {
+            let Ok(program_key) = uninstall_root.open_subkey(&entry) else {
+                continue;
+            };
+
+            let Some(name) = program_key
+                .get_value::<String, _>("DisplayName")
+                .ok()
+                .map(|value| value.trim().to_string())
+                .filter(|value| !value.is_empty())
+            else {
+                continue;
+            };
+
+            let install_location = program_key
+                .get_value::<String, _>("InstallLocation")
+                .ok()
+                .map(|value| value.trim().to_string())
+                .filter(|value| !value.is_empty());
+
+            let publisher = program_key
+                .get_value::<String, _>("Publisher")
+                .ok()
+                .map(|value| value.trim().to_string())
+                .filter(|value| !value.is_empty());
+
+            let metadata = InstalledProgramMetadata {
+                name,
+                install_location: install_location.clone(),
+                publisher: publisher.clone(),
+            };
+
+            if let Some(display_icon) = program_key.get_value::<String, _>("DisplayIcon").ok() {
+                if let Some(executable_path) = parse_launchable_executable(&display_icon) {
+                    executable_metadata.insert(normalize_registry_path_key(&executable_path), metadata.clone());
+                }
+            }
+
+            if let Some(location) = install_location {
+                install_metadata.insert(normalize_registry_path_key(&location), metadata);
+            }
+        }
+    }
+}
+
+#[cfg(target_os = "windows")]
+fn scan_registry_app_paths(
+    programs: &mut Vec<InstalledProgram>,
+    root: &winreg::RegKey,
+    key_path: &str,
+    executable_metadata: &std::collections::HashMap<String, InstalledProgramMetadata>,
+    install_metadata: &std::collections::HashMap<String, InstalledProgramMetadata>,
+    source: &str,
+) {
+    use std::path::Path;
+
+    if let Ok(app_paths) = root.open_subkey(key_path) {
+        for key_name in app_paths.enum_keys().flatten() {
+            if let Ok(program_key) = app_paths.open_subkey(&key_name) {
+                let default_name = key_name.trim().trim_end_matches(".exe").to_string();
+                let executable_path = program_key
+                    .get_value::<String, _>("")
+                    .ok()
+                    .and_then(|value| parse_launchable_executable(&value));
+
+                let Some(executable_path) = executable_path else {
+                    continue;
+                };
+
+                let executable_key = normalize_registry_path_key(&executable_path);
+                let metadata_by_exe = executable_metadata.get(&executable_key);
+
+                let path = Path::new(&executable_path);
+                let executable_dir_key = path
+                    .parent()
+                    .map(|parent| normalize_registry_path_key(&parent.to_string_lossy()));
+
+                let metadata_by_install = program_key
+                    .get_value::<String, _>("InstallLocation")
+                    .ok()
+                    .map(|value| normalize_registry_path_key(&value))
+                    .and_then(|key| install_metadata.get(&key))
+                    .or_else(|| {
+                        executable_dir_key
+                            .as_ref()
+                            .and_then(|key| install_metadata.get(key))
+                    });
+
+                let name = program_key
+                    .get_value::<String, _>("DisplayName")
+                    .ok()
+                    .filter(|value| !value.trim().is_empty())
+                    .or_else(|| metadata_by_exe.map(|meta| meta.name.clone()))
+                    .or_else(|| metadata_by_install.map(|meta| meta.name.clone()))
+                    .unwrap_or(default_name);
+                let install_location = program_key
+                    .get_value::<String, _>("InstallLocation")
+                    .ok()
+                    .or_else(|| metadata_by_exe.and_then(|meta| meta.install_location.clone()))
+                    .or_else(|| metadata_by_install.and_then(|meta| meta.install_location.clone()));
+                let publisher = program_key
+                    .get_value::<String, _>("Publisher")
+                    .ok()
+                    .or_else(|| metadata_by_exe.and_then(|meta| meta.publisher.clone()))
+                    .or_else(|| metadata_by_install.and_then(|meta| meta.publisher.clone()));
+
+                push_installed_program(
+                    programs,
+                    name,
+                    executable_path,
+                    install_location,
+                    publisher,
+                    source,
+                );
+            }
+        }
+    }
+}
+
+#[cfg(target_os = "windows")]
+#[tauri::command]
+pub async fn get_installed_programs() -> Result<Vec<InstalledProgram>, String> {
+    use winreg::enums::*;
+    use winreg::RegKey;
+
+    let hkcu = RegKey::predef(HKEY_CURRENT_USER);
+    let hklm = RegKey::predef(HKEY_LOCAL_MACHINE);
+    let mut programs = Vec::new();
+    let mut executable_metadata = std::collections::HashMap::new();
+    let mut install_metadata = std::collections::HashMap::new();
+
+    let uninstall_paths = [
+        (&hkcu, "SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Uninstall"),
+        (&hklm, "SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Uninstall"),
+        (&hklm, "SOFTWARE\\WOW6432Node\\Microsoft\\Windows\\CurrentVersion\\Uninstall"),
+    ];
+
+    for (root, key_path) in uninstall_paths {
+        scan_registry_uninstall_entries(
+            root,
+            key_path,
+            &mut executable_metadata,
+            &mut install_metadata,
+        );
+    }
+
+    let app_paths = [
+        (&hkcu, "SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\App Paths", "hkcu-app-paths"),
+        (&hklm, "SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\App Paths", "hklm-app-paths"),
+        (&hklm, "SOFTWARE\\WOW6432Node\\Microsoft\\Windows\\CurrentVersion\\App Paths", "hklm-wow6432-app-paths"),
+    ];
+
+    for (root, key_path, source) in app_paths {
+        scan_registry_app_paths(
+            &mut programs,
+            root,
+            key_path,
+            &executable_metadata,
+            &install_metadata,
+            source,
+        );
+    }
+
+    programs.sort_by(|a, b| a.name.to_lowercase().cmp(&b.name.to_lowercase()));
+    programs.dedup_by(|a, b| a.executable_path.eq_ignore_ascii_case(&b.executable_path));
+
+    Ok(programs)
+}
+
+#[cfg(not(target_os = "windows"))]
+#[tauri::command]
+pub async fn get_installed_programs() -> Result<Vec<InstalledProgram>, String> {
+    Ok(vec![])
+}
+
+#[tauri::command]
+pub async fn search_steamgriddb_games(
+    query: String,
+) -> Result<Vec<crate::steamgriddb::SteamGridDBSearchResult>, String> {
+    let trimmed = query.trim();
+    if trimmed.is_empty() {
+        return Ok(vec![]);
+    }
+
+    let client = crate::steamgriddb::SteamGridDBClient::new();
+    let results = client.search_games(trimmed).await?;
+
+    Ok(results
+        .into_iter()
+        .map(|game| crate::steamgriddb::SteamGridDBSearchResult {
+            url: format!("https://www.steamgriddb.com/game/{}", game.id),
+            id: game.id,
+            name: game.name,
+            verified: game.verified,
+            game_types: game.game_types,
+            release_date: game.release_date,
+        })
+        .collect())
+}
+
+#[tauri::command]
+pub async fn get_steamgriddb_game_images(
+    game_id: u32,
+) -> Result<crate::steamgriddb::GameImages, String> {
+    let client = crate::steamgriddb::SteamGridDBClient::new();
+    client.fetch_game_images(game_id).await
+}
+
+#[tauri::command]
+pub async fn get_steamgriddb_artwork_options(
+    game_id: u32,
+) -> Result<crate::steamgriddb::GameArtworkOptions, String> {
+    let client = crate::steamgriddb::SteamGridDBClient::new();
+    client.fetch_game_artwork_options(game_id).await
+}
+
+fn build_metadata_json_with_launch_arguments(
+    existing_metadata_json: Option<&str>,
+    launch_arguments: Option<String>,
+) -> Result<Option<String>, String> {
+    let mut metadata = if let Some(metadata_json) = existing_metadata_json {
+        match serde_json::from_str::<serde_json::Value>(metadata_json) {
+            Ok(serde_json::Value::Object(obj)) => obj,
+            Ok(_) => serde_json::Map::new(),
+            Err(e) => return Err(format!("Failed to parse game metadata: {}", e)),
+        }
+    } else {
+        serde_json::Map::new()
+    };
+
+    if let Some(arguments) = launch_arguments {
+        metadata.insert("launchArguments".to_string(), serde_json::Value::String(arguments));
+    } else {
+        metadata.remove("launchArguments");
+    }
+
+    if metadata.is_empty() {
+        Ok(None)
+    } else {
+        serde_json::to_string(&serde_json::Value::Object(metadata))
+            .map(Some)
+            .map_err(|e| format!("Failed to serialize game metadata: {}", e))
+    }
+}
+
+fn launch_arguments_from_metadata(game: &database::GameRecord) -> Option<String> {
+    if let Some(arguments) = game
+        .launch_arguments
+        .as_ref()
+        .map(|value| value.trim().to_string())
+        .filter(|value| !value.is_empty())
+    {
+        return Some(arguments);
+    }
+
+    let metadata_json = game.metadata_json.as_ref()?;
+    let metadata = serde_json::from_str::<serde_json::Value>(metadata_json).ok()?;
+    metadata
+        .get("launchArguments")
+        .and_then(|value| value.as_str())
+        .map(|value| value.trim().to_string())
+        .filter(|value| !value.is_empty())
+}
+
+fn spawn_custom_game_process(path: &str, arguments: &[String]) -> std::io::Result<()> {
+    #[cfg(target_os = "windows")]
+    {
+        use std::os::windows::process::CommandExt;
+
+        const CREATE_NEW_CONSOLE: u32 = 0x00000010;
+        const CREATE_NEW_PROCESS_GROUP: u32 = 0x00000200;
+
+        let mut command = std::process::Command::new(path);
+        command.args(arguments);
+
+        if let Some(parent) = std::path::Path::new(path).parent() {
+            if !parent.as_os_str().is_empty() {
+                command.current_dir(parent);
+            }
+        }
+
+        command.creation_flags(CREATE_NEW_CONSOLE | CREATE_NEW_PROCESS_GROUP);
+
+        return command.spawn().map(|_| ());
+    }
+
+    #[cfg(not(target_os = "windows"))]
+    {
+        use std::process::Command;
+
+        let mut command = Command::new(path);
+        command.args(arguments);
+
+        if let Some(parent) = std::path::Path::new(path).parent() {
+            if !parent.as_os_str().is_empty() {
+                command.current_dir(parent);
+            }
+        }
+
+        command.spawn().map(|_| ())
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::parse_command_arguments;
+
+    #[test]
+    fn keeps_windows_path_backslashes_intact() {
+        let parsed = parse_command_arguments(r#"--config "C:\Games\My Game\config.cfg""#)
+            .expect("arguments should parse");
+
+        assert_eq!(
+            parsed,
+            vec![
+                "--config".to_string(),
+                r#"C:\Games\My Game\config.cfg"#.to_string(),
+            ]
+        );
+    }
+
+    #[test]
+    fn supports_escaped_quotes_inside_double_quotes() {
+        let parsed = parse_command_arguments(r#"--title "Ace \"Attorney\"""#)
+            .expect("arguments should parse");
+
+        assert_eq!(parsed, vec!["--title".to_string(), "Ace \"Attorney\"".to_string()]);
+    }
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -143,8 +752,25 @@ pub struct CurrentGame {
     pub name: String,
 }
 
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct RecentGame {
+    pub id: String,
+    pub title: String,
+    pub launcher: String,
+    pub playtime_minutes: i64,
+    pub last_played: Option<chrono::DateTime<Utc>>,
+    pub cover_art: Option<String>,
+    pub grid_cover_art: Option<String>,
+    pub icon: Option<String>,
+}
+
 #[tauri::command]
-pub async fn add_custom_app(title: String, executable_path: String) -> Result<String, String> {
+pub async fn add_custom_app(
+    title: String,
+    executable_path: String,
+    launch_arguments: Option<String>,
+) -> Result<String, String> {
     if title.trim().is_empty() {
         return Err("Title cannot be empty".to_string());
     }
@@ -152,6 +778,16 @@ pub async fn add_custom_app(title: String, executable_path: String) -> Result<St
     if executable_path.trim().is_empty() {
         return Err("Executable path cannot be empty".to_string());
     }
+
+    let normalized_launch_arguments = normalize_launch_arguments(launch_arguments);
+    if let Some(arguments) = normalized_launch_arguments.as_ref() {
+        parse_command_arguments(arguments)?;
+    }
+
+    let metadata_json = build_metadata_json_with_launch_arguments(
+        None,
+        normalized_launch_arguments.clone(),
+    )?;
 
     let pool = get_db_pool()?;
     let now = Utc::now();
@@ -163,13 +799,15 @@ pub async fn add_custom_app(title: String, executable_path: String) -> Result<St
         launcher_game_id: game_id.clone(),
         title: title.trim().to_string(),
         install_path: Some(executable_path.trim().to_string()),
+        executable_path: Some(executable_path.trim().to_string()),
         cover_art: None,
         griddb_id: None,
         grid_cover_art: None,
         logo: None,
         header_art: None,
         icon: None,
-        metadata_json: None,
+        launch_arguments: normalized_launch_arguments,
+        metadata_json,
         playtime_minutes: 0,
         last_played: None,
         created_at: now,
@@ -184,19 +822,216 @@ pub async fn add_custom_app(title: String, executable_path: String) -> Result<St
 }
 
 #[tauri::command]
-pub async fn get_current_game() -> Result<Option<CurrentGame>, String> {
-    let games = get_all_games().await?;
+pub async fn update_custom_app_name(game_id: String, title: String) -> Result<(), String> {
+    let trimmed_title = title.trim();
+    if trimmed_title.is_empty() {
+        return Err("Title cannot be empty".to_string());
+    }
 
-    for game in games {
-        if check_game_running(game.id.clone()).await.unwrap_or(false) {
-            return Ok(Some(CurrentGame {
-                game_id: game.id,
-                name: game.title,
-            }));
+    let pool = get_db_pool()?;
+    let game = database::get_game_by_id(pool, &game_id)
+        .await
+        .map_err(|e| format!("Failed to get game: {}", e))?
+        .ok_or_else(|| "Game not found".to_string())?;
+
+    if game.launcher != "custom" {
+        return Err("Only custom apps can be renamed".to_string());
+    }
+
+    sqlx::query("UPDATE games SET title = ?, updated_at = ? WHERE id = ?")
+        .bind(trimmed_title)
+        .bind(Utc::now())
+        .bind(&game_id)
+        .execute(pool)
+        .await
+        .map_err(|e| format!("Failed to update custom app name: {}", e))?;
+
+    Ok(())
+}
+
+#[tauri::command]
+pub async fn update_custom_app_executable(
+    game_id: String,
+    executable_path: String,
+) -> Result<(), String> {
+    let trimmed_path = executable_path.trim();
+    if trimmed_path.is_empty() {
+        return Err("Executable path cannot be empty".to_string());
+    }
+
+    let pool = get_db_pool()?;
+    let game = database::get_game_by_id(pool, &game_id)
+        .await
+        .map_err(|e| format!("Failed to get game: {}", e))?
+        .ok_or_else(|| "Game not found".to_string())?;
+
+    if game.launcher != "custom" {
+        return Err("Only custom apps can update executable paths".to_string());
+    }
+
+    sqlx::query(
+        "UPDATE games SET executable_path = ?, install_path = ?, updated_at = ? WHERE id = ?",
+    )
+    .bind(trimmed_path)
+    .bind(trimmed_path)
+    .bind(Utc::now())
+    .bind(&game_id)
+    .execute(pool)
+    .await
+    .map_err(|e| format!("Failed to update custom app executable path: {}", e))?;
+
+    Ok(())
+}
+
+#[tauri::command]
+pub async fn update_custom_app_arguments(
+    game_id: String,
+    launch_arguments: Option<String>,
+) -> Result<(), String> {
+    let normalized_launch_arguments = normalize_launch_arguments(launch_arguments);
+    if let Some(arguments) = normalized_launch_arguments.as_ref() {
+        parse_command_arguments(arguments)?;
+    }
+
+    let pool = get_db_pool()?;
+    let game = database::get_game_by_id(pool, &game_id)
+        .await
+        .map_err(|e| format!("Failed to get game: {}", e))?
+        .ok_or_else(|| "Game not found".to_string())?;
+
+    if game.launcher != "custom" {
+        return Err("Only custom apps can update launch arguments".to_string());
+    }
+
+    let metadata_json = build_metadata_json_with_launch_arguments(
+        game.metadata_json.as_deref(),
+        normalized_launch_arguments.clone(),
+    )?;
+
+    sqlx::query("UPDATE games SET launch_arguments = ?, metadata_json = ?, updated_at = ? WHERE id = ?")
+        .bind(normalized_launch_arguments)
+        .bind(metadata_json)
+        .bind(Utc::now())
+        .bind(&game_id)
+        .execute(pool)
+        .await
+        .map_err(|e| format!("Failed to update custom app launch arguments: {}", e))?;
+
+    Ok(())
+}
+
+#[tauri::command]
+pub async fn delete_custom_app(game_id: String) -> Result<(), String> {
+    let pool = get_db_pool()?;
+    let game = database::get_game_by_id(pool, &game_id)
+        .await
+        .map_err(|e| format!("Failed to get game: {}", e))?
+        .ok_or_else(|| "Game not found".to_string())?;
+
+    if game.launcher != "custom" {
+        return Err("Only custom apps can be deleted".to_string());
+    }
+
+    sqlx::query("DELETE FROM games WHERE id = ?")
+        .bind(&game_id)
+        .execute(pool)
+        .await
+        .map_err(|e| format!("Failed to delete custom app: {}", e))?;
+
+    Ok(())
+}
+
+#[tauri::command]
+pub async fn get_current_game() -> Result<Option<CurrentGame>, String> {
+    let pool = get_db_pool()?;
+    let records = database::get_all_games(pool)
+        .await
+        .map_err(|e| format!("Failed to get games: {}", e))?;
+
+    let mut system = System::new_all();
+    system.refresh_all();
+
+    // Deterministic selection:
+    // choose the running game whose matching process started most recently.
+    // This avoids first-match bias from DB ordering when multiple games are running.
+    let mut best_match: Option<(u64, String, String)> = None;
+
+    for game in records {
+        if let Some(start_time) = latest_matching_process_start_time(&game, &system) {
+            match &best_match {
+                Some((best_start_time, _, _)) if *best_start_time >= start_time => {}
+                _ => {
+                    best_match = Some((start_time, game.id, game.title));
+                }
+            }
         }
     }
 
-    Ok(None)
+    Ok(best_match.map(|(_, game_id, name)| CurrentGame { game_id, name }))
+}
+
+#[tauri::command]
+pub async fn check_game_running(game_id: String) -> Result<bool, String> {
+    let pool = get_db_pool()?;
+    let record = database::get_game_by_id(pool, &game_id)
+        .await
+        .map_err(|e| format!("Failed to get game: {}", e))?;
+
+    match record {
+        Some(game) => Ok(is_game_running_record(&game)),
+        None => Ok(false),
+    }
+}
+
+#[tauri::command]
+pub async fn kill_game_process(game_id: String) -> Result<(), String> {
+    let pool = get_db_pool()?;
+    let record = database::get_game_by_id(pool, &game_id)
+        .await
+        .map_err(|e| format!("Failed to get game: {}", e))?;
+
+    match record {
+        Some(game) => {
+            use sysinfo::{Pid, System};
+            let mut system = System::new_all();
+            system.refresh_all();
+            let current_pid = std::process::id();
+
+            let mut killed = false;
+
+            if let Some(path) = runtime_executable_path(&game) {
+                let candidates = runtime_process_candidates(&game);
+                if !candidates.is_empty() {
+                    let pids_to_kill: Vec<Pid> = system
+                        .processes()
+                        .iter()
+                        .filter(|(_, process)| {
+                            let process_pid = process.pid().as_u32();
+                            !is_launcher_process(process.name())
+                                && process_pid != current_pid
+                                && process_matches_executable(process, path, &candidates)
+                        })
+                        .map(|(pid, _)| *pid)
+                        .collect();
+
+                    for pid in pids_to_kill {
+                        if let Some(process) = system.process(pid) {
+                            if process.kill() {
+                                killed = true;
+                            }
+                        }
+                    }
+                }
+            }
+
+            if killed {
+                Ok(())
+            } else {
+                Err("No matching game executable process found to kill".to_string())
+            }
+        }
+        None => Err("Game not found".to_string()),
+    }
 }
 
 #[tauri::command]
@@ -217,6 +1052,19 @@ pub async fn get_all_games() -> Result<Vec<Game>, String> {
             if r.launcher == "steam" {
                 metadata.insert("appId".to_string(), serde_json::Value::String(r.launcher_game_id.clone()));
             }
+            if let Some(arguments) = r.launch_arguments.as_ref() {
+                let trimmed = arguments.trim();
+                if !trimmed.is_empty() {
+                    metadata.insert("launchArguments".to_string(), serde_json::Value::String(trimmed.to_string()));
+                }
+            }
+            if let Some(metadata_json) = &r.metadata_json {
+                if let Ok(serde_json::Value::Object(obj)) = serde_json::from_str::<serde_json::Value>(metadata_json) {
+                    for (k, v) in obj {
+                        metadata.insert(k, v);
+                    }
+                }
+            }
             let metadata_value = if metadata.is_empty() {
                 None
             } else {
@@ -227,8 +1075,8 @@ pub async fn get_all_games() -> Result<Vec<Game>, String> {
                 id: r.id,
                 title: r.title,
                 launcher: r.launcher,
-                path: r.install_path.clone(),
-                installed: r.install_path.is_some(),
+                path: r.executable_path.clone().or(r.install_path.clone()),
+                installed: r.executable_path.is_some() || r.install_path.is_some(),
                 cover_art: r.cover_art,
                 grid_cover_art: r.grid_cover_art,
                 logo: r.logo,
@@ -241,6 +1089,30 @@ pub async fn get_all_games() -> Result<Vec<Game>, String> {
     
     eprintln!("Returning {} games", games.len());
     Ok(games)
+}
+
+#[tauri::command]
+pub async fn get_recently_played_games(limit: Option<u32>) -> Result<Vec<RecentGame>, String> {
+    let pool = get_db_pool()?;
+    let limit = limit.unwrap_or(5).clamp(1, 20) as i64;
+
+    let records = database::get_recently_played_games(pool, limit)
+        .await
+        .map_err(|e| format!("Failed to get recently played games: {}", e))?;
+
+    Ok(records
+        .into_iter()
+        .map(|r| RecentGame {
+            id: r.id,
+            title: r.title,
+            launcher: r.launcher,
+            playtime_minutes: r.playtime_minutes,
+            last_played: r.last_played,
+            cover_art: r.cover_art,
+            grid_cover_art: r.grid_cover_art,
+            icon: r.icon,
+        })
+        .collect())
 }
 
 #[tauri::command]
@@ -264,6 +1136,12 @@ pub async fn get_game_details(game_id: String) -> Result<Game, String> {
             if r.launcher == "steam" {
                 game_metadata.insert("appId".to_string(), serde_json::Value::String(r.launcher_game_id.clone()));
             }
+            if let Some(arguments) = r.launch_arguments.as_ref() {
+                let trimmed = arguments.trim();
+                if !trimmed.is_empty() {
+                    game_metadata.insert("launchArguments".to_string(), serde_json::Value::String(trimmed.to_string()));
+                }
+            }
             if let Some(meta) = metadata {
                 if let serde_json::Value::Object(obj) = meta {
                     for (k, v) in obj {
@@ -282,8 +1160,8 @@ pub async fn get_game_details(game_id: String) -> Result<Game, String> {
                 id: r.id,
                 title: r.title,
                 launcher: r.launcher,
-                path: r.install_path.clone(),
-                installed: r.install_path.is_some(),
+                path: r.executable_path.clone().or(r.install_path.clone()),
+                installed: r.executable_path.is_some() || r.install_path.is_some(),
                 cover_art: r.cover_art,
                 grid_cover_art: r.grid_cover_art,
                 logo: r.logo,
@@ -296,457 +1174,572 @@ pub async fn get_game_details(game_id: String) -> Result<Game, String> {
     }
 }
 
+use sysinfo::{System};
+
 #[tauri::command]
-pub async fn launch_game(game_id: String) -> Result<(), String> {
-    let pool = get_db_pool()?;
-    let record = database::get_game_by_id(pool, &game_id)
-        .await
-        .map_err(|e| format!("Failed to get game: {}", e))?;
-    
-    match record {
-        Some(game) => {
-            match game.launcher.as_str() {
-                "custom" => {
-                    let executable = game
-                        .install_path
-                        .clone()
-                        .ok_or_else(|| "Custom game has no executable path".to_string())?;
+pub async fn launch_game(
+    app: tauri::AppHandle,
+    game_id: String,
+) -> Result<(), String> {
 
-                    eprintln!("Launching custom game '{}' at {}", game.title, executable);
+    use std::{
+        process::Command,
+        time::Duration,
+    };
 
-                    #[cfg(target_os = "windows")]
-                    {
-                        use std::process::Command;
-                        Command::new(&executable)
-                            .spawn()
-                            .map_err(|e| format!("Failed to launch custom game: {}", e))?;
-                    }
+    use tauri::{
+        Emitter,
+        Manager,
+    };
 
-                    #[cfg(target_os = "macos")]
-                    {
-                        use std::process::Command;
-                        if executable.to_lowercase().ends_with(".app") {
-                            Command::new("open")
-                                .arg("-a")
-                                .arg(&executable)
-                                .spawn()
-                                .map_err(|e| format!("Failed to launch .app bundle: {}", e))?;
-                        } else {
-                            Command::new(&executable)
-                                .spawn()
-                                .map_err(|e| format!("Failed to launch custom game: {}", e))?;
-                        }
-                    }
 
-                    #[cfg(all(unix, not(target_os = "macos")))]
-                    {
-                        use std::process::Command;
-                        Command::new(&executable)
-                            .spawn()
-                            .map_err(|e| format!("Failed to launch custom game: {}", e))?;
-                    }
-
-                    eprintln!("Successfully launched custom game: {}", game.title);
-                    Ok(())
-                },
-                "steam" => {
-                    // Launch Steam game using steam:// protocol
-                    let steam_url = format!("steam://rungameid/{}", game.launcher_game_id);
-                    eprintln!("Launching Steam game: {}", steam_url);
-                    
-                    // Use the shell plugin to open the Steam protocol URL
-                    #[cfg(target_os = "windows")]
-                    {
-                        use std::process::Command;
-                        match Command::new("cmd")
-                            .args(["/C", "start", "", &steam_url])
-                            .spawn()
-                        {
-                            Ok(_) => {
-                                eprintln!("Successfully launched Steam game: {}", game.title);
-                                Ok(())
-                            },
-                            Err(e) => {
-                                eprintln!("Failed to launch Steam game: {}", e);
-                                Err(format!("Failed to launch game: {}", e))
-                            },
-                        }
-                    }
-                    
-                    #[cfg(not(target_os = "windows"))]
-                    {
-                        use std::process::Command;
-                        match Command::new("xdg-open")
-                            .arg(&steam_url)
-                            .spawn()
-                        {
-                            Ok(_) => {
-                                eprintln!("Successfully launched Steam game: {}", game.title);
-                                Ok(())
-                            },
-                            Err(e) => {
-                                eprintln!("Failed to launch Steam game: {}", e);
-                                Err(format!("Failed to launch game: {}", e))
-                            },
-                        }
-                    }
-                },
-                "epic" => {
-                    // Launch Steam game using steam:// protocol
-                    let steam_url = format!("com.epicgames.launcher://apps/{}?action=launch", game.title);
-                    eprintln!("Launching Epic game: {}", steam_url);
-                    
-                    // Use the shell plugin to open the Steam protocol URL
-                    #[cfg(target_os = "windows")]
-                    {
-                        use std::process::Command;
-                        match Command::new("cmd")
-                            .args(["/C", "start", "", &steam_url])
-                            .spawn()
-                        {
-                            Ok(_) => {
-                                eprintln!("Successfully launched Epic game: {}", game.title);
-                                Ok(())
-                            },
-                            Err(e) => {
-                                eprintln!("Failed to launch Epic game: {}", e);
-                                Err(format!("Failed to launch game: {}", e))
-                            },
-                        }
-                    }
-                    
-                    #[cfg(not(target_os = "windows"))]
-                    {
-                        use std::process::Command;
-                        match Command::new("xdg-open")
-                            .arg(&steam_url)
-                            .spawn()
-                        {
-                            Ok(_) => {
-                                eprintln!("Successfully launched Epic game: {}", game.title);
-                                Ok(())
-                            },
-                            Err(e) => {
-                                eprintln!("Failed to launch Epic game: {}", e);
-                                Err(format!("Failed to launch game: {}", e))
-                            },
-                        }
-                    }
-                }
-                _ => Err(format!("Game launching for {} launcher is not implemented", game.launcher)),
-            }
-        },
-        None => Err("Game not found".to_string()),
+    #[derive(Clone, serde::Serialize)]
+    struct LaunchStatus {
+        launch_id: String,
+        game_id: String,
+        status: String,
+        message: String,
     }
+
+
+    fn emit_status(
+        app: &tauri::AppHandle,
+        launch_id: &str,
+        game_id: &str,
+        status: &str,
+        message: &str,
+    ) {
+        let _ = app.emit(
+            "game-launch-status",
+            LaunchStatus {
+                launch_id: launch_id.to_string(),
+                game_id: game_id.to_string(),
+                status: status.to_string(),
+                message: message.to_string(),
+            },
+        );
+    }
+
+    fn close_launch_window(app: &tauri::AppHandle, launch_id: &str) {
+        if let Some(window) = app.get_webview_window(&format!("launch_game_{}", launch_id)) {
+            let _ = window.close();
+        }
+    }
+
+    fn launch_steam_silent(app_id: &str) -> std::io::Result<()> {
+        #[cfg(target_os="windows")]
+        {
+            if let Ok(steam_path) = crate::launchers::steam::get_steam_path() {
+                let steam_exe = steam_path.join("steam.exe");
+                if steam_exe.exists() {
+                    return Command::new(steam_exe)
+                        .args(["-silent", "-applaunch", app_id])
+                        .spawn()
+                        .map(|_| ());
+                }
+            }
+
+            let url = format!("steam://rungameid/{} -silent", app_id);
+            Command::new("cmd")
+                .args(["/C", "start", "", &url])
+                .spawn()
+                .map(|_| ())
+        }
+
+        #[cfg(not(target_os="windows"))]
+        {
+            let url = format!("steam://rungameid/{} -silent", app_id);
+            Command::new("xdg-open")
+                .arg(url)
+                .spawn()
+                .map(|_| ())
+        }
+    }
+
+    if LAUNCH_IN_PROGRESS
+        .compare_exchange(false, true, Ordering::SeqCst, Ordering::SeqCst)
+        .is_err()
+    {
+        return Err("A game launch is already in progress".to_string());
+    }
+
+    let pool = get_db_pool().map_err(|e| {
+        LAUNCH_IN_PROGRESS.store(false, Ordering::SeqCst);
+        e
+    })?;
+
+    let game = database::get_game_by_id(pool, &game_id)
+        .await
+        .map_err(|e| {
+            LAUNCH_IN_PROGRESS.store(false, Ordering::SeqCst);
+            e.to_string()
+        })?
+        .ok_or_else(|| {
+            LAUNCH_IN_PROGRESS.store(false, Ordering::SeqCst);
+            "Game not found".to_string()
+        })?;
+
+    if is_game_running_record(&game) {
+        LAUNCH_IN_PROGRESS.store(false, Ordering::SeqCst);
+        return Err(format!("{} is already running", game.title));
+    }
+
+    let use_process_polling = game.launcher != "custom";
+
+    let launch_id = Uuid::new_v4().to_string();
+
+    let build_launch_window = || {
+        tauri::WebviewWindowBuilder::new(
+            &app,
+            &format!("launch_game_{}", launch_id),
+            tauri::WebviewUrl::App(
+                format!(
+                    "index.html/#/game/{}/launch?launchId={}",
+                    game_id,
+                    launch_id
+                )
+                .into(),
+            ),
+        )
+        .title("Launch Game - PoliGame")
+        .inner_size(600.0, 400.0)
+        .resizable(false)
+        .decorations(false)
+        .always_on_top(false)
+        .center()
+        .build()
+    };
+
+    if let Some(existing_window) = app.get_webview_window(&format!("launch_game_{}", launch_id)) {
+        let route_json = serde_json::to_string(&format!("/game/{}/launch?launchId={}", game_id, launch_id))
+            .map_err(|e| {
+                LAUNCH_IN_PROGRESS.store(false, Ordering::SeqCst);
+                e.to_string()
+            })?;
+
+        if existing_window
+            .eval(&format!("window.location.hash = {};", route_json))
+            .is_ok()
+        {
+            let _ = existing_window.show();
+            let _ = existing_window.set_focus();
+        } else {
+            let _ = existing_window.close();
+            build_launch_window().map_err(|e| {
+                LAUNCH_IN_PROGRESS.store(false, Ordering::SeqCst);
+                e.to_string()
+            })?;
+        }
+    } else {
+        build_launch_window().map_err(|e| {
+            LAUNCH_IN_PROGRESS.store(false, Ordering::SeqCst);
+            e.to_string()
+        })?;
+    }
+
+
+
+    let app_handle = app.clone();
+    let game_id_clone = game_id.clone();
+    let launch_id_clone = launch_id.clone();
+    let game_clone = game.clone();
+
+
+
+    tauri::async_runtime::spawn(async move {
+        struct LaunchInProgressGuard;
+        impl Drop for LaunchInProgressGuard {
+            fn drop(&mut self) {
+                LAUNCH_IN_PROGRESS.store(false, Ordering::SeqCst);
+            }
+        }
+
+        let _launch_guard = LaunchInProgressGuard;
+
+        emit_status(
+            &app_handle,
+            &launch_id_clone,
+            &game_id_clone,
+            "loading",
+            "Loading game..."
+        );
+        let game = game_clone;
+
+
+
+        emit_status(
+            &app_handle,
+            &launch_id_clone,
+            &game_id_clone,
+            "launching",
+            &format!(
+                "Launching {}...",
+                game.title
+            )
+        );
+
+        //
+        // Launch game
+        //
+
+        let launch_result = match game.launcher.as_str() {
+
+
+            "custom" => {
+
+                if let Some(path) = runtime_executable_path(&game) {
+
+                    if let Some(arguments) = launch_arguments_from_metadata(&game) {
+                        match parse_command_arguments(&arguments) {
+                            Ok(parsed_arguments) => spawn_custom_game_process(path, &parsed_arguments),
+                            Err(e) => Err(std::io::Error::new(std::io::ErrorKind::InvalidInput, e)),
+                        }
+                    } else {
+                        spawn_custom_game_process(path, &[])
+                    }
+
+                } else {
+
+                    Err(
+                        std::io::Error::new(
+                            std::io::ErrorKind::NotFound,
+                            "Executable path missing"
+                        )
+                    )
+
+                }
+            }
+
+
+
+            "steam" => {
+                launch_steam_silent(&game.launcher_game_id)
+            }
+
+
+
+            "epic" => {
+
+                let url =
+                    format!(
+                        "com.epicgames.launcher://apps/{}?action=launch",
+                        game.title
+                    );
+
+
+                #[cfg(target_os="windows")]
+                {
+                    Command::new("cmd")
+                        .args([
+                            "/C",
+                            "start",
+                            "",
+                            &url
+                        ])
+                        .spawn()
+                        .map(|_| ())
+                }
+
+
+                #[cfg(not(target_os="windows"))]
+                {
+                    Command::new("xdg-open")
+                        .arg(url)
+                        .spawn()
+                        .map(|_| ())
+                }
+            }
+
+
+
+            _ => {
+                Err(
+                    std::io::Error::new(
+                        std::io::ErrorKind::Other,
+                        "Unsupported launcher"
+                    )
+                )
+            }
+        };
+
+
+
+        if let Err(e) = launch_result {
+
+            emit_status(
+                &app_handle,
+                &launch_id_clone,
+                &game_id_clone,
+                "error",
+                &format!(
+                    "Failed launching game: {}",
+                    e
+                )
+            );
+
+            close_launch_window(&app_handle, &launch_id_clone);
+
+            return;
+        }
+
+        if !use_process_polling {
+            emit_status(
+                &app_handle,
+                &launch_id_clone,
+                &game_id_clone,
+                "started",
+                "Game launch command sent"
+            );
+
+            tokio::time::sleep(
+                Duration::from_millis(800)
+            )
+            .await;
+
+            close_launch_window(&app_handle, &launch_id_clone);
+            return;
+        }
+
+
+
+        emit_status(
+            &app_handle,
+            &launch_id_clone,
+            &game_id_clone,
+            "waiting",
+            "Waiting for game to start..."
+        );
+
+
+
+        //
+        // Poll existing process checker
+        //
+
+        let mut attempts = 0u16;
+        const MAX_ATTEMPTS: u16 = 180; // 90 seconds at 500ms intervals
+
+        loop {
+
+            match check_game_running(
+                game_id_clone.clone()
+            )
+            .await
+            {
+
+                Ok(true) => {
+
+                    emit_status(
+                        &app_handle,
+                        &launch_id_clone,
+                        &game_id_clone,
+                        "started",
+                        "Game started!"
+                    );
+
+                    break;
+                }
+
+
+                Ok(false) => {}
+
+
+                Err(e) => {
+
+                    emit_status(
+                        &app_handle,
+                        &launch_id_clone,
+                        &game_id_clone,
+                        "error",
+                        &e
+                    );
+
+                    close_launch_window(&app_handle, &launch_id_clone);
+
+                    return;
+                }
+            }
+
+            attempts += 1;
+            if attempts >= MAX_ATTEMPTS {
+                emit_status(
+                    &app_handle,
+                    &launch_id_clone,
+                    &game_id_clone,
+                    "error",
+                    "Timed out waiting for game process to start"
+                );
+
+                close_launch_window(&app_handle, &launch_id_clone);
+                return;
+            }
+
+
+
+            tokio::time::sleep(
+                Duration::from_millis(500)
+            )
+            .await;
+        }
+
+
+
+        // Give UI time to show success
+
+        tokio::time::sleep(
+            Duration::from_millis(1000)
+        )
+        .await;
+
+
+
+        close_launch_window(&app_handle, &launch_id_clone);
+
+    });
+
+    Ok(())
 }
 
 #[tauri::command]
-pub async fn check_game_running(game_id: String) -> Result<bool, String> {
-    let pool = get_db_pool()?;
-    let record = database::get_game_by_id(pool, &game_id)
-        .await
-        .map_err(|e| format!("Failed to get game: {}", e))?;
-    
-    match record {
-        Some(game) => {
-            use sysinfo::System;
-            let mut system = System::new_all();
-            system.refresh_all();
-            
-            match game.launcher.as_str() {
-                "custom" => {
-                    if let Some(path) = &game.install_path {
-                        let candidates = executable_name_candidates(path);
-                        if !candidates.is_empty() {
-                            return Ok(system.processes().values().any(|p| {
-                                process_matches_executable(p, path, &candidates)
-                            }));
-                        }
-                    }
-                    Ok(false)
-                },
-                "steam" => {
-                    // For Steam games, check if Steam is running and if the game process is running
-                    let steam_app_id = &game.launcher_game_id;
-                    
-                    // Check if Steam client is running
-                    let steam_running = system.processes()
-                        .values()
-                        .any(|p| {
-                            p.name().to_lowercase().contains("steam")
-                        });
-                    
-                    if !steam_running {
-                        return Ok(false);
-                    }
-                    
-                    // For Steam games, check if the game executable is running
-                    if let Some(path) = &game.install_path {
-                        let exe_name = std::path::Path::new(path)
-                            .file_name()
-                            .and_then(|n| n.to_str())
-                            .map(|s| s.to_lowercase())
-                            .unwrap_or_default();
-                        
-                        if !exe_name.is_empty() {
-                            // Remove .exe extension for comparison
-                            let exe_name_no_ext = exe_name.trim_end_matches(".exe");
-                            
-                            // Check if any process matches the executable name
-                            for process in system.processes().values() {
-                                let proc_name = process.name().to_lowercase();
-                                if proc_name == exe_name || proc_name == exe_name_no_ext {
-                                    // Additional check: verify it's related to Steam
-                                    let cmd = process.cmd();
-                                    if !cmd.is_empty() {
-                                        let cmd_str = cmd.join(" ").to_lowercase();
-                                        if cmd_str.contains("steam") || cmd_str.contains(steam_app_id) {
-                                            return Ok(true);
-                                        }
-                                    }
-                                    // If no command line but name matches, assume it's the game
-                                    return Ok(true);
-                                }
-                            }
-                        }
-                    }
-                    
-                    // Fallback: check if any process has the app ID in its command line
-                    for process in system.processes().values() {
-                        let cmd = process.cmd();
-                        if !cmd.is_empty() {
-                            let cmd_str = cmd.join(" ").to_lowercase();
-                            if cmd_str.contains(&steam_app_id.to_lowercase()) {
-                                return Ok(true);
-                            }
-                        }
-                    }
-                    
-                    Ok(false)
-                },
-                "epic" => {
-                    // Check if Epic Games Launcher is running
-                    let epic_running = system.processes()
-                        .values()
-                        .any(|p| {
-                            let name = p.name().to_lowercase();
-                            name.contains("epicgameslauncher")
-                        });
-                    
-                    if !epic_running {
-                        return Ok(false);
-                    }
-                    
-                    // Check if game executable is running
-                    if let Some(path) = &game.install_path {
-                        let exe_name = std::path::Path::new(path)
-                            .file_name()
-                            .and_then(|n| n.to_str())
-                            .map(|s| s.to_lowercase())
-                            .unwrap_or_default();
-                        
-                        if !exe_name.is_empty() {
-                            let exe_name_no_ext = exe_name.trim_end_matches(".exe");
-                            return Ok(system.processes()
-                                .values()
-                                .any(|p| {
-                                    let proc_name = p.name().to_lowercase();
-                                    proc_name == exe_name || proc_name == exe_name_no_ext
-                                }));
-                        }
-                    }
-                    
-                    Ok(false)
-                },
-                _ => {
-                    // For other launchers, check if the game executable is running
-                    if let Some(path) = &game.install_path {
-                        let candidates = executable_name_candidates(path);
+pub async fn launch_game_overdrive(game_id: String) -> Result<(), String> {
+    use std::{
+        process::Command,
+        time::Duration,
+    };
 
-                        if !candidates.is_empty() {
-                            return Ok(system.processes().values().any(|p| {
-                                process_matches_executable(p, path, &candidates)
-                            }));
-                        }
-                    }
-                    Ok(false)
+    fn launch_steam_silent(app_id: &str) -> std::io::Result<()> {
+        #[cfg(target_os="windows")]
+        {
+            if let Ok(steam_path) = crate::launchers::steam::get_steam_path() {
+                let steam_exe = steam_path.join("steam.exe");
+                if steam_exe.exists() {
+                    return Command::new(steam_exe)
+                        .args(["-silent", "-applaunch", app_id])
+                        .spawn()
+                        .map(|_| ());
                 }
             }
-        },
-        None => Ok(false),
+
+            let url = format!("steam://rungameid/{} -silent", app_id);
+            Command::new("cmd")
+                .args(["/C", "start", "", &url])
+                .spawn()
+                .map(|_| ())
+        }
+
+        #[cfg(not(target_os="windows"))]
+        {
+            let url = format!("steam://rungameid/{} -silent", app_id);
+            Command::new("xdg-open")
+                .arg(url)
+                .spawn()
+                .map(|_| ())
+        }
     }
-}
 
-#[tauri::command]
-pub async fn kill_game_process(game_id: String) -> Result<(), String> {
+    if LAUNCH_IN_PROGRESS
+        .compare_exchange(false, true, Ordering::SeqCst, Ordering::SeqCst)
+        .is_err()
+    {
+        return Err("A game launch is already in progress".to_string());
+    }
+
+    struct LaunchInProgressGuard;
+    impl Drop for LaunchInProgressGuard {
+        fn drop(&mut self) {
+            LAUNCH_IN_PROGRESS.store(false, Ordering::SeqCst);
+        }
+    }
+    let _launch_guard = LaunchInProgressGuard;
+
     let pool = get_db_pool()?;
-    let record = database::get_game_by_id(pool, &game_id)
+
+    let game = database::get_game_by_id(pool, &game_id)
         .await
-        .map_err(|e| format!("Failed to get game: {}", e))?;
-    
-    match record {
-        Some(game) => {
-            use sysinfo::{System, Pid};
-            let mut system = System::new_all();
-            system.refresh_all();
-            
-            let mut killed = false;
-            
-            match game.launcher.as_str() {
-                "custom" => {
-                    if let Some(path) = &game.install_path {
-                        let candidates = executable_name_candidates(path);
+        .map_err(|e| e.to_string())?
+        .ok_or_else(|| "Game not found".to_string())?;
 
-                        if !candidates.is_empty() {
-                            let pids_to_kill: Vec<Pid> = system
-                                .processes()
-                                .iter()
-                                .filter(|(_, process)| {
-                                    process_matches_executable(process, path, &candidates)
-                                })
-                                .map(|(pid, _)| *pid)
-                                .collect();
+    if is_game_running_record(&game) {
+        return Err(format!("{} is already running", game.title));
+    }
 
-                            for pid in pids_to_kill {
-                                if let Some(process) = system.process(pid) {
-                                    if process.kill() {
-                                        killed = true;
-                                    }
-                                }
-                            }
-                        }
-                    }
-                },
-                "steam" => {
-                    let steam_app_id = &game.launcher_game_id;
-                    
-                    // Try to find and kill processes related to this Steam game
-                    if let Some(path) = &game.install_path {
-                        let exe_name = std::path::Path::new(path)
-                            .file_name()
-                            .and_then(|n| n.to_str())
-                            .map(|s| s.to_lowercase())
-                            .unwrap_or_default();
-                        
-                        if !exe_name.is_empty() {
-                            let exe_name_no_ext = exe_name.trim_end_matches(".exe");
-                            
-                            let pids_to_kill: Vec<Pid> = system.processes()
-                                .iter()
-                                .filter(|(_, process)| {
-                                    let proc_name = process.name().to_lowercase();
-                                    if proc_name == exe_name || proc_name == exe_name_no_ext {
-                                        let cmd = process.cmd();
-                                        if !cmd.is_empty() {
-                                            let cmd_str = cmd.join(" ").to_lowercase();
-                                            cmd_str.contains("steam") || cmd_str.contains(&steam_app_id.to_lowercase())
-                                        } else {
-                                            true
-                                        }
-                                    } else {
-                                        false
-                                    }
-                                })
-                                .map(|(pid, _)| *pid)
-                                .collect();
-                            
-                            for pid in pids_to_kill {
-                                if let Some(process) = system.process(pid) {
-                                    if process.kill() {
-                                        killed = true;
-                                    }
-                                }
-                            }
-                        }
-                    }
-                    
-                    // Also check for processes with app ID in command line
-                    let pids_to_kill: Vec<Pid> = system.processes()
-                        .iter()
-                        .filter(|(_, process)| {
-                            let cmd = process.cmd();
-                            if !cmd.is_empty() {
-                                let cmd_str = cmd.join(" ").to_lowercase();
-                                cmd_str.contains(&steam_app_id.to_lowercase())
-                            } else {
-                                false
-                            }
-                        })
-                        .map(|(pid, _)| *pid)
-                        .collect();
-                    
-                    for pid in pids_to_kill {
-                        if let Some(process) = system.process(pid) {
-                            if process.kill() {
-                                killed = true;
-                            }
-                        }
-                    }
-                },
-                "epic" => {
-                    if let Some(path) = &game.install_path {
-                        let exe_name = std::path::Path::new(path)
-                            .file_name()
-                            .and_then(|n| n.to_str())
-                            .map(|s| s.to_lowercase())
-                            .unwrap_or_default();
-                        
-                        if !exe_name.is_empty() {
-                            let exe_name_no_ext = exe_name.trim_end_matches(".exe");
-                            
-                            let pids_to_kill: Vec<Pid> = system.processes()
-                                .iter()
-                                .filter(|(_, process)| {
-                                    let proc_name = process.name().to_lowercase();
-                                    proc_name == exe_name || proc_name == exe_name_no_ext
-                                })
-                                .map(|(pid, _)| *pid)
-                                .collect();
-                            
-                            for pid in pids_to_kill {
-                                if let Some(process) = system.process(pid) {
-                                    if process.kill() {
-                                        killed = true;
-                                    }
-                                }
-                            }
-                        }
-                    }
-                },
-                _ => {
-                    if let Some(path) = &game.install_path {
-                        let candidates = executable_name_candidates(path);
+    let use_process_polling = game.launcher != "custom";
 
-                        if !candidates.is_empty() {
-                            let pids_to_kill: Vec<Pid> = system
-                                .processes()
-                                .iter()
-                                .filter(|(_, process)| {
-                                    process_matches_executable(process, path, &candidates)
-                                })
-                                .map(|(pid, _)| *pid)
-                                .collect();
-
-                            for pid in pids_to_kill {
-                                if let Some(process) = system.process(pid) {
-                                    if process.kill() {
-                                        killed = true;
-                                    }
-                                }
-                            }
+    let launch_result = match game.launcher.as_str() {
+        "custom" => {
+            if let Some(path) = runtime_executable_path(&game) {
+                if let Some(arguments) = launch_arguments_from_metadata(&game) {
+                    match parse_command_arguments(&arguments) {
+                        Ok(parsed_arguments) => {
+                            spawn_custom_game_process(path, &parsed_arguments)
                         }
+                        Err(e) => Err(std::io::Error::new(std::io::ErrorKind::InvalidInput, e)),
                     }
+                } else {
+                    spawn_custom_game_process(path, &[])
                 }
-            }
-            
-            if killed {
-                Ok(())
             } else {
-                Err("No game process found to kill".to_string())
+                Err(std::io::Error::new(
+                    std::io::ErrorKind::NotFound,
+                    "Executable path missing",
+                ))
             }
-        },
-        None => Err("Game not found".to_string()),
+        }
+        "steam" => launch_steam_silent(&game.launcher_game_id),
+        "epic" => {
+            let url = format!(
+                "com.epicgames.launcher://apps/{}?action=launch",
+                game.title
+            );
+
+            #[cfg(target_os="windows")]
+            {
+                Command::new("cmd")
+                    .args(["/C", "start", "", &url])
+                    .spawn()
+                    .map(|_| ())
+            }
+
+            #[cfg(not(target_os="windows"))]
+            {
+                Command::new("xdg-open").arg(url).spawn().map(|_| ())
+            }
+        }
+        _ => Err(std::io::Error::new(
+            std::io::ErrorKind::Other,
+            "Unsupported launcher",
+        )),
+    };
+
+    if let Err(e) = launch_result {
+        return Err(format!("Failed launching game: {}", e));
     }
+
+    if !use_process_polling {
+        tokio::time::sleep(Duration::from_millis(800)).await;
+        return Ok(());
+    }
+
+    let mut attempts = 0u16;
+    const MAX_ATTEMPTS: u16 = 180;
+
+    loop {
+        match check_game_running(game_id.clone()).await {
+            Ok(true) => break,
+            Ok(false) => {}
+            Err(e) => return Err(e),
+        }
+
+        attempts += 1;
+        if attempts >= MAX_ATTEMPTS {
+            return Err("Timed out waiting for game process to start".to_string());
+        }
+
+        tokio::time::sleep(Duration::from_millis(500)).await;
+    }
+
+    tokio::time::sleep(Duration::from_millis(1000)).await;
+    Ok(())
 }
 
 #[tauri::command]

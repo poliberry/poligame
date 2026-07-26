@@ -10,7 +10,7 @@ import { Game } from "@/types";
 import { FaSteam } from "react-icons/fa";
 import { SiEpicgames } from "react-icons/si";
 import { TbBrandElectronicArts } from "react-icons/tb";
-import { Play, Settings, Trash2, Edit, Palette } from "lucide-react";
+import { Play, Settings, Trash2, Palette } from "lucide-react";
 import {
   ContextMenu,
   ContextMenuContent,
@@ -18,7 +18,6 @@ import {
   ContextMenuSeparator,
   ContextMenuTrigger,
 } from "@/components/ui/context-menu";
-import { EditCustomAppNameDialog } from "./EditCustomAppNameDialog";
 import { DeleteCustomAppDialog } from "./DeleteCustomAppDialog";
 import { toast } from "sonner";
 import { getImageUrl } from "@/utils/imageUtils";
@@ -38,7 +37,6 @@ export const GameCard: React.FC<GameCardProps> = ({
   const navigate = useNavigate();
   const { user } = useAuthStore();
   const { setGames, setActiveHoverGame } = useGameStore();
-  const [showEditNameDialog, setShowEditNameDialog] = useState(false);
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
 
   // Always get customizations from Convex (for both custom and non-custom games)
@@ -107,14 +105,18 @@ export const GameCard: React.FC<GameCardProps> = ({
     }
   };
 
-  const handleEditName = (e: React.MouseEvent) => {
+  const handleDelete = async (e: React.MouseEvent) => {
     e.stopPropagation();
-    setShowEditNameDialog(true);
-  };
-
-  const handleDelete = (e: React.MouseEvent) => {
-    e.stopPropagation();
-    setShowDeleteDialog(true);
+    try {
+      await invoke("create_custom_app_dialog_window", {
+        action: "delete",
+        gameId: game.id,
+        name: game.title,
+      });
+    } catch (error) {
+      console.debug("Custom dialog window unavailable, falling back inline", error);
+      setShowDeleteDialog(true);
+    }
   };
 
   const handleRefresh = async () => {
@@ -301,13 +303,6 @@ export const GameCard: React.FC<GameCardProps> = ({
               <ContextMenuSeparator />
               <ContextMenuItem
                 className="rounded-none"
-                onClick={handleEditName}
-              >
-                <Edit className="mr-2 h-4 w-4" />
-                Change Name
-              </ContextMenuItem>
-              <ContextMenuItem
-                className="rounded-none"
                 onClick={handleCustomize}
               >
                 <Settings className="mr-2 h-4 w-4" />
@@ -342,13 +337,6 @@ export const GameCard: React.FC<GameCardProps> = ({
 
       {game.launcher === "custom" && (
         <>
-          <EditCustomAppNameDialog
-            isOpen={showEditNameDialog}
-            onClose={() => setShowEditNameDialog(false)}
-            gameId={game.id}
-            currentName={game.title}
-            onSuccess={handleRefresh}
-          />
           <DeleteCustomAppDialog
             isOpen={showDeleteDialog}
             onClose={() => setShowDeleteDialog(false)}

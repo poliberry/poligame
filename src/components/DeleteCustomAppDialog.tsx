@@ -13,7 +13,8 @@ interface DeleteCustomAppDialogProps {
   onClose: () => void;
   gameId: string;
   appName: string;
-  onSuccess: () => void;
+  onSuccess: () => void | Promise<void>;
+  standaloneWindow?: boolean;
 }
 
 export const DeleteCustomAppDialog: React.FC<DeleteCustomAppDialogProps> = ({
@@ -22,6 +23,7 @@ export const DeleteCustomAppDialog: React.FC<DeleteCustomAppDialogProps> = ({
   gameId,
   appName,
   onSuccess,
+  standaloneWindow = false,
 }) => {
   const [isLoading, setIsLoading] = useState(false);
   const { user } = useAuthStore();
@@ -47,7 +49,11 @@ export const DeleteCustomAppDialog: React.FC<DeleteCustomAppDialogProps> = ({
       }
 
       toast.success("App removed successfully");
-      onSuccess();
+      try {
+        await onSuccess();
+      } catch (eventError) {
+        console.debug("Custom app delete success callback failed", eventError);
+      }
       onClose();
     } catch (error: any) {
       console.error("Error deleting app:", error);
@@ -59,8 +65,12 @@ export const DeleteCustomAppDialog: React.FC<DeleteCustomAppDialogProps> = ({
 
   if (!isOpen) return null;
 
+  const wrapperClassName = standaloneWindow
+    ? "w-full h-full flex items-start justify-center bg-background px-4 py-4"
+    : "fixed inset-0 z-[200] flex items-center justify-center bg-black/80";
+
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80">
+    <div className={wrapperClassName}>
       <div className="bg-background border border-border rounded-lg p-6 w-full max-w-md shadow-xl">
         <div className="flex items-center justify-between mb-4">
           <h2 className="text-xl font-bold">Remove App</h2>

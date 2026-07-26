@@ -27,7 +27,6 @@ import { X, Clock, Users, Tag, RefreshCw } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { getImageUrl } from "@/utils/imageUtils";
-import { ScrollArea } from "@/components/ui/scroll-area";
 
 const GameDetails: React.FC = () => {
   const { gameId } = useParams<{ gameId: string }>();
@@ -35,10 +34,8 @@ const GameDetails: React.FC = () => {
   const { user, isAuthenticated } = useAuthStore();
   const {
     runningGameId,
-    checkGameRunning,
     killGame,
     startPolling,
-    stopPolling,
   } = useRunningGameStore();
   // Note: gameActivity will be available after Convex regenerates types
   const updateGameActivity = useMutation(
@@ -63,8 +60,8 @@ const GameDetails: React.FC = () => {
   // Track which gameId the achievements and news belong to
   const achievementsGameIdRef = useRef<string | null>(null);
   const newsGameIdRef = useRef<string | null>(null);
-  const fetchTimeoutRef = useRef<NodeJS.Timeout | null>(null);
-  const newsTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const fetchTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const newsTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Get customizations if user is logged in
   const customizations = useQuery(
@@ -506,31 +503,21 @@ const GameDetails: React.FC = () => {
       const result = await invoke("launch_game", { gameId });
       console.log("Launch game result:", result);
 
-      // Wait a bit for the game to start, then check if it's running
-      setTimeout(async () => {
-        // Immediately check if the game is running
-        const isRunning = await checkGameRunning(gameId);
-        console.log("Game running check after launch:", isRunning);
+      // Kick centralized monitoring immediately; it will reconcile running state
+      // in near-realtime without page-local process checks.
+      startPolling(gameId, game);
 
-        if (isRunning) {
-          // Game is running, start polling and update UI
-          startPolling(gameId, game);
-          // Update game activity in Convex
-          if (user?.userId) {
-            updateGameActivity({
-              userId: user.userId as unknown as Id<"users">,
-              gameId: game.id,
-              gameTitle: game.title,
-              gameLauncher: game.launcher,
-              gameIcon: game.icon,
-            });
-          }
-        } else {
-          // Game not detected yet, start polling anyway to keep checking
-          startPolling(gameId, game);
-        }
-        setLaunching(false);
-      }, 3000); // Wait 3 seconds for game to start
+      if (user?.userId) {
+        updateGameActivity({
+          userId: user.userId as unknown as Id<"users">,
+          gameId: game.id,
+          gameTitle: game.title,
+          gameLauncher: game.launcher,
+          gameIcon: game.icon,
+        });
+      }
+
+      setLaunching(false);
     } catch (error) {
       const errorMessage =
         error instanceof Error ? error.message : String(error);
@@ -565,7 +552,6 @@ const GameDetails: React.FC = () => {
     if (!gameId) return;
     try {
       await killGame(gameId);
-      stopPolling();
       // Clear game activity in Convex
       if (user?.userId) {
         updateGameActivity({
@@ -576,29 +562,6 @@ const GameDetails: React.FC = () => {
       console.error("Failed to close game:", error);
     }
   };
-
-  // Check if current game is running when component mounts or gameId changes
-  useEffect(() => {
-    if (!gameId || !game) return;
-
-    // Check if game is running on mount
-    const checkRunning = async () => {
-      const isRunning = await checkGameRunning(gameId);
-      if (isRunning) {
-        startPolling(gameId, game);
-      }
-    };
-
-    checkRunning();
-
-    // Cleanup on unmount
-    return () => {
-      if (runningGameId === gameId) {
-        stopPolling();
-      }
-    };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [gameId, game?.id]);
 
   // Handle scroll detection for sticky header and update hero height
   useEffect(() => {
@@ -665,32 +628,42 @@ const GameDetails: React.FC = () => {
     }
   })();
 
+  const collapsedHeroHeight = 72;
+  const expandedHeroMinHeight = 220;
+  const contentTopOffset = isScrolled
+    ? collapsedHeroHeight
+    : Math.max(heroHeight, expandedHeroMinHeight);
+
   return (
     <div className="flex flex-col h-full overflow-hidden">
       {/* Fixed Hero Background - sits behind everything */}
       <div
         ref={heroRef}
-        className={`fixed top-0 left-0 right-0 z-0 w-full flex flex-col text-white transition-all duration-300 h-73 py-6`}
+        className="fixed top-0 left-0 right-0 z-0 w-full flex flex-col text-white transition-all duration-300"
         style={{
+          height: `${isScrolled ? collapsedHeroHeight : expandedHeroMinHeight}px`,
           background: !displayHeroArt
-            ? "linear-gradient(to right, transparent, var(--background)), var(--background)"
+            ? "linear-gradient(to right, transparent, var(--background)), url('https://images.unsplash.com/photo-1677611998429-1baa4371456b?q=80&w=1332&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D') center center / cover no-repeat"
             : `linear-gradient(to right, transparent, var(--background)), url(${displayHeroArt}) center center / cover no-repeat`,
         }}
       >
         <div
-          className={`w-full pl-86 flex flex-col h-full justify-start mt-28 transition-all duration-300`}
+          className="w-full pl-86 pr-4 flex flex-col h-full transition-all duration-300"
+          style={{
+            justifyContent: isScrolled ? "center" : "flex-end",
+            paddingBottom: isScrolled ? "0.375rem" : "1rem",
+          }}
         >
           <div className="flex flex-row items-end gap-2">
             <img
-              src={getImageUrl(customizations?.customLogo || game?.icon)}
+              src={getImageUrl(customizations?.customLogo || game?.icon) || "https://www.svgrepo.com/show/211746/game-controller-arcade.svg"}
               alt={`${game?.title} Icon`}
-              className={`transition-all duration-300 bg-transparent backdrop-blur-xl p-2 rounded-md w-24 h-24`}
+              className={`transition-all duration-300 bg-transparent backdrop-blur-xl p-2 rounded-md ${isScrolled ? "w-10 h-10" : "w-24 h-24"}`}
             />
             <div className="flex flex-col gap-1">
               <h1
-                className={`font-light transition-all duration-300 ${
-                  isScrolled ? "text-base" : "text-xl"
-                }`}
+                className={`font-light transition-all duration-300 ${isScrolled ? "text-base" : "text-xl"
+                  }`}
                 style={{ fontFamily: "Google Sans Flex, sans-serif" }}
               >
                 {game?.title}
@@ -709,7 +682,7 @@ const GameDetails: React.FC = () => {
                   </Button>
                 ) : (
                   <Button
-                    className="font-light bg-[var(--theme-button-secondary)] hover:bg-[var(--theme-button)] text-[var(--theme-accent)] rounded-full border-none transition-all duration-300 cursor-pointer"
+                    className="font-light bg-transparent backdrop-blur-xl hover:bg-[var(--theme-button)] text-[var(--theme-button-secondary)] rounded-full border-none transition-all duration-300 cursor-pointer"
                     style={{
                       fontFamily: "Google Sans Flex, sans-serif",
                     }}
@@ -723,7 +696,7 @@ const GameDetails: React.FC = () => {
                   <Button
                     size="icon"
                     onClick={handleOpenCustomization}
-                    className="font-light bg-[var(--theme-button-secondary)] hover:bg-[var(--theme-button)] text-[var(--theme-accent)] rounded-full border-none transition-all duration-300 cursor-pointer"
+                    className="font-light bg-transparent backdrop-blur-xl hover:bg-[var(--theme-button)] text-[var(--theme-button-secondary)] rounded-full border-none transition-all duration-300 cursor-pointer"
                   >
                     <Settings size={isScrolled ? 14 : 16} />
                   </Button>
@@ -737,26 +710,25 @@ const GameDetails: React.FC = () => {
       {/* Scrollable Content */}
       <div
         ref={scrollContainerRef}
-        className="flex-1 overflow-y-auto content-view-scrollbar absolute left-0 w-full h-full z-[40]"
+        className="absolute left-0 right-0 bottom-0 z-[40]"
         style={{
-          marginTop: isScrolled ? "48px" : "200px", // Match hero heights (h-12=48px, h-64=256px)
+          top: `${contentTopOffset}px`,
         }}
       >
         {/* Sticky Tabs - Appears below hero section */}
         <div
-          className="relative z-[50] h-full bg-transparent overflow-y-hidden"
+          className="relative z-[50] h-full bg-transparent min-h-0"
           style={{ top: 0 }}
         >
           {/* Now sticks to top of scrollable area */}
-          <div className="absolute top-0 w-full z-[30] backdrop-blur-3xl bg-background/30 border-y shadow-md py-1">
+          <div className="absolute top-0 w-full z-[30] backdrop-blur-xl bg-[var(--theme-background)] border-y border-foreground/10 shadow-md py-1">
             <div className="flex gap-2 pl-85">
               <Button
                 onClick={() => setActiveTab("overview")}
-                className={`px-4 py-2 cursor-pointer font-light rounded-full bg-transparent hover:bg-[var(--theme-button)]/30 hover:backdrop-blur-md text-sm transition-colors ${
-                  activeTab === "overview"
-                    ? "text-[var(--theme-accent)] hover:text-foreground bg-[var(--theme-button-secondary)] backdrop-blur-md"
+                className={`px-4 py-2 cursor-pointer font-light rounded-full bg-transparent hover:bg-[var(--theme-button)]/30 hover:backdrop-blur-md text-sm transition-colors ${activeTab === "overview"
+                    ? "text-[var(--theme-accent)] hover:text-foreground bg-[var(--theme-button)] backdrop-blur-md"
                     : "text-foreground/60 hover:text-foreground"
-                }`}
+                  }`}
                 style={{ fontFamily: "Google Sans Flex, sans-serif" }}
               >
                 Overview
@@ -764,11 +736,10 @@ const GameDetails: React.FC = () => {
               {game?.launcher === "steam" && (
                 <Button
                   onClick={() => setActiveTab("achievements")}
-                  className={`px-4 py-2 cursor-pointer font-light rounded-full bg-transparent hover:bg-[var(--theme-button)]/30 hover:backdrop-blur-md text-sm transition-colors ${
-                    activeTab === "achievements"
-                      ? "text-[var(--theme-accent)] hover:text-foreground bg-[var(--theme-button-secondary)] backdrop-blur-md"
+                  className={`px-4 py-2 cursor-pointer font-light rounded-full bg-transparent hover:bg-[var(--theme-button)]/30 hover:backdrop-blur-md text-sm transition-colors ${activeTab === "achievements"
+                      ? "text-[var(--theme-accent)] hover:text-foreground bg-[var(--theme-button)] backdrop-blur-md"
                       : "text-foreground/60 hover:text-foreground"
-                  }`}
+                    }`}
                   style={{ fontFamily: "Google Sans Flex, sans-serif" }}
                 >
                   <Trophy size={16} className="inline mr-1" />
@@ -777,11 +748,10 @@ const GameDetails: React.FC = () => {
               )}
               <Button
                 onClick={() => setActiveTab("forum")}
-                className={`px-4 py-2 cursor-pointer font-light rounded-full bg-transparent hover:bg-[var(--theme-button)]/30 hover:backdrop-blur-md text-sm transition-colors ${
-                  activeTab === "forum"
-                    ? "text-[var(--theme-accent)] hover:text-foreground bg-[var(--theme-button-secondary)] backdrop-blur-md"
+                className={`px-4 py-2 cursor-pointer font-light rounded-full bg-transparent hover:bg-[var(--theme-button)]/30 hover:backdrop-blur-md text-sm transition-colors ${activeTab === "forum"
+                    ? "text-[var(--theme-accent)] hover:text-foreground bg-[var(--theme-button)] backdrop-blur-md"
                     : "text-foreground/60 hover:text-foreground"
-                }`}
+                  }`}
                 style={{ fontFamily: "Google Sans Flex, sans-serif" }}
               >
                 <MessageSquare size={16} className="inline mr-1" />
@@ -789,25 +759,23 @@ const GameDetails: React.FC = () => {
               </Button>
               {game?.launcher === "steam" && (
                 <Button
-                onClick={() => setActiveTab("compatibility")}
-                className={`hidden px-4 py-2 cursor-pointer font-light rounded-full bg-transparent hover:bg-[var(--theme-button)]/30 hover:backdrop-blur-md text-sm transition-colors ${
-                  activeTab === "compatibility"
-                    ? "text-[var(--theme-accent)] hover:text-foreground bg-[var(--theme-button-secondary)] backdrop-blur-md"
-                    : "text-foreground/60 hover:text-foreground"
-                }`}
-                style={{ fontFamily: "Google Sans Flex, sans-serif" }}
-              >
-                <CheckCircle2 size={16} className="inline mr-1" />
-                Compatibility
-              </Button>
+                  onClick={() => setActiveTab("compatibility")}
+                  className={`hidden px-4 py-2 cursor-pointer font-light rounded-full bg-transparent hover:bg-[var(--theme-button)]/30 hover:backdrop-blur-md text-sm transition-colors ${activeTab === "compatibility"
+                      ? "text-[var(--theme-accent)] hover:text-foreground bg-[var(--theme-button)] backdrop-blur-md"
+                      : "text-foreground/60 hover:text-foreground"
+                    }`}
+                  style={{ fontFamily: "Google Sans Flex, sans-serif" }}
+                >
+                  <CheckCircle2 size={16} className="inline mr-1" />
+                  Compatibility
+                </Button>
               )}
               <Button
                 onClick={() => setActiveTab("gallery")}
-                className={`hidden px-4 py-2 cursor-pointer font-light rounded-full bg-transparent hover:bg-[var(--theme-button)]/30 hover:backdrop-blur-md text-sm transition-colors ${
-                  activeTab === "gallery"
-                    ? "text-[var(--theme-accent)] hover:text-foreground bg-[var(--theme-button-secondary)] backdrop-blur-md"
+                className={`hidden px-4 py-2 cursor-pointer font-light rounded-full bg-transparent hover:bg-[var(--theme-button)]/30 hover:backdrop-blur-md text-sm transition-colors ${activeTab === "gallery"
+                    ? "text-[var(--theme-accent)] hover:text-foreground bg-[var(--theme-button)] backdrop-blur-md"
                     : "text-foreground/60 hover:text-foreground"
-                }`}
+                  }`}
                 style={{ fontFamily: "Google Sans Flex, sans-serif" }}
               >
                 <ImageIcon size={16} className="inline mr-1" />
@@ -818,23 +786,17 @@ const GameDetails: React.FC = () => {
           {/* Tab Content */}
           <div
             style={{
-              background: displayHeroArt
-                ? `url(${displayHeroArt})`
-                : "var(--background)",
-              backgroundSize: "cover",
-              backgroundPosition: "center",
-              backgroundRepeat: "no-repeat",
+              background: "var(--background)",
             }}
-            className="absolute top-9 h-full w-full z-[20] overflow-y-auto"
+            className="absolute top-9 bottom-0 w-full z-[20] overflow-hidden"
           >
-            <div className="pl-84 w-full h-full backdrop-blur-3xl pt-4 pr-2 bg-[var(--background)]/60">
-              <ScrollArea className="h-[100%] w-full">
-                {activeTab === "overview" && (
-                  <div className="flex flex-row gap-4">
+            <div className="pl-84 w-full h-full pt-4 pr-2 bg-[var(--background)]/95 flex flex-col min-h-0">
+              {activeTab === "overview" ? (
+                <div className="flex flex-row gap-4 h-full min-h-0">
                     {/* Steam News Feed */}
                     {game?.launcher === "steam" && game?.metadata?.appId ? (
                       <div
-                        className={`w-[50%] ${isAuthenticated && user ? "border-r border-white/10 pr-4" : ""}`}
+                        className={`w-[50%] min-h-0 overflow-y-auto content-view-scrollbar pb-16 ${isAuthenticated && user ? "border-r border-white/10 pr-4" : ""}`}
                       >
                         {/* Only show news if it belongs to current game */}
                         {loadingNews || newsGameIdRef.current !== gameId ? (
@@ -873,8 +835,8 @@ const GameDetails: React.FC = () => {
                                     <span className="text-xs text-foreground/60 font-thin whitespace-nowrap">
                                       {item.date
                                         ? new Date(
-                                            item.date * 1000,
-                                          ).toLocaleDateString()
+                                          item.date * 1000,
+                                        ).toLocaleDateString()
                                         : ""}
                                     </span>
                                   </div>
@@ -893,7 +855,7 @@ const GameDetails: React.FC = () => {
                                       __html:
                                         item.contents.length > 500
                                           ? item.contents.substring(0, 500) +
-                                            "..."
+                                          "..."
                                           : item.contents,
                                     }}
                                   />
@@ -932,7 +894,7 @@ const GameDetails: React.FC = () => {
                       </div>
                     ) : (
                       <div
-                        className={`w-[50%] ${isAuthenticated && user ? "border-r border-white/10 pr-4" : ""}`}
+                        className={`w-[50%] min-h-0 overflow-y-auto content-view-scrollbar pb-16 ${isAuthenticated && user ? "border-r border-white/10 pr-4" : ""}`}
                       >
                         <div className="text-center text-foreground/60 py-8">
                           <p>No news available for this game.</p>
@@ -940,7 +902,7 @@ const GameDetails: React.FC = () => {
                       </div>
                     )}
                     {isAuthenticated && user && (
-                      <div className="flex w-[50%] flex-col gap-4">
+                      <div className="flex w-[50%] min-h-0 flex-col gap-4 overflow-y-auto content-view-scrollbar pr-2 pb-16">
                         {/* Recent Playtime Section */}
                         {userPlaytime &&
                           (userPlaytime.totalPlaytime > 0 ||
@@ -980,7 +942,7 @@ const GameDetails: React.FC = () => {
                                       h{" "}
                                       {Math.floor(
                                         (userPlaytime.totalPlaytime % 3600) /
-                                          60,
+                                        60,
                                       )}
                                       m total
                                     </span>
@@ -1170,11 +1132,12 @@ const GameDetails: React.FC = () => {
                         </div>
                       </div>
                     )}
-                  </div>
-                )}
+                </div>
+              ) : (
+                <div className="h-full w-full min-h-0 overflow-y-auto content-view-scrollbar pr-2 pb-16">
 
                 {activeTab === "achievements" && (
-                  <MicaCard className="overflow-y-scroll h-[98vh]">
+                  <MicaCard className="mb-4">
                     <div className="flex items-center justify-between mb-4">
                       <h2 className="text-lg font-semibold flex items-center gap-2">
                         <Trophy size={20} />
@@ -1277,11 +1240,10 @@ const GameDetails: React.FC = () => {
                             .map((achievement) => (
                               <div
                                 key={achievement.id}
-                                className={`p-3 rounded border ${
-                                  achievement.unlocked
+                                className={`p-3 rounded border ${achievement.unlocked
                                     ? "bg-[var(--theme-accent)]/10 border-[var(--theme-accent)]/30"
                                     : "bg-foreground/5 border-foreground/10"
-                                }`}
+                                  }`}
                               >
                                 <div className="flex items-start gap-3">
                                   {achievement.icon ? (
@@ -1292,11 +1254,10 @@ const GameDetails: React.FC = () => {
                                     />
                                   ) : (
                                     <div
-                                      className={`w-12 h-12 rounded flex items-center justify-center ${
-                                        achievement.unlocked
+                                      className={`w-12 h-12 rounded flex items-center justify-center ${achievement.unlocked
                                           ? "bg-[var(--theme-accent)]/20"
                                           : "bg-foreground/5"
-                                      }`}
+                                        }`}
                                     >
                                       {achievement.unlocked ? "✓" : "○"}
                                     </div>
@@ -1319,11 +1280,10 @@ const GameDetails: React.FC = () => {
                                               style={{
                                                 backgroundColor:
                                                   "var(--theme-accent)",
-                                                width: `${
-                                                  (achievement.progress /
+                                                width: `${(achievement.progress /
                                                     achievement.maxProgress) *
                                                   100
-                                                }%`,
+                                                  }%`,
                                               }}
                                             />
                                           </div>
@@ -1335,13 +1295,13 @@ const GameDetails: React.FC = () => {
                                       )}
                                     {achievement.globalUnlockPercentage !==
                                       undefined && (
-                                      <p className="text-xs text-foreground/50 mt-1">
-                                        {achievement.globalUnlockPercentage.toFixed(
-                                          1,
-                                        )}
-                                        % of players have this
-                                      </p>
-                                    )}
+                                        <p className="text-xs text-foreground/50 mt-1">
+                                          {achievement.globalUnlockPercentage.toFixed(
+                                            1,
+                                          )}
+                                          % of players have this
+                                        </p>
+                                      )}
                                   </div>
                                 </div>
                               </div>
@@ -1406,7 +1366,8 @@ const GameDetails: React.FC = () => {
                     <MediaGallery gameId={gameId} />
                   </Card>
                 )}
-              </ScrollArea>
+                </div>
+              )}
             </div>
           </div>
         </div>

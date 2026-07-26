@@ -4,6 +4,9 @@ import { dark } from '@novu/react/themes';
 
 export function NovuInbox() {
   const { user } = useAuthStore();
+  const applicationIdentifier =
+    import.meta.env.VITE_NOVU_APPLICATION_IDENTIFIER ||
+    import.meta.env.VITE_NOVU_APP_ID || '';
 
   const tabs = [
     // Basic tab with no filtering (shows all notifications)
@@ -26,7 +29,7 @@ export function NovuInbox() {
   ];
 
   return <Inbox 
-    applicationIdentifier={import.meta.env.VITE_NOVU_APP_ID || ''}
+    applicationIdentifier={applicationIdentifier}
     subscriberId={user?.novuSubscriberId as string}
     tabs={tabs} 
     appearance={{

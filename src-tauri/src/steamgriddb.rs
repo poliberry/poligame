@@ -14,6 +14,17 @@ pub struct SteamGridDBGame {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct SteamGridDBSearchResult {
+    pub id: u32,
+    pub name: String,
+    pub verified: bool,
+    pub game_types: Vec<String>,
+    pub release_date: Option<u64>,
+    pub url: String,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct GameSearchResponse {
     pub success: bool,
     pub data: Vec<SteamGridDBGame>,
@@ -183,7 +194,7 @@ impl SteamGridDBClient {
     }
 
     /// Search for a game by name using autocomplete endpoint
-    pub async fn search_by_name(&self, game_name: &str) -> Result<Option<u32>, String> {
+    pub async fn search_games(&self, game_name: &str) -> Result<Vec<SteamGridDBGame>, String> {
         let url = format!("{}/search/autocomplete/{}", API_BASE_URL, urlencoding::encode(game_name));
         
         let response = self.build_request(&url)
@@ -192,7 +203,7 @@ impl SteamGridDBClient {
             .map_err(|e| format!("Failed to search game: {}", e))?;
 
         if response.status() == 404 {
-            return Ok(None);
+            return Ok(vec![]);
         }
 
         if !response.status().is_success() {
@@ -205,11 +216,15 @@ impl SteamGridDBClient {
             .map_err(|e| format!("Failed to parse search response: {}", e))?;
 
         if !search_response.success || search_response.data.is_empty() {
-            return Ok(None);
+            return Ok(vec![]);
         }
 
-        // Return the first result's ID
-        Ok(Some(search_response.data[0].id))
+        Ok(search_response.data)
+    }
+
+    pub async fn search_by_name(&self, game_name: &str) -> Result<Option<u32>, String> {
+        let results = self.search_games(game_name).await?;
+        Ok(results.first().map(|result| result.id))
     }
 
     /// Get grid image for a game (returns first result URL)
@@ -350,11 +365,227 @@ impl SteamGridDBClient {
     }
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct GameImages {
     pub grid_cover_art: Option<String>,
     pub logo: Option<String>,
     pub header_art: Option<String>,
     pub icon: Option<String>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ArtworkOption {
+    pub id: u32,
+    pub url: String,
+    pub thumb: String,
+    pub width: u32,
+    pub height: u32,
+    pub score: i32,
+    pub style: String,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct GameArtworkOptions {
+    pub grid_cover_art: Vec<ArtworkOption>,
+    pub logos: Vec<ArtworkOption>,
+    pub header_art: Vec<ArtworkOption>,
+}
+
+fn map_grid_options(images: Vec<GridImage>) -> Vec<ArtworkOption> {
+    images
+        .into_iter()
+        .map(|image| ArtworkOption {
+            id: image.id,
+            url: image.url,
+            thumb: image.thumb,
+            width: image.width,
+            height: image.height,
+            score: image.score,
+            style: image.style,
+        })
+        .collect()
+}
+
+fn map_logo_options(images: Vec<LogoImage>) -> Vec<ArtworkOption> {
+    images
+        .into_iter()
+        .map(|image| ArtworkOption {
+            id: image.id,
+            url: image.url,
+            thumb: image.thumb,
+            width: image.width,
+            height: image.height,
+            score: image.score,
+            style: image.style,
+        })
+        .collect()
+}
+
+fn map_hero_options(images: Vec<HeroImage>) -> Vec<ArtworkOption> {
+    images
+        .into_iter()
+        .map(|image| ArtworkOption {
+            id: image.id,
+            url: image.url,
+            thumb: image.thumb,
+            width: image.width,
+            height: image.height,
+            score: image.score,
+            style: image.style,
+        })
+        .collect()
+}
+
+fn map_icon_options(images: Vec<IconImage>) -> Vec<ArtworkOption> {
+    images
+        .into_iter()
+        .map(|image| ArtworkOption {
+            id: image.id,
+            url: image.url,
+            thumb: image.thumb,
+            width: image.width,
+            height: image.height,
+            score: image.score,
+            style: image.style,
+        })
+        .collect()
+}
+
+impl SteamGridDBClient {
+    pub async fn get_grid_options(&self, game_id: u32) -> Result<Vec<ArtworkOption>, String> {
+        let url = format!("{}/grids/game/{}", API_BASE_URL, game_id);
+
+        let response = self
+            .build_request(&url)
+            .send()
+            .await
+            .map_err(|e| format!("Failed to get grid options: {}", e))?;
+
+        if response.status() == 404 {
+            return Ok(vec![]);
+        }
+
+        if !response.status().is_success() {
+            return Err(format!("API returned error status: {}", response.status()));
+        }
+
+        let grids: GridsResponse = response
+            .json()
+            .await
+            .map_err(|e| format!("Failed to parse grid options response: {}", e))?;
+
+        if !grids.success {
+            return Ok(vec![]);
+        }
+
+        Ok(map_grid_options(grids.data))
+    }
+
+    pub async fn get_logo_options(&self, game_id: u32) -> Result<Vec<ArtworkOption>, String> {
+        let url = format!("{}/logos/game/{}", API_BASE_URL, game_id);
+
+        let response = self
+            .build_request(&url)
+            .send()
+            .await
+            .map_err(|e| format!("Failed to get logo options: {}", e))?;
+
+        if response.status() == 404 {
+            return Ok(vec![]);
+        }
+
+        if !response.status().is_success() {
+            return Err(format!("API returned error status: {}", response.status()));
+        }
+
+        let logos: LogosResponse = response
+            .json()
+            .await
+            .map_err(|e| format!("Failed to parse logo options response: {}", e))?;
+
+        if !logos.success {
+            return Ok(vec![]);
+        }
+
+        Ok(map_logo_options(logos.data))
+    }
+
+    pub async fn get_header_options(&self, game_id: u32) -> Result<Vec<ArtworkOption>, String> {
+        let url = format!("{}/heroes/game/{}", API_BASE_URL, game_id);
+
+        let response = self
+            .build_request(&url)
+            .send()
+            .await
+            .map_err(|e| format!("Failed to get header options: {}", e))?;
+
+        if response.status() == 404 {
+            return Ok(vec![]);
+        }
+
+        if !response.status().is_success() {
+            return Err(format!("API returned error status: {}", response.status()));
+        }
+
+        let heroes: HeroesResponse = response
+            .json()
+            .await
+            .map_err(|e| format!("Failed to parse header options response: {}", e))?;
+
+        if !heroes.success {
+            return Ok(vec![]);
+        }
+
+        Ok(map_hero_options(heroes.data))
+    }
+
+    pub async fn get_icon_options(&self, game_id: u32) -> Result<Vec<ArtworkOption>, String> {
+        let url = format!("{}/icons/game/{}?style=official", API_BASE_URL, game_id);
+
+        let response = self
+            .build_request(&url)
+            .send()
+            .await
+            .map_err(|e| format!("Failed to get icon options: {}", e))?;
+
+        if response.status() == 404 {
+            return Ok(vec![]);
+        }
+
+        if !response.status().is_success() {
+            return Err(format!("API returned error status: {}", response.status()));
+        }
+
+        let icons: IconsResponse = response
+            .json()
+            .await
+            .map_err(|e| format!("Failed to parse icon options response: {}", e))?;
+
+        if !icons.success {
+            return Ok(vec![]);
+        }
+
+        Ok(map_icon_options(icons.data))
+    }
+
+    pub async fn fetch_game_artwork_options(
+        &self,
+        griddb_id: u32,
+    ) -> Result<GameArtworkOptions, String> {
+        let grid_cover_art = self.get_grid_options(griddb_id).await?;
+        // Keep the JSON field as `logos` for compatibility with existing frontend types,
+        // but source options from the SteamGridDB icons endpoint.
+        let logos = self.get_icon_options(griddb_id).await?;
+        let header_art = self.get_header_options(griddb_id).await?;
+
+        Ok(GameArtworkOptions {
+            grid_cover_art,
+            logos,
+            header_art,
+        })
+    }
 }
 
