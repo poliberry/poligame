@@ -5,6 +5,7 @@ import { useRunningGameStore } from "@/stores/runningGameStore";
 import { Game } from "@/types";
 
 const DISCORD_CLIENT_ID = import.meta.env.VITE_DISCORD_CLIENT_ID as string | undefined;
+const RECONNECT_INTERVAL_MS = 30_000;
 
 type PresencePayload =
   | {
@@ -98,40 +99,54 @@ export function useDiscordRichPresence(enabled: boolean = true) {
     };
   }, [location.pathname, runningGame, runningGameStartedAt]);
 
+  // Attempt connection on mount and retry every 30 s until connected. Re-runs
+  // when isConnected drops to false (e.g. after a failed update) to recover.
   useEffect(() => {
-    if (!enabled) {
+    if (!enabled || isConnected) {
       return;
     }
 
     let mounted = true;
 
-    const connect = async () => {
+    const attempt = async () => {
       try {
         const connected = await invoke<boolean>("discord_presence_connect", {
           clientId: DISCORD_CLIENT_ID,
         });
-        if (!mounted) {
-          return;
+        if (mounted && connected) {
+          setIsConnected(true);
         }
-        setIsConnected(connected);
       } catch (error) {
         console.debug("Discord Rich Presence unavailable:", error);
-        if (mounted) {
-          setIsConnected(false);
-        }
       }
     };
 
-    void connect();
+    void attempt();
+
+    const retryInterval = setInterval(() => {
+      void attempt();
+    }, RECONNECT_INTERVAL_MS);
 
     return () => {
       mounted = false;
+      clearInterval(retryInterval);
+    };
+  }, [enabled, isConnected]);
+
+  // Clear presence and reset state when disabled or on unmount.
+  useEffect(() => {
+    if (!enabled) {
+      return;
+    }
+
+    return () => {
       setIsConnected(false);
       previousPayloadRef.current = "";
       void invoke("discord_presence_clear").catch(() => undefined);
     };
   }, [enabled]);
 
+  // Send presence updates whenever connected state or payload changes.
   useEffect(() => {
     if (!enabled || !isConnected) {
       return;
@@ -163,6 +178,9 @@ export function useDiscordRichPresence(enabled: boolean = true) {
         });
       } catch (error) {
         console.debug("Discord Rich Presence update failed:", error);
+        // The IPC connection was likely lost; reset so reconnection is attempted.
+        setIsConnected(false);
+        previousPayloadRef.current = "";
       }
     };
 
