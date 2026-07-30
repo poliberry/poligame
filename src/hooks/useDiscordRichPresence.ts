@@ -6,6 +6,7 @@ import { Game } from "@/types";
 
 const DISCORD_CLIENT_ID = import.meta.env.VITE_DISCORD_CLIENT_ID as string | undefined;
 const RECONNECT_INTERVAL_MS = 30_000;
+const HEARTBEAT_INTERVAL_MS = 15_000;
 
 type PresencePayload =
   | {
@@ -78,6 +79,7 @@ export function useDiscordRichPresence(enabled: boolean = true) {
   const location = useLocation();
   const { runningGame, runningGameStartedAt } = useRunningGameStore();
   const [isConnected, setIsConnected] = useState(false);
+  const [sendTick, setSendTick] = useState(0);
   const previousPayloadRef = useRef<string>("");
 
   const payload = useMemo<PresencePayload>(() => {
@@ -146,7 +148,23 @@ export function useDiscordRichPresence(enabled: boolean = true) {
     };
   }, [enabled]);
 
-  // Send presence updates whenever connected state or payload changes.
+  // Heartbeat: exercises the IPC socket on a fixed interval so a Discord restart
+  // is detected even when the payload hasn't changed. Clears the dedup guard and
+  // bumps sendTick so the update effect re-runs and attempts a real send.
+  useEffect(() => {
+    if (!enabled || !isConnected) {
+      return;
+    }
+
+    const id = setInterval(() => {
+      previousPayloadRef.current = "";
+      setSendTick((t) => t + 1);
+    }, HEARTBEAT_INTERVAL_MS);
+
+    return () => clearInterval(id);
+  }, [enabled, isConnected]);
+
+  // Send presence updates whenever connected state, payload, or heartbeat tick changes.
   useEffect(() => {
     if (!enabled || !isConnected) {
       return;
@@ -185,5 +203,5 @@ export function useDiscordRichPresence(enabled: boolean = true) {
     };
 
     void update();
-  }, [enabled, isConnected, payload]);
+  }, [enabled, isConnected, payload, sendTick]);
 }
