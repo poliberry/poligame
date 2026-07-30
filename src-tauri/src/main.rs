@@ -24,6 +24,7 @@ const TRAY_PANEL_LABEL: &str = "tray-panel";
 const TRAY_ICON_ID: &str = "main-tray";
 const TRAY_PANEL_WIDTH: i32 = 360;
 const TRAY_PANEL_HEIGHT: i32 = 520;
+const OVERDRIVE_OVERLAY_LABEL: &str = "overdrive-overlay";
 
 #[derive(Debug, Serialize, Deserialize)]
 struct SetupState {
@@ -627,9 +628,60 @@ fn enter_overdrive_mode(app: tauri::AppHandle) -> Result<(), String> {
 #[tauri::command]
 fn exit_overdrive_mode(app: tauri::AppHandle) -> Result<(), String> {
     use tauri::Manager;
-    
+
     if let Some(window) = app.get_webview_window("main") {
         window.set_fullscreen(false).map_err(|e| e.to_string())?;
+    }
+    Ok(())
+}
+
+fn do_show_overdrive_overlay(app: &tauri::AppHandle) -> tauri::Result<()> {
+    use tauri::Manager;
+
+    if let Some(window) = app.get_webview_window(OVERDRIVE_OVERLAY_LABEL) {
+        window.show()?;
+        window.set_focus()?;
+        return Ok(());
+    }
+
+    tauri::WebviewWindowBuilder::new(
+        app,
+        OVERDRIVE_OVERLAY_LABEL,
+        tauri::WebviewUrl::App("index.html/#/overdrive-overlay".into()),
+    )
+    .title("Overdrive Overlay")
+    .transparent(true)
+    .decorations(false)
+    .always_on_top(true)
+    .skip_taskbar(true)
+    .fullscreen(true)
+    .build()?;
+
+    Ok(())
+}
+
+#[tauri::command]
+async fn show_overdrive_overlay(app: tauri::AppHandle) -> Result<(), String> {
+    do_show_overdrive_overlay(&app).map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+async fn hide_overdrive_overlay(app: tauri::AppHandle) -> Result<(), String> {
+    use tauri::Manager;
+    if let Some(window) = app.get_webview_window(OVERDRIVE_OVERLAY_LABEL) {
+        window.hide().map_err(|e| e.to_string())?;
+    }
+    Ok(())
+}
+
+#[tauri::command]
+fn focus_main_window(app: tauri::AppHandle) -> Result<(), String> {
+    use tauri::Manager;
+    if let Some(window) = app.get_webview_window("main") {
+        if !window.is_visible().unwrap_or(true) {
+            window.show().map_err(|e| e.to_string())?;
+        }
+        window.set_focus().map_err(|e| e.to_string())?;
     }
     Ok(())
 }
@@ -652,6 +704,7 @@ fn main() {
         .plugin(tauri_plugin_notification::init())
         .plugin(tauri_plugin_updater::Builder::new().build())
         .plugin(tauri_plugin_devtools::init())
+        .plugin(tauri_plugin_global_shortcut::Builder::new().build())
         .setup(|app| {
             // Initialize database asynchronously
             tauri::async_runtime::spawn(async {
@@ -660,6 +713,20 @@ fn main() {
                     Err(e) => eprintln!("Failed to initialize database: {}", e),
                 }
             });
+
+            // Register global shortcut Ctrl+Shift+F9 to show/hide the in-game overlay
+            {
+                use tauri_plugin_global_shortcut::{Code, GlobalShortcutExt, Modifiers, Shortcut, ShortcutState};
+                let shortcut = Shortcut::new(Some(Modifiers::SHIFT | Modifiers::CONTROL), Code::F9);
+                app.handle().global_shortcut().on_shortcut(shortcut, |app_handle, _shortcut, event| {
+                    if event.state == ShortcutState::Pressed {
+                        let h = app_handle.clone();
+                        tauri::async_runtime::spawn(async move {
+                            let _ = show_overdrive_overlay(h).await;
+                        });
+                    }
+                })?;
+            }
 
             let mut tray_builder = tauri::tray::TrayIconBuilder::with_id(TRAY_ICON_ID)
                 .tooltip("PoliGame")
@@ -797,6 +864,9 @@ fn main() {
             games::get_steam_requirements,
             enter_overdrive_mode,
             exit_overdrive_mode,
+            show_overdrive_overlay,
+            hide_overdrive_overlay,
+            focus_main_window,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

@@ -1,11 +1,11 @@
 import React from "react";
 import { invoke } from "@tauri-apps/api/core";
-import { useNavigate } from "react-router-dom";
 import { Clock } from "@/components/Clock";
 import { useAuthStore } from "@/stores/authStore";
 import { useGameStore } from "@/stores/gameStore";
 import { useOverdriveStore } from "@/stores/overdriveStore";
 import { useResponsiveGamepad } from "@/hooks/useResponsiveGamepad";
+import { OverdriveInternalView } from "@/stores/overdriveStore";
 import { cn } from "@/lib/utils";
 import { Game } from "@/types";
 import { getImageUrl } from "@/utils/imageUtils";
@@ -57,10 +57,9 @@ const OverdriveTopBar: React.FC<OverdriveTopBarProps> = ({
   className,
   rightSlot,
 }) => {
-  const navigate = useNavigate();
   const { user } = useAuthStore();
   const { games, setGames } = useGameStore();
-  const { showBatteryIndicator, isTopBarFocused, setTopBarFocused } = useOverdriveStore();
+  const { showBatteryIndicator, isTopBarFocused, setTopBarFocused, pushView } = useOverdriveStore();
   const [isSearchActive, setIsSearchActive] = React.useState(false);
   const [isNetworkOpen, setIsNetworkOpen] = React.useState(false);
   const [isOnline, setIsOnline] = React.useState<boolean>(navigator.onLine);
@@ -311,10 +310,6 @@ const OverdriveTopBar: React.FC<OverdriveTopBarProps> = ({
     }
   }, [focusTopBarItem, focusedItemIndex, topBarItems]);
 
-  const navigateWithPageSounds = React.useCallback((path: string) => {
-    navigate(path);
-  }, [navigate]);
-
   const openGameFromSearch = React.useCallback((index: number) => {
     const game = modalGames[index];
     if (!game) {
@@ -323,12 +318,8 @@ const OverdriveTopBar: React.FC<OverdriveTopBarProps> = ({
 
     setIsSearchActive(false);
     setTopBarFocused(false);
-    navigate(`/overdrive/game/${game.id}`, {
-      state: {
-        skipOverdriveIntro: true,
-      },
-    });
-  }, [modalGames, navigate, setTopBarFocused]);
+    pushView({ type: "gameDetails", gameId: game.id });
+  }, [modalGames, pushView, setTopBarFocused]);
 
   const moveLibraryFocus = React.useCallback((direction: "left" | "right" | "up" | "down") => {
     if (!modalGames.length) {
@@ -807,7 +798,7 @@ const OverdriveTopBar: React.FC<OverdriveTopBarProps> = ({
               <button
                 data-topbar-item="battery"
                 type="button"
-                onClick={() => navigateWithPageSounds("/overdrive/settings?section=interface")}
+                onClick={() => { setTopBarFocused(false); pushView({ type: "settings", section: "interface" }); }}
                 className={cn(
                   "inline-flex items-center gap-2 rounded-full border border-white/20 bg-white/5 px-3 py-1.5 text-xs text-white/80 hover:bg-white/10",
                   isTopBarFocused && topBarItems[focusedItemIndex]?.id === "battery" && "ring-2 ring-[var(--theme-accent)]",
@@ -822,7 +813,7 @@ const OverdriveTopBar: React.FC<OverdriveTopBarProps> = ({
             <button
               data-topbar-item="settings"
               type="button"
-              onClick={() => navigateWithPageSounds("/overdrive/settings")}
+              onClick={() => { setTopBarFocused(false); pushView({ type: "settings" }); }}
               className={cn(
                 "inline-flex items-center gap-2 rounded-full border border-white/20 bg-white/5 px-3 py-1.5 text-xs text-white/80 hover:bg-white/10",
                 isTopBarFocused && topBarItems[focusedItemIndex]?.id === "settings" && "ring-2 ring-[var(--theme-accent)]",

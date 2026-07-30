@@ -18,9 +18,7 @@ import { GameCustomization } from "./pages/GameCustomization";
 import PrivacySettings from "./pages/PrivacySettings";
 import Friends from "./pages/Friends";
 import Overdrive from "./pages/Overdrive";
-import OverdriveGameDetails from "./pages/OverdriveGameDetails";
-import OverdriveSettings from "./pages/OverdriveSettings";
-import OverdriveLibrary from "./pages/OverdriveLibrary";
+import OverdriveOverlayPage from "./pages/OverdriveOverlayPage";
 import Notifications from "./pages/Notifications";
 import ComingSoon from "./pages/ComingSoon";
 import Overlay from "./pages/Overlay";
@@ -37,6 +35,7 @@ import { AccessibilityFilter } from "@/components/AccessibilityFilter";
 import { useTauriDragRegions } from "@/hooks/useTauriDragRegions";
 import { useResponsiveGamepad } from "@/hooks/useResponsiveGamepad";
 import { useOverdriveStore } from "@/stores/overdriveStore";
+import { OverdriveInternalView } from "@/stores/overdriveStore";
 import { useAuthStore } from "@/stores/authStore";
 import { useControllerStore } from "@/stores/controllerStore";
 import OverdriveMenu, { OverdriveMenuItem } from "@/components/overdrive/OverdriveMenu";
@@ -61,7 +60,7 @@ function OverdriveRouteShell({ location }: { location: ReturnType<typeof useLoca
   const navigationType = useNavigationType();
   const { isAuthenticated, signOut } = useAuthStore();
   const { controllerType, isConnected } = useControllerStore();
-  const { isMenuOpen, isPowerDialogOpen, setMenuOpen, setPowerDialogOpen } = useOverdriveStore();
+  const { isMenuOpen, isPowerDialogOpen, setMenuOpen, setPowerDialogOpen, pushView } = useOverdriveStore();
   const isKeyboardOpen = useOverdriveKeyboardStore((state) => state.isOpen);
   const menuOpenAudioRef = React.useRef<HTMLAudioElement | null>(null);
   const menuCloseAudioRef = React.useRef<HTMLAudioElement | null>(null);
@@ -221,7 +220,7 @@ function OverdriveRouteShell({ location }: { location: ReturnType<typeof useLoca
       icon: SlidersHorizontal,
       onSelect: () => {
         setMenuOpen(false);
-        navigate("/overdrive/settings");
+        pushView({ type: "settings" });
       },
     },
     {
@@ -230,7 +229,7 @@ function OverdriveRouteShell({ location }: { location: ReturnType<typeof useLoca
       icon: Power,
       onSelect: handleOpenPower,
     },
-  ]), [handleOpenPower, navigate, setMenuOpen]);
+  ]), [handleOpenPower, pushView, setMenuOpen]);
 
   useResponsiveGamepad({
     onButtonDown: (button) => {
@@ -309,9 +308,7 @@ function OverdriveRouteShell({ location }: { location: ReturnType<typeof useLoca
         >
           <Routes location={location}>
             <Route path="/overdrive" element={<Overdrive />} />
-            <Route path="/overdrive/library" element={<OverdriveLibrary />} />
-            <Route path="/overdrive/game/:gameId" element={<OverdriveGameDetails />} />
-            <Route path="/overdrive/settings" element={<OverdriveSettings />} />
+            <Route path="/overdrive/*" element={<Navigate to="/overdrive" replace />} />
             <Route path="*" element={<Navigate to="/overdrive" replace />} />
           </Routes>
         </motion.div>
@@ -384,6 +381,8 @@ function AppContent() {
       <Route path="/notifications" element={<Notifications />} />
       {/* Overlay route - standalone without AppShell, game overlay */}
       <Route path="/overlay" element={<Overlay />} />
+      {/* Overdrive in-game overlay */}
+      <Route path="/overdrive-overlay" element={<OverdriveOverlayPage />} />
       {/* Tray route - standalone custom tray panel */}
       <Route path="/tray" element={<TrayPanel />} />
       {/* Settings route - standalone without AppShell */}

@@ -1,6 +1,9 @@
 import React, { useEffect } from "react";
 import { invoke } from "@tauri-apps/api/core";
-import { useLocation, useNavigate } from "react-router-dom";
+import { useLocation } from "react-router-dom";
+import LibraryView from "@/components/overdrive/LibraryView";
+import GameDetailsView from "@/components/overdrive/GameDetailsView";
+import SettingsView from "@/components/overdrive/SettingsView";
 import { open } from "@tauri-apps/plugin-shell";
 import { useAuthStore } from "@/stores/authStore";
 import { Power, MessageSquare, Calendar, ClockIcon, Users, ChevronRight, TrendingUp, ArrowLeft, ArrowRight, Newspaper, Plus, ExternalLink, Loader2 } from "lucide-react";
@@ -32,6 +35,8 @@ import menuOpenSound from "@/public/sounds/menuOpen.wav";
 import menuCloseSound from "@/public/sounds/menuClose.wav";
 // @ts-ignore
 import sectionChangeSound from "@/public/sounds/pageOpen.wav";
+// @ts-ignore
+import pageCloseSound from "@/public/sounds/pageClose.wav";
 // @ts-ignore
 import errMoveSound from "@/public/sounds/errMove.wav";
 // @ts-ignore
@@ -225,7 +230,13 @@ const Overdrive: React.FC = () => {
     isTopBarFocused,
     setTopBarFocused,
     setMenuOpen,
+    viewStack,
+    pushView,
+    popView,
   } = useOverdriveStore();
+
+  const currentView = viewStack[viewStack.length - 1] ?? { type: "home" as const };
+  const [subViewHints, setSubViewHints] = React.useState<OverdriveHintItem[]>([]);
   const {
     isOpen: isKeyboardOpen,
     openKeyboard,
@@ -242,7 +253,6 @@ const Overdrive: React.FC = () => {
     syncCurrentGame,
   } = useRunningGameStore();
   const location = useLocation();
-  const navigate = useNavigate();
 
   // Get selected game with customizations
   const displaySelectedGame = useGameWithCustomizations(selectedGame);
@@ -365,6 +375,8 @@ const Overdrive: React.FC = () => {
   const menuCloseAudioRef = React.useRef<HTMLAudioElement | null>(null);
   const sectionChangeAudioRef = React.useRef<HTMLAudioElement | null>(null);
   const errMoveAudioRef = React.useRef<HTMLAudioElement | null>(null);
+  const pageCloseAudioRef = React.useRef<HTMLAudioElement | null>(null);
+  const prevViewStackLengthRef = React.useRef(1);
   const [isUiAudioReady, setIsUiAudioReady] = React.useState(false);
 
   const { controllerType, isConnected, setControllerType, setIsConnected } = useControllerStore();
@@ -573,6 +585,12 @@ const Overdrive: React.FC = () => {
     errAudio.preload = "auto";
     errAudio.volume = 0.35;
     errMoveAudioRef.current = errAudio;
+
+    const pageCloseAudio = new Audio(pageCloseSound);
+    pageCloseAudio.preload = "auto";
+    pageCloseAudio.volume = 0.35;
+    pageCloseAudioRef.current = pageCloseAudio;
+
     setIsUiAudioReady(true);
 
     return () => {
@@ -582,15 +600,33 @@ const Overdrive: React.FC = () => {
       menuCloseAudio.pause();
       sectionAudio.pause();
       errAudio.pause();
+      pageCloseAudio.pause();
       navigateAudioRef.current = null;
       dialogOpenAudioRef.current = null;
       menuOpenAudioRef.current = null;
       menuCloseAudioRef.current = null;
       sectionChangeAudioRef.current = null;
       errMoveAudioRef.current = null;
+      pageCloseAudioRef.current = null;
       setIsUiAudioReady(false);
     };
   }, []);
+
+  // Play sounds when the internal view stack changes
+  React.useEffect(() => {
+    const prev = prevViewStackLengthRef.current;
+    const curr = viewStack.length;
+    if (curr > prev) {
+      // Pushed a new view – page-open sound
+      const a = sectionChangeAudioRef.current;
+      if (a) { a.currentTime = 0; void a.play().catch(() => {}); }
+    } else if (curr < prev) {
+      // Popped back – page-close sound
+      const a = pageCloseAudioRef.current;
+      if (a) { a.currentTime = 0; void a.play().catch(() => {}); }
+    }
+    prevViewStackLengthRef.current = curr;
+  }, [viewStack]);
 
   // ... keep existing handlers (toggleDrawerWithSound, etc.) ...
 
@@ -858,25 +894,15 @@ const Overdrive: React.FC = () => {
 
   const handleOpenGameDetails = React.useCallback(
     (gameId: string) => {
-      navigate(`/overdrive/game/${gameId}`, {
-        state: {
-          skipOverdriveIntro: true,
-          overdriveSound: "sectionChange",
-        },
-      });
+      pushView({ type: "gameDetails", gameId });
     },
-    [navigate],
+    [pushView],
   );
 
   const handleOverdriveSearchSubmit = React.useCallback(() => {
     const query = searchQuery.trim();
-    if (query) {
-      navigate(`/overdrive/library?query=${encodeURIComponent(query)}`);
-      return;
-    }
-
-    navigate("/overdrive/library");
-  }, [navigate, searchQuery]);
+    pushView({ type: "library", searchQuery: query || undefined });
+  }, [pushView, searchQuery]);
 
   React.useEffect(() => {
     if (videoEnded) {
@@ -1130,6 +1156,7 @@ const Overdrive: React.FC = () => {
 
   useResponsiveGamepad({
     onButtonDown: (button) => {
+      if (currentView.type !== "home") return;
       if (isTopBarFocused) {
         return;
       }
@@ -1345,6 +1372,7 @@ const Overdrive: React.FC = () => {
     },
 
     onLeftStick: (x, y) => {
+      if (currentView.type !== "home") return;
       if (isTopBarFocused) return;
       if (isKeyboardOpen || isComposerOpen) return;
       if (isMenuOpen || isPowerDialogOpen) return;
@@ -1453,6 +1481,7 @@ const Overdrive: React.FC = () => {
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
+      if (currentView.type !== "home") return;
       if (e.altKey || e.ctrlKey || e.metaKey) return;
       if (isTopBarFocused) return;
 
@@ -1672,7 +1701,7 @@ const Overdrive: React.FC = () => {
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, [
-    closeKeyboard, isMenuOpen, isPowerDialogOpen, isTopBarFocused, activeSection, libraryFocusIndex,
+    currentView, closeKeyboard, isMenuOpen, isPowerDialogOpen, isTopBarFocused, activeSection, libraryFocusIndex,
     sortedGames, navigateLibrary, handleOpenGameDetails, navigationMode,
     activeTab, tabContentIndex, playNavigateSound, isFullView, isKeyboardOpen, isComposerOpen,
     enterTabContentNavigation, setTopBarFocused, getNextCommunityIndex, getTabContentLength, scrollToTabContent
@@ -1762,26 +1791,6 @@ const Overdrive: React.FC = () => {
           <link rel="preconnect" href="https://fonts.googleapis.com" />
           <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
           <link href="https://fonts.googleapis.com/css2?family=Livvic:ital,wght@0,100;0,200;0,300;0,400;0,500;0,600;0,700;0,900;1,100;1,200;1,300;1,400;1,500;1,600;1,700;1,900&family=Unbounded:wght@200..900&display=swap" rel="stylesheet" />
-
-          <OverdriveTopBar
-            searchQuery={searchQuery}
-            onSearchQueryChange={setSearchQuery}
-            onSearchSubmit={handleOverdriveSearchSubmit}
-            className={cn(isMenuOpen ? "bg-black/40" : "")}
-            rightSlot={(
-              <Button
-                onClick={openDrawerWithSound}
-                onMouseDown={(event) => {
-                  event.preventDefault();
-                }}
-                tabIndex={-1}
-                variant="ghost"
-                className="flex items-center gap-2 dark"
-              >
-                <Power className="h-4 w-4" />
-              </Button>
-            )}
-          />
 
           {/* Main Content */}
           <div className="relative w-full h-full overflow-hidden bg-gray-900">
@@ -2272,9 +2281,90 @@ const Overdrive: React.FC = () => {
             </div>
           </div>
 
-          <OverdriveNavigationHints items={overdriveHints} />
           <Toaster />
         </motion.div>
+      )}
+
+      {/* Global TopBar - always visible above all views */}
+      {videoEnded && (
+        <OverdriveTopBar
+          searchQuery={searchQuery}
+          onSearchQueryChange={setSearchQuery}
+          onSearchSubmit={handleOverdriveSearchSubmit}
+          className={cn("fixed z-[70]", isMenuOpen ? "bg-black/40" : "")}
+          rightSlot={(
+            <Button
+              onClick={openDrawerWithSound}
+              onMouseDown={(event) => { event.preventDefault(); }}
+              tabIndex={-1}
+              variant="ghost"
+              className="flex items-center gap-2 dark"
+            >
+              <Power className="h-4 w-4" />
+            </Button>
+          )}
+        />
+      )}
+
+      {/* Sub-view overlays rendered on top of the home view */}
+      <AnimatePresence mode="wait">
+        {currentView.type === "library" && (
+          <motion.div
+            key="view-library"
+            className="fixed inset-0 z-[60]"
+            initial={{ opacity: 0, x: 40 }}
+            animate={{ opacity: 1, x: 0 }}
+            exit={{ opacity: 0, x: 40 }}
+            transition={{ duration: 0.22, ease: [0.4, 0, 0.2, 1] }}
+          >
+            <LibraryView
+              initialSearchQuery={currentView.searchQuery}
+              onBack={popView}
+              onOpenGame={(id) => pushView({ type: "gameDetails", gameId: id })}
+              onHintsChange={setSubViewHints}
+            />
+          </motion.div>
+        )}
+        {currentView.type === "gameDetails" && (
+          <motion.div
+            key={`view-gameDetails-${currentView.gameId}`}
+            className="fixed inset-0 z-[60]"
+            initial={{ opacity: 0, x: 40 }}
+            animate={{ opacity: 1, x: 0 }}
+            exit={{ opacity: 0, x: 40 }}
+            transition={{ duration: 0.22, ease: [0.4, 0, 0.2, 1] }}
+          >
+            <GameDetailsView
+              gameId={currentView.gameId}
+              onBack={popView}
+              onHintsChange={setSubViewHints}
+            />
+          </motion.div>
+        )}
+        {currentView.type === "settings" && (
+          <motion.div
+            key="view-settings"
+            className="fixed inset-0 z-[60]"
+            initial={{ opacity: 0, x: 40 }}
+            animate={{ opacity: 1, x: 0 }}
+            exit={{ opacity: 0, x: 40 }}
+            transition={{ duration: 0.22, ease: [0.4, 0, 0.2, 1] }}
+          >
+            <SettingsView
+              initialSection={currentView.section}
+              onBack={popView}
+              onHintsChange={setSubViewHints}
+            />
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Global NavigationHints - always visible above all views */}
+      {videoEnded && (
+        <OverdriveNavigationHints
+          items={currentView.type === "home" ? overdriveHints : subViewHints}
+          className="fixed bottom-0 z-[70] w-full"
+        />
       )}
     </>
   );

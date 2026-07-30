@@ -6,6 +6,9 @@
   "permissions": [
     "core:default",
     "core:window:default",
+    "global-shortcut:allow-register",
+    "global-shortcut:allow-unregister",
+    "global-shortcut:allow-is-registered",
     "core:window:allow-create",
     "core:window:allow-show",
     "core:window:allow-hide",
