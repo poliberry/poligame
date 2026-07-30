@@ -1,4 +1,5 @@
 import React, { useEffect } from "react";
+import { MascotOverlay } from "@/components/MascotOverlay";
 import { invoke } from "@tauri-apps/api/core";
 import { useLocation } from "react-router-dom";
 import LibraryView from "@/components/overdrive/LibraryView";
@@ -2366,6 +2367,7 @@ const Overdrive: React.FC = () => {
           className="fixed bottom-0 z-[70] w-full"
         />
       )}
+      <MascotOverlay size={72} />
     </>
   );
 };

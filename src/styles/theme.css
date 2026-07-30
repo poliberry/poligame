@@ -4,6 +4,14 @@
 
 @custom-variant dark (&:is(.dark *));
 
+/* Theme system variables — set by ThemeProvider from active .yaml theme */
+:root {
+  --theme-font-family: system-ui, sans-serif;
+  --theme-border-radius: 0.625rem;
+  --theme-bg-image: none;
+  --theme-bg-opacity: 0.15;
+}
+
 .drag-region {
   -webkit-app-region: drag;
 }

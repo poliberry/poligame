@@ -13,6 +13,7 @@ mod api_keys;
 mod utils;
 mod discord_presence;
 mod updater;
+mod themes;
 
 use serde::{Deserialize, Serialize};
 use std::fs;
@@ -714,6 +715,11 @@ fn main() {
                 }
             });
 
+            // Initialize themes directory and install defaults
+            if let Err(e) = themes::init_themes() {
+                eprintln!("Failed to initialize themes: {}", e);
+            }
+
             // Register global shortcut Ctrl+Shift+F9 to show/hide the in-game overlay
             {
                 use tauri_plugin_global_shortcut::{Code, GlobalShortcutExt, Modifiers, Shortcut, ShortcutState};
@@ -867,6 +873,16 @@ fn main() {
             show_overdrive_overlay,
             hide_overdrive_overlay,
             focus_main_window,
+            // Theme commands
+            themes::list_themes,
+            themes::get_theme,
+            themes::install_theme,
+            themes::save_user_theme,
+            themes::delete_theme,
+            themes::get_theme_asset_base64,
+            themes::save_theme_asset,
+            themes::get_themes_dir_path,
+            themes::get_system_fonts,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

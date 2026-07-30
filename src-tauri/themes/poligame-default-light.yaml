@@ -1,0 +1,37 @@
+id: "poligame-default-light"
+name: "PoliGame Light"
+version: "1.0.0"
+author: "PoliGame"
+publisher: "poligame"
+description: "The official default light theme"
+mascot_file: "poligame-mascot.png"
+
+colors:
+  background: "oklch(1 0 0)"
+  foreground: "oklch(0.141 0.005 285.823)"
+  card: "oklch(1 0 0)"
+  popover: "oklch(1 0 0)"
+  primary: "oklch(59.173% 0.11469 166.898)"
+  primary_foreground: "oklch(0.98 0.01 181)"
+  secondary: "oklch(0.967 0.001 286.375)"
+  secondary_foreground: "oklch(0.141 0.005 285.823)"
+  muted: "oklch(0.967 0.001 286.375)"
+  muted_foreground: "oklch(0.552 0.016 285.938)"
+  accent: "oklch(0.967 0.001 286.375)"
+  accent_foreground: "oklch(0.141 0.005 285.823)"
+  destructive: "oklch(0.577 0.245 27.325)"
+  border: "oklch(0.92 0.004 286.32)"
+  input: "oklch(0.92 0.004 286.32)"
+  ring: "oklch(0.705 0.015 286.067)"
+  theme_accent: "#006B4F"
+  theme_button: "#4CE4B1"
+  theme_button_secondary: "#006B4F"
+  theme_panel: "#f3f4f6"
+
+typography:
+  font_family: "system-ui"
+
+appearance:
+  border_radius: "0.625rem"
+  background_image: ""
+  background_image_opacity: 0.15

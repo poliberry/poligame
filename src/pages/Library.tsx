@@ -1,4 +1,6 @@
 import React, { useEffect, useState } from "react";
+import { MascotOverlay } from "@/components/MascotOverlay";
+import { useThemeStore } from "@/stores/themeStore";
 import { listen } from "@tauri-apps/api/event";
 import { useGameStore } from "@/stores/gameStore";
 import { useLibraryContext } from "@/contexts/LibraryContext";
@@ -314,8 +316,19 @@ const Library: React.FC = () => {
   const shouldShowSections =
     !searchQuery && filterLauncher === "all" && viewMode === "grid";
 
+  const activeTheme = useThemeStore((s) => s.activeTheme);
+  const bgImage = activeTheme?.appearance?.background_image;
+  const bgOpacity = activeTheme?.appearance?.background_image_opacity ?? 0.15;
+
   return (
-    <div className="flex flex-col gap-4 p-4 h-full w-full pb-8">
+    <div className="relative flex flex-col gap-4 p-4 h-full w-full pb-8">
+      {bgImage && (
+        <div
+          className="absolute inset-0 bg-cover bg-center bg-no-repeat pointer-events-none"
+          style={{ backgroundImage: `url(${bgImage})`, opacity: bgOpacity }}
+          aria-hidden="true"
+        />
+      )}
       <link rel="preconnect" href="https://fonts.googleapis.com" />
       <link
         rel="preconnect"
@@ -561,6 +574,7 @@ const Library: React.FC = () => {
           display: none;
         }
       `}</style>
+      <MascotOverlay />
     </div>
   );
 };
