@@ -644,7 +644,10 @@ fn do_show_overdrive_overlay(app: &tauri::AppHandle) -> tauri::Result<()> {
         return Ok(());
     }
 
-    tauri::WebviewWindowBuilder::new(
+    // transparent() requires the macos-private-api feature on macOS; gate it
+    // with cfg so the build always compiles on all three platforms.
+    #[cfg(not(target_os = "macos"))]
+    let builder = tauri::WebviewWindowBuilder::new(
         app,
         OVERDRIVE_OVERLAY_LABEL,
         tauri::WebviewUrl::App("index.html/#/overdrive-overlay".into()),
@@ -654,8 +657,21 @@ fn do_show_overdrive_overlay(app: &tauri::AppHandle) -> tauri::Result<()> {
     .decorations(false)
     .always_on_top(true)
     .skip_taskbar(true)
-    .fullscreen(true)
-    .build()?;
+    .fullscreen(true);
+
+    #[cfg(target_os = "macos")]
+    let builder = tauri::WebviewWindowBuilder::new(
+        app,
+        OVERDRIVE_OVERLAY_LABEL,
+        tauri::WebviewUrl::App("index.html/#/overdrive-overlay".into()),
+    )
+    .title("Overdrive Overlay")
+    .decorations(false)
+    .always_on_top(true)
+    .skip_taskbar(true)
+    .fullscreen(true);
+
+    builder.build()?;
 
     Ok(())
 }
