@@ -7,8 +7,11 @@
 We achieve this by scanning games installed from these launchers locally on your system, saving them to a local database on your computer. Your launcher and game data never touch our servers.
 <br />
 PoliGame utilises Tauri + Convex + React for its fameworks.
-Tauri allows us to deliver a fast experience when you launch or use the application.
-Convex allows us to power our online services, such as your PoliGame account, game customisations and social features.
+<ul>
+  <li>Tauri allows us to deliver a fast experience when you launch or use the application.</li>
+  <li>Convex allows us to power our online services, such as your PoliGame account, game customisations and social features.</li>
+  <li>React allows us to deliver a custom experience, with themes, UI layouts and more, whilst keeping the app light.</li>
+</ul>
 </p>
 <h2>Want to try out PoliGame?</h2>
 <p>We publish releases on our website, https://games.poliberry.com (This is currently under some maintenance!), and on GitHub.
