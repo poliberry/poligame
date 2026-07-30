@@ -1,13 +1,12 @@
 {
   "name": "poligame",
-  "version": "1.2.5",
+  "version": "1.2.6",
   "description": "Game aggregator with marketplace",
   "type": "module",
   "scripts": {
     "dev": "tauri dev",
     "dev:web": "vite",
-    "dev:overlay": "cd overlay-ui && npm run dev",
-    "build": "tauri build",
+"build": "tauri build",
     "build:overlay": "node scripts/build-overlay.js",
     "build:frontend": "tsc && vite build",
     "preview": "vite preview",

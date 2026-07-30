@@ -198,9 +198,11 @@ jobs:
           body: |
             ## What's Changed
 
-            ### Overdrive
-            - Fixed gamepad controls not being recognised in Overdrive mode
-            - Fixed the UI overlay not rendering transparently over games
+            ### Discord Rich Presence fixes
+            - **Fixed game icon not appearing**: SteamGridDB artwork URLs were passed to Discord without the required `mp:` media-proxy prefix, so Discord silently ignored them. External image URLs are now correctly wrapped with `mp:` before being sent over the IPC socket.
+            - **Fixed PoliGame logo appearing twice**: When Discord could not load a game's artwork the fallback activity incorrectly set both the large *and* small image to the PoliGame asset, producing a duplicate logo. The small image now correctly shows the controller icon.
+            - **Fixed game not appearing when Discord starts after PoliGame**: The hook previously made a single connection attempt on mount with no recovery path. It now retries the connection every 30 seconds until Discord becomes available, so presence works even if Discord is opened after the launcher.
+            - **Automatic reconnection after Discord restarts**: If Discord is quit and relaunched while a game is running the IPC socket becomes stale. Failed presence updates now reset the connection state, causing the hook to reconnect automatically on the next retry cycle.
 
             ### Installation
 

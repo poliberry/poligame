@@ -1,6 +1,6 @@
 {
   "productName": "PoliGame",
-  "version": "1.2.5",
+  "version": "1.2.6",
   "identifier": "com.poliberry.gameApp",
   "build": {
     "beforeDevCommand": "npm run dev:web",
