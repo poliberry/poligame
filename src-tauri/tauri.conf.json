@@ -24,17 +24,6 @@
         "decorations": false,
         "skipTaskbar": false,
         "visible": true
-      },
-      {
-        "label": "overdrive-overlay",
-        "title": "Overdrive Overlay",
-        "url": "index.html#/overdrive-overlay",
-        "transparent": true,
-        "decorations": false,
-        "alwaysOnTop": true,
-        "skipTaskbar": true,
-        "fullscreen": true,
-        "visible": false
       }
     ],
     "security": {
