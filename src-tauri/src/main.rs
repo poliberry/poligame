@@ -641,21 +641,7 @@ fn do_show_overdrive_overlay(app: &tauri::AppHandle) -> tauri::Result<()> {
     if let Some(window) = app.get_webview_window(OVERDRIVE_OVERLAY_LABEL) {
         window.show()?;
         window.set_focus()?;
-        return Ok(());
     }
-
-    tauri::WebviewWindowBuilder::new(
-        app,
-        OVERDRIVE_OVERLAY_LABEL,
-        tauri::WebviewUrl::App("index.html/#/overdrive-overlay".into()),
-    )
-    .title("Overdrive Overlay")
-    .transparent(true)
-    .decorations(false)
-    .always_on_top(true)
-    .skip_taskbar(true)
-    .fullscreen(true)
-    .build()?;
 
     Ok(())
 }
