@@ -164,24 +164,24 @@ jobs:
           cat > release-assets/latest.json << EOF
           {
             "version": "$VERSION",
-            "notes": "See full release notes at https://github.com/poliberry/poligame-releases/releases/tag/v$VERSION",
+            "notes": "See full release notes at https://github.com/poliberry/poligame/releases/tag/v$VERSION",
             "pub_date": "$(date -u +"%Y-%m-%dT%H:%M:%SZ")",
             "platforms": {
               "darwin-aarch64": {
                 "signature": "$(cat release-assets/*aarch64.app.tar.gz.sig 2>/dev/null || echo '')",
-                "url": "https://github.com/poliberry/poligame-releases/releases/download/v$VERSION/app-$VERSION-aarch64.app.tar.gz"
+                "url": "https://github.com/poliberry/poligame/releases/download/v$VERSION/app-$VERSION-aarch64.app.tar.gz"
               },
               "darwin-x86_64": {
                 "signature": "$(cat release-assets/*x86_64.app.tar.gz.sig 2>/dev/null || echo '')",
-                "url": "https://github.com/poliberry/poligame-releases/releases/download/v$VERSION/app-$VERSION-x86_64.app.tar.gz"
+                "url": "https://github.com/poliberry/poligame/releases/download/v$VERSION/app-$VERSION-x86_64.app.tar.gz"
               },
               "linux-x86_64": {
                 "signature": "$(cat release-assets/*.AppImage.tar.gz.sig 2>/dev/null || echo '')",
-                "url": "https://github.com/poliberry/poligame-releases/releases/download/v$VERSION/app-$VERSION-x86_64.AppImage.tar.gz"
+                "url": "https://github.com/poliberry/poligame/releases/download/v$VERSION/app-$VERSION-x86_64.AppImage.tar.gz"
               },
               "windows-x86_64": {
                 "signature": "$(cat release-assets/*x64-setup.exe.sig 2>/dev/null || echo '')",
-                "url": "https://github.com/poliberry/poligame-releases/releases/download/v$VERSION/app-$VERSION-x64-setup.exe"
+                "url": "https://github.com/poliberry/poligame/releases/download/v$VERSION/app-$VERSION-x64-setup.exe"
               }
             }
           }
@@ -191,28 +191,30 @@ jobs:
       - name: Create Release in Public Repo
         uses: softprops/action-gh-release@v1
         with:
-          repository: poliberry/poligame-releases  # Your public releases repo
+          repository: poliberry/poligame
           token: ${{ secrets.RELEASES_TOKEN }}  # PAT with access to releases repo
           tag_name: v${{ needs.release.outputs.version }}
           name: Release v${{ needs.release.outputs.version }}
           body: |
             ## What's Changed
-            
-            This release was automatically built from the private source repository.
-            
+
+            ### Overdrive
+            - Fixed gamepad controls not being recognised in Overdrive mode
+            - Fixed the UI overlay not rendering transparently over games
+
             ### Installation
-            
+
             Download the appropriate installer for your platform:
             - **Windows**: `.msi` or `.exe` installer
             - **macOS**: `.dmg` or `.app.tar.gz` (universal binary)
             - **Linux**: `.AppImage` or `.deb`
-            
+
             ### Auto-Update
-            
+
             This release supports automatic updates. The app will check for updates on launch.
-            
+
             ### Checksums
-            
+
             See attached `.sig` files for signature verification.
           files: |
             release-assets/*
@@ -235,18 +237,18 @@ jobs:
             try {
               const { data } = await github.rest.repos.getContent({
                 owner: 'poliberry',
-                repo: 'poligame-releases',
+                repo: 'poligame',
                 path: 'latest.json',
               });
               sha = data.sha;
             } catch (e) {
               // File doesn't exist yet
             }
-            
+
             // Create or update latest.json
             await github.rest.repos.createOrUpdateFileContents({
               owner: 'poliberry',
-              repo: 'poligame-releases',
+              repo: 'poligame',
               path: 'latest.json',
               message: `Update latest.json for v${{ needs.release.outputs.version }}`,
               content: content,
