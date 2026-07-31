@@ -251,8 +251,14 @@ fn collect_fonts_from_dir(dir: &PathBuf, families: &mut BTreeSet<String>) {
         return;
     };
     for entry in entries.flatten() {
+        // Use DirEntry::file_type() — it does not follow symlinks, so cyclic
+        // symlinks in font directories cannot cause unbounded recursion.
+        let Ok(ft) = entry.file_type() else { continue };
+        if ft.is_symlink() {
+            continue;
+        }
         let path = entry.path();
-        if path.is_dir() {
+        if ft.is_dir() {
             collect_fonts_from_dir(&path, families);
             continue;
         }
@@ -267,21 +273,22 @@ fn collect_fonts_from_dir(dir: &PathBuf, families: &mut BTreeSet<String>) {
 }
 
 /// Extract the CSS-usable family name from a font file by reading its name table.
-/// Prefers Name ID 16 (Typographic Family) over Name ID 1 (Font Family), and
-/// Windows Unicode (platform 3) over Mac Roman (platform 1).
+/// Prefers Name ID 16 (Typographic Family) over Name ID 1 (Font Family).
+/// Only checks Windows/Unicode platform records: ttf-parser 0.25's Name::to_string()
+/// only decodes Windows Unicode (UTF-16BE) and returns None for Mac Roman records.
 fn read_font_family(path: &PathBuf) -> Option<String> {
     let data = fs::read(path).ok()?;
     let face = ttf_parser::Face::parse(&data, 0).ok()?;
 
     for &name_id in &[16u16, 1u16] {
-        for plat in [ttf_parser::PlatformId::Windows, ttf_parser::PlatformId::Macintosh] {
-            for name in face.names() {
-                if name.name_id == name_id && name.platform_id == plat {
-                    if let Some(s) = name.to_string() {
-                        let s = s.trim().to_string();
-                        if s.len() > 1 {
-                            return Some(s);
-                        }
+        for name in face.names() {
+            if name.name_id == name_id
+                && name.platform_id == ttf_parser::PlatformId::Windows
+            {
+                if let Some(s) = name.to_string() {
+                    let s = s.trim().to_string();
+                    if s.len() > 1 {
+                        return Some(s);
                     }
                 }
             }
