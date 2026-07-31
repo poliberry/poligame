@@ -764,7 +764,10 @@ fn main() {
         })
         .on_window_event(|window, event| match event {
             tauri::WindowEvent::CloseRequested { api, .. } => {
-                if window.label() == "main" || window.label() == TRAY_PANEL_LABEL {
+                if window.label() == "main"
+                    || window.label() == TRAY_PANEL_LABEL
+                    || window.label() == OVERDRIVE_OVERLAY_LABEL
+                {
                     api.prevent_close();
                     let _ = window.hide();
                 }

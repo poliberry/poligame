@@ -5,6 +5,8 @@ import { useRunningGameStore } from "@/stores/runningGameStore";
 import { Game } from "@/types";
 
 const DISCORD_CLIENT_ID = import.meta.env.VITE_DISCORD_CLIENT_ID as string | undefined;
+const RECONNECT_INTERVAL_MS = 30_000;
+const HEARTBEAT_INTERVAL_MS = 15_000;
 
 type PresencePayload =
   | {
@@ -77,6 +79,7 @@ export function useDiscordRichPresence(enabled: boolean = true) {
   const location = useLocation();
   const { runningGame, runningGameStartedAt } = useRunningGameStore();
   const [isConnected, setIsConnected] = useState(false);
+  const [sendTick, setSendTick] = useState(0);
   const previousPayloadRef = useRef<string>("");
 
   const payload = useMemo<PresencePayload>(() => {
@@ -98,40 +101,70 @@ export function useDiscordRichPresence(enabled: boolean = true) {
     };
   }, [location.pathname, runningGame, runningGameStartedAt]);
 
+  // Attempt connection on mount and retry every 30 s until connected. Re-runs
+  // when isConnected drops to false (e.g. after a failed update) to recover.
   useEffect(() => {
-    if (!enabled) {
+    if (!enabled || isConnected) {
       return;
     }
 
     let mounted = true;
 
-    const connect = async () => {
+    const attempt = async () => {
       try {
         const connected = await invoke<boolean>("discord_presence_connect", {
           clientId: DISCORD_CLIENT_ID,
         });
-        if (!mounted) {
-          return;
+        if (mounted && connected) {
+          setIsConnected(true);
         }
-        setIsConnected(connected);
       } catch (error) {
         console.debug("Discord Rich Presence unavailable:", error);
-        if (mounted) {
-          setIsConnected(false);
-        }
       }
     };
 
-    void connect();
+    void attempt();
+
+    const retryInterval = setInterval(() => {
+      void attempt();
+    }, RECONNECT_INTERVAL_MS);
 
     return () => {
       mounted = false;
+      clearInterval(retryInterval);
+    };
+  }, [enabled, isConnected]);
+
+  // Clear presence and reset state when disabled or on unmount.
+  useEffect(() => {
+    if (!enabled) {
+      return;
+    }
+
+    return () => {
       setIsConnected(false);
       previousPayloadRef.current = "";
       void invoke("discord_presence_clear").catch(() => undefined);
     };
   }, [enabled]);
 
+  // Heartbeat: exercises the IPC socket on a fixed interval so a Discord restart
+  // is detected even when the payload hasn't changed. Clears the dedup guard and
+  // bumps sendTick so the update effect re-runs and attempts a real send.
+  useEffect(() => {
+    if (!enabled || !isConnected) {
+      return;
+    }
+
+    const id = setInterval(() => {
+      previousPayloadRef.current = "";
+      setSendTick((t) => t + 1);
+    }, HEARTBEAT_INTERVAL_MS);
+
+    return () => clearInterval(id);
+  }, [enabled, isConnected]);
+
+  // Send presence updates whenever connected state, payload, or heartbeat tick changes.
   useEffect(() => {
     if (!enabled || !isConnected) {
       return;
@@ -163,9 +196,12 @@ export function useDiscordRichPresence(enabled: boolean = true) {
         });
       } catch (error) {
         console.debug("Discord Rich Presence update failed:", error);
+        // The IPC connection was likely lost; reset so reconnection is attempted.
+        setIsConnected(false);
+        previousPayloadRef.current = "";
       }
     };
 
     void update();
-  }, [enabled, isConnected, payload]);
+  }, [enabled, isConnected, payload, sendTick]);
 }

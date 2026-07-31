@@ -36,18 +36,21 @@ fn to_discord_external_asset_url(raw: Option<String>) -> Option<String> {
         return None;
     }
 
+    // Already formatted for Discord's media proxy — rewrite .ico variants if needed,
+    // but preserve the mp: prefix Discord requires to fetch external images.
     if let Some(without_prefix) = candidate.strip_prefix("mp:") {
         if without_prefix.starts_with("https://") || without_prefix.starts_with("http://") {
             let rewritten = rewrite_icon_variant_url(without_prefix);
-            return Some(rewritten);
+            return Some(format!("mp:{rewritten}"));
         }
 
-        return Some(without_prefix.to_string());
+        return Some(candidate);
     }
 
+    // Raw external URL: wrap with the media-proxy prefix Discord requires to fetch it.
     if candidate.starts_with("https://") || candidate.starts_with("http://") {
         let rewritten = rewrite_icon_variant_url(&candidate);
-        return Some(rewritten);
+        return Some(format!("mp:{rewritten}"));
     }
 
     None
@@ -130,7 +133,19 @@ where
         .as_mut()
         .ok_or_else(|| "Discord IPC client is unavailable".to_string())?;
 
-    action(client)
+    let result = action(client);
+
+    // If the action failed the IPC connection is likely stale. Reset so the next
+    // call triggers a fresh reconnect instead of reusing a broken socket.
+    if result.is_err() {
+        if let Some(c) = client_guard.as_mut() {
+            let _ = c.close();
+        }
+        *client_guard = None;
+        *id_guard = None;
+    }
+
+    result
 }
 
 #[tauri::command]
@@ -234,7 +249,7 @@ pub fn discord_presence_update_game(
                     activity::Assets::new()
                         .large_image("poligame")
                         .large_text("PoliGame")
-                        .small_image("poligame")
+                        .small_image("controller")
                         .small_text(launcher_label),
                 )
                 .buttons(vec![activity::Button::new("Open PoliGame", "https://poligame.app")]);
