@@ -100,7 +100,7 @@ jobs:
         run: |
           mkdir -p release-assets
           # Search all target directories so cross-compiled macOS bundles are included
-          find src-tauri/target -path "*/release/bundle/*/*" -type f -exec cp {} release-assets/ \;
+          find src-tauri/target -path "*/release/bundle/*/*" -type f \( -name "*.msi" -o -name "*.exe" -o -name "*.dmg" -o -name "*.AppImage" -o -name "*.deb" -o -name "*.tar.gz" -o -name "*.sig" \) -exec cp {} release-assets/ \;
           ls -la release-assets/
 
       - name: Upload artifacts
