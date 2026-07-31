@@ -23,13 +23,13 @@ colors:
   border: "oklch(0.92 0.004 286.32)"
   input: "oklch(0.92 0.004 286.32)"
   ring: "oklch(0.705 0.015 286.067)"
-  theme_accent: "#006B4F"
-  theme_button: "#4CE4B1"
-  theme_button_secondary: "#006B4F"
-  theme_panel: "#f3f4f6"
+  theme_accent: "#72EAC0"
+  theme_button: "#008A65"
+  theme_button_secondary: "#72EAC0"
+  theme_panel: "#f0f9f5"
 
 typography:
-  font_family: "system-ui"
+  font_family: "Google Sans Flex"
 
 appearance:
   border_radius: "0.625rem"

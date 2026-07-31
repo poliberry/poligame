@@ -23,12 +23,6 @@ export const Sidebar: React.FC = () => {
   return (
     <>
       <div className="flex flex-row items-center justify-center w-full z-50">
-        <link rel="preconnect" href="https://fonts.googleapis.com" />
-        <link rel="preconnect" href="https://fonts.gstatic.com" />
-        <link
-          href="https://fonts.googleapis.com/css2?family=Google+Sans+Flex:opsz,wght@6..144,1..1000&family=Oswald:wght@200..700&display=swap"
-          rel="stylesheet"
-        />
         <nav className="flex flex-row w-fit items-center gap-2">
           {navItems.map((item) => {
             const isActive = location.pathname === item.path;
@@ -41,7 +35,6 @@ export const Sidebar: React.FC = () => {
                   <span>{item.icon}</span>
                   <span
                     className={`font-light text-sm`}
-                    style={{ fontFamily: "Google Sans Flex, sans-serif" }}
                   >
                     {item.label}
                   </span>

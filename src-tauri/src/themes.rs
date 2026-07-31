@@ -69,15 +69,14 @@ fn themes_dir() -> Result<PathBuf, String> {
 pub fn init_themes() -> Result<(), String> {
     let dir = themes_dir()?;
 
+    // Always overwrite official themes so users receive updated defaults on each launch.
     for (filename, content) in &[
         ("poligame-default-dark.yaml", DEFAULT_DARK_THEME),
         ("poligame-default-light.yaml", DEFAULT_LIGHT_THEME),
     ] {
         let path = dir.join(filename);
-        if !path.exists() {
-            fs::write(&path, content)
-                .map_err(|e| format!("Failed to write default theme {}: {}", filename, e))?;
-        }
+        fs::write(&path, content)
+            .map_err(|e| format!("Failed to write default theme {}: {}", filename, e))?;
     }
 
     Ok(())

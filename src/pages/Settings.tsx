@@ -147,13 +147,11 @@ const Settings: React.FC = () => {
 
   return (
     <div className="w-full h-full flex flex-col bg-background">
-      <link rel="preconnect" href="https://fonts.googleapis.com" />
-      <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
-      <link href="https://fonts.googleapis.com/css2?family=Livvic:ital,wght@0,100;0,200;0,300;0,400;0,500;0,600;0,700;0,900;1,100;1,200;1,300;1,400;1,500;1,600;1,700;1,900&family=Unbounded:wght@200..900&display=swap" rel="stylesheet"></link>
+
       <div className="flex items-center justify-between py-1 px-2 border-b border-border bg-muted drag-region" data-tauri-drag-region>
         <div className="flex items-center gap-2 text-foreground/70">
           <Cog size={16} />
-          <h2 className="text-sm font-semibold uppercase italic" style={{ fontFamily: 'Unbounded, sans-serif' }}>Settings</h2>
+          <h2 className="text-sm font-semibold uppercase italic">Settings</h2>
         </div>
         <div className="flex items-end gap-2 no-drag-region text-foreground/70" data-tauri-drag-region="false">
           {/* Window Controls */}
@@ -249,7 +247,7 @@ const Settings: React.FC = () => {
               <>
                 {/* Light / Dark / System mode */}
                 <div className="flex flex-col gap-2 mb-6">
-                  <label className="text-foreground/70 font-medium" style={{ fontFamily: 'Livvic, sans-serif' }}>Appearance</label>
+                  <label className="text-foreground/70 font-medium">Appearance</label>
                   <div className="flex gap-2">
                     {(["light", "dark", "system"] as const).map((m) => {
                       const Icon = m === "light" ? Sun : m === "dark" ? Moon : Monitor;
@@ -276,7 +274,7 @@ const Settings: React.FC = () => {
                 </div>
 
                 <div className="flex flex-col gap-2 mt-4">
-                  <label className="text-foreground/70 font-medium" style={{ fontFamily: 'Livvic, sans-serif' }}>Colour Overrides</label>
+                  <label className="text-foreground/70 font-medium">Colour Overrides</label>
                   <p className="text-xs text-muted-foreground -mt-1">These override the active theme's accent and button colours.</p>
                   <div className="flex flex-row items-center gap-2 w-full">
                     <Card className="p-2 text-foreground">
@@ -485,13 +483,13 @@ const Settings: React.FC = () => {
 
             {activeTab === "accessibility" && (
               <MicaCard className="settings-section">
-                <h2 className="text-foreground/70 font-medium uppercase italic text-lg mb-4" style={{ fontFamily: 'Unbounded, sans-serif' }}>Accessibility</h2>
+                <h2 className="text-foreground/70 font-medium uppercase italic text-lg mb-4">Accessibility</h2>
                 <div className="flex flex-col gap-4">
                   <div className="settings-group">
                     <label className="flex items-center justify-between cursor-pointer">
                       <div>
-                        <div className="font-medium text-foreground/90" style={{ fontFamily: 'Livvic, sans-serif' }}>Grayscale Mode</div>
-                        <div className="text-sm text-foreground/60" style={{ fontFamily: 'Livvic, sans-serif' }}>
+                        <div className="font-medium text-foreground/90">Grayscale Mode</div>
+                        <div className="text-sm text-foreground/60">
                           Apply grayscale filter to the entire application
                         </div>
                       </div>
@@ -511,8 +509,8 @@ const Settings: React.FC = () => {
                   <div className="settings-group">
                     <label className="flex items-center justify-between cursor-pointer">
                       <div>
-                        <div className="font-medium text-foreground/90" style={{ fontFamily: 'Livvic, sans-serif' }}>High Contrast Mode</div>
-                        <div className="text-sm text-foreground/60" style={{ fontFamily: 'Livvic, sans-serif' }}>
+                        <div className="font-medium text-foreground/90">High Contrast Mode</div>
+                        <div className="text-sm text-foreground/60">
                           Increase contrast for better visibility
                         </div>
                       </div>
@@ -536,7 +534,7 @@ const Settings: React.FC = () => {
             {activeTab === "themes" && (
               <div className="flex flex-col gap-4">
                 <div>
-                  <h2 className="text-foreground/70 font-medium uppercase italic text-base" style={{ fontFamily: 'Unbounded, sans-serif' }}>Themes</h2>
+                  <h2 className="text-foreground/70 font-medium uppercase italic text-base">Themes</h2>
                   <p className="text-xs text-muted-foreground mt-1">Install themes from .yaml files or create your own.</p>
                 </div>
 

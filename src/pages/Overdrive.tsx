@@ -148,7 +148,6 @@ const GameItem: React.FC<GameItemProps> = ({
       style={{
         outline: "none",
         zIndex: isFocused ? 20 : 10,
-        fontFamily: "Google Sans Flex, sans-serif",
       }}
       onClick={() => {
         onFocus();
@@ -157,13 +156,10 @@ const GameItem: React.FC<GameItemProps> = ({
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
     >
-      <link rel="preconnect" href="https://fonts.googleapis.com" />
-      <link rel="preconnect" href="https://fonts.gstatic.com" />
-      <link href="https://fonts.googleapis.com/css2?family=Google+Sans+Flex:opsz,wght@6..144,1..1000&display=swap" rel="stylesheet"></link>
       {/* Game tile */}
       <motion.div
         className={`relative w-full h-full overflow-hidden shadow-2xl ${isActive
-          ? "ring-4 ring-[#107c10] shadow-[#107c10]/50"
+          ? "ring-4 ring-[var(--theme-accent)] shadow-[var(--theme-accent)]/50"
           : "ring-2 ring-white/20"
           }`}
       >
@@ -179,7 +175,7 @@ const GameItem: React.FC<GameItemProps> = ({
           <div
             className="absolute inset-0"
             style={{
-              background: "linear-gradient(135deg, #1a1f3a 0%, #0a0e27 100%)",
+              background: "var(--background)",
             }}
           />
         )}
@@ -195,7 +191,6 @@ const GameItem: React.FC<GameItemProps> = ({
             exit={{ opacity: 0, y: 10 }}
             transition={{ duration: 0.18, ease: "easeOut" }}
             className="absolute left-0 top-full mt-3 px-1 text-left"
-            style={{ fontFamily: "Google Sans Flex, sans-serif" }}
           >
             <p className="max-w-full text-sm font-semibold text-white">
               {displayGame.title}
@@ -1789,16 +1784,12 @@ const Overdrive: React.FC = () => {
             .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
             .no-scrollbar::-webkit-scrollbar { display: none; }
           `}</style>
-          <link rel="preconnect" href="https://fonts.googleapis.com" />
-          <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
-          <link href="https://fonts.googleapis.com/css2?family=Livvic:ital,wght@0,100;0,200;0,300;0,400;0,500;0,600;0,700;0,900;1,100;1,200;1,300;1,400;1,500;1,600;1,700;1,900&family=Unbounded:wght@200..900&display=swap" rel="stylesheet" />
-
           {/* Main Content */}
           <div className="relative w-full h-full overflow-hidden bg-gray-900">
 
             {/* Background */}
             <div className="absolute inset-0 w-full h-[350px]">
-              <div className="absolute inset-0" style={{ background: "linear-gradient(135deg, #1a1f3a 0%, #0a0e27 100%)" }} />
+              <div className="absolute inset-0" style={{ background: "var(--background)" }} />
               <AnimatePresence>
                 {backgroundLayers.map((layer, index) => {
                   const isTopLayer = index === backgroundLayers.length - 1;
@@ -1929,7 +1920,6 @@ const Overdrive: React.FC = () => {
                                     ? "bg-white/90 text-black"
                                     : "text-white/60 hover:text-white/90 hover:bg-white/10"
                               )}
-                              style={{ fontFamily: 'Google Sans Flex, sans-serif' }}
                               whileHover={{ scale: 1.05 }}
                               whileTap={{ scale: 0.95 }}
                             >
@@ -1985,7 +1975,7 @@ const Overdrive: React.FC = () => {
                                             <p className="text-base font-semibold text-white mb-1">{achievement.name}</p>
                                             <p className="text-sm text-white/60 line-clamp-2">{achievement.description}</p>
                                             {achievement.unlocked && achievement.unlockedDate && (
-                                              <p className="text-sm text-[#107c10] mt-2">✓ Unlocked {new Date(achievement.unlockedDate * 1000).toLocaleDateString()}</p>
+                                              <p className="text-sm text-[var(--theme-accent)] mt-2">✓ Unlocked {new Date(achievement.unlockedDate * 1000).toLocaleDateString()}</p>
                                             )}
                                           </div>
                                         </motion.div>
@@ -2008,7 +1998,7 @@ const Overdrive: React.FC = () => {
 
                           {/* Timeline */}
                           {activeTab === 'timeline' && (
-                            <div style={{ fontFamily: 'Google Sans Flex, sans-serif' }} className={isFullView ? "pb-20 max-w-4xl mx-auto" : "max-w-4xl mx-auto"}>
+                            <div className={isFullView ? "pb-20 max-w-4xl mx-auto" : "max-w-4xl mx-auto"}>
                               {playtimeData ? (
                                 <>
                                   <div className="grid grid-cols-2 md:grid-cols-3 gap-4 mb-8">
@@ -2071,8 +2061,8 @@ const Overdrive: React.FC = () => {
                                 ref={(el) => { if (el) tabContentRefs.current.set(0, el); }}
                                 className={cn(
                                   "mb-6 flex w-full items-center justify-center gap-3 rounded-2xl border px-6 py-5 text-lg font-semibold transition-all",
-                                  "border-[#107c10]/60 bg-[#107c10]/20 text-[#bdf8bd] hover:bg-[#107c10]/35",
-                                  isFullView && navigationMode === 'tabContent' && tabContentIndex === 0 && "ring-2 ring-[#9cf39c]",
+                                  "border-[var(--theme-accent)]/60 bg-[var(--theme-accent)]/20 text-[var(--theme-accent)] hover:bg-[var(--theme-accent)]/35",
+                                  isFullView && navigationMode === 'tabContent' && tabContentIndex === 0 && "ring-2 ring-[var(--theme-accent)]",
                                 )}
                               >
                                 <Plus className="h-5 w-5" />
@@ -2221,7 +2211,7 @@ const Overdrive: React.FC = () => {
                                         onClick={() => openKeyboardForField("title")}
                                         className={cn(
                                           "rounded-full border px-3 py-1.5 text-xs",
-                                          composerField === "title" ? "border-[#107c10]/60 bg-[#107c10]/20 text-[#9cf39c]" : "border-white/20 text-white/70 hover:bg-white/10"
+                                          composerField === "title" ? "border-[var(--theme-accent)]/60 bg-[var(--theme-accent)]/20 text-[var(--theme-accent)]" : "border-white/20 text-white/70 hover:bg-white/10"
                                         )}
                                       >
                                         Use On-Screen Keyboard
@@ -2238,7 +2228,7 @@ const Overdrive: React.FC = () => {
                                         onClick={() => openKeyboardForField("content")}
                                         className={cn(
                                           "rounded-full border px-3 py-1.5 text-xs",
-                                          composerField === "content" ? "border-[#107c10]/60 bg-[#107c10]/20 text-[#9cf39c]" : "border-white/20 text-white/70 hover:bg-white/10"
+                                          composerField === "content" ? "border-[var(--theme-accent)]/60 bg-[var(--theme-accent)]/20 text-[var(--theme-accent)]" : "border-white/20 text-white/70 hover:bg-white/10"
                                         )}
                                       >
                                         Use On-Screen Keyboard
@@ -2264,7 +2254,7 @@ const Overdrive: React.FC = () => {
                                         void handleSubmitPost();
                                       }}
                                       disabled={isSubmittingPost}
-                                      className="rounded-full border border-[#107c10]/50 bg-[#107c10]/25 px-4 py-2 text-sm font-medium text-[#9cf39c] hover:bg-[#107c10]/35 disabled:cursor-not-allowed disabled:opacity-60"
+                                      className="rounded-full border border-[var(--theme-accent)]/50 bg-[var(--theme-accent)]/25 px-4 py-2 text-sm font-medium text-[var(--theme-accent)] hover:bg-[var(--theme-accent)]/35 disabled:cursor-not-allowed disabled:opacity-60"
                                     >
                                       {isSubmittingPost ? "Posting..." : "Post"}
                                     </button>

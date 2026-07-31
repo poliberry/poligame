@@ -329,17 +329,6 @@ const Library: React.FC = () => {
           aria-hidden="true"
         />
       )}
-      <link rel="preconnect" href="https://fonts.googleapis.com" />
-      <link
-        rel="preconnect"
-        href="https://fonts.gstatic.com"
-        crossOrigin="anonymous"
-      />
-      <link
-        href="https://fonts.googleapis.com/css2?family=Livvic:ital,wght@0,100;0,200;0,300;0,400;0,500;0,600;0,700;0,900;1,100;1,200;1,300;1,400;1,500;1,600;1,700;1,900&family=Unbounded:wght@200..900&display=swap"
-        rel="stylesheet"
-      />
-
       {/* Game Roulette Button */}
       {!isLoading && filteredGames.length > 0 && (
         <div className="flex justify-end gap-2">
@@ -389,7 +378,6 @@ const Library: React.FC = () => {
             <div className="flex items-center gap-2 mb-4">
               <h2
                 className="text-xl font-light"
-                style={{ fontFamily: "Google Sans Flex, sans-serif" }}
               >
                 Let's jump back in
               </h2>
@@ -447,7 +435,6 @@ const Library: React.FC = () => {
                 <div className="flex items-center gap-2 mb-4">
                   <h2
                     className="text-lg font-light"
-                    style={{ fontFamily: "Google Sans Flex, sans-serif" }}
                   >
                     Your most played games
                   </h2>
@@ -490,14 +477,12 @@ const Library: React.FC = () => {
                       )}
                       <h2
                         className="text-lg font-light"
-                        style={{ fontFamily: "Google Sans Flex, sans-serif" }}
                       >
                         {launcherNames[launcher] ||
                           launcher.charAt(0).toUpperCase() + launcher.slice(1)}
                       </h2>
                       <span
                         className="text-sm text-foreground/60"
-                        style={{ fontFamily: "Livvic, sans-serif" }}
                       >
                         ({launcherGames.length})
                       </span>

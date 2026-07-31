@@ -48,14 +48,13 @@ const LibraryCard: React.FC<LibraryCardProps> = ({ game, isFocused, onClick, onF
       className="group relative text-left focus:outline-none"
       whileHover={{ scale: 1.03 }}
       whileTap={{ scale: 0.98 }}
-      style={{ fontFamily: "Google Sans Flex, sans-serif" }}
     >
       <div
         className={cn(
           "relative h-[300px] w-[200px] overflow-hidden ring-2 transition-all duration-200",
           isFocused
-            ? "ring-[#107c10] shadow-[0_0_24px_rgba(16,124,16,0.55)] scale-[1.04]"
-            : "ring-white/20 group-hover:ring-[#107c10]",
+            ? "ring-[var(--theme-accent)] shadow-[0_0_24px_color-mix(in_oklab,var(--theme-accent)_55%,transparent)] scale-[1.04]"
+            : "ring-white/20 group-hover:ring-[var(--theme-accent)]",
         )}
       >
         {coverArt ? (
@@ -66,7 +65,7 @@ const LibraryCard: React.FC<LibraryCardProps> = ({ game, isFocused, onClick, onF
             draggable={false}
           />
         ) : (
-          <div className="absolute inset-0 bg-gradient-to-br from-[#1a1f3a] to-[#0a0e27]" />
+          <div className="absolute inset-0 bg-gradient-to-br from-background to-background" />
         )}
         <div className={cn("absolute inset-0", isFocused ? "bg-black/10" : "bg-black/25")} />
       </div>
@@ -284,8 +283,8 @@ const LibraryView: React.FC<LibraryViewProps> = ({ initialSearchQuery = "", onBa
       <style>{`.no-scrollbar{-ms-overflow-style:none;scrollbar-width:none}.no-scrollbar::-webkit-scrollbar{display:none}`}</style>
 
       <div ref={scrollContainerRef} className="h-full overflow-y-auto no-scrollbar px-8 pb-24 pt-20">
-        <div className="mb-6 flex items-center gap-3" style={{ fontFamily: "Unbounded, sans-serif" }}>
-          <Library className="h-6 w-6 text-[#9cf39c]" />
+        <div className="mb-6 flex items-center gap-3">
+          <Library className="h-6 w-6 text-[var(--theme-accent)]" />
           <h1 className="text-2xl font-medium">All Games</h1>
           {searchQuery.trim() && (
             <span className="rounded-full border border-white/20 bg-white/5 px-3 py-1 text-xs uppercase tracking-[0.14rem] text-white/70">
@@ -304,7 +303,7 @@ const LibraryView: React.FC<LibraryViewProps> = ({ initialSearchQuery = "", onBa
             {groupedGames.map((group) => (
               <section key={group.launcher}>
                 <div className="mb-4 flex items-center gap-3">
-                  <h2 className="text-sm uppercase tracking-[0.22rem] text-white/65" style={{ fontFamily: "Google Sans Flex, sans-serif" }}>
+                  <h2 className="text-sm uppercase tracking-[0.22rem] text-white/65">
                     {formatLauncherLabel(group.launcher)}
                   </h2>
                   <span className="text-xs text-white/45">{group.games.length} games</span>

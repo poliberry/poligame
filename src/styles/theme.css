@@ -6,10 +6,25 @@
 
 /* Theme system variables — set by ThemeProvider from active .yaml theme */
 :root {
-  --theme-font-family: system-ui, sans-serif;
+  --theme-font-family: "Google Sans Flex", system-ui, sans-serif;
   --theme-border-radius: 0.625rem;
   --theme-bg-image: none;
   --theme-bg-opacity: 0.15;
+}
+
+body {
+  font-family: var(--theme-font-family);
+}
+
+/* Themed button — background/foreground swap on hover */
+.theme-btn {
+  background-color: var(--theme-button);
+  color: var(--theme-button-secondary);
+  transition: background-color 0.2s ease, color 0.2s ease;
+}
+.theme-btn:hover {
+  background-color: var(--theme-button-secondary);
+  color: var(--theme-button);
 }
 
 .drag-region {
@@ -40,27 +55,27 @@
 }
 
 .content-view-scrollbar::-webkit-scrollbar-thumb {
-  background: rgba(255, 255, 255, 0.2);
-  border-radius: 4px;
+  background: color-mix(in oklab, var(--theme-accent) 25%, transparent);
+  border-radius: var(--theme-border-radius);
 }
 
 .content-view-scrollbar::-webkit-scrollbar-thumb:hover {
-  background: rgba(255, 255, 255, 0.3);
+  background: color-mix(in oklab, var(--theme-accent) 40%, transparent);
 }
 
 .customButton {
-  background-color: rgba(255, 255, 255, 0.1);
-  border-radius: 4px;
+  background-color: color-mix(in oklab, var(--theme-button) 15%, transparent);
+  border-radius: var(--theme-border-radius);
   padding: 4px 8px;
   font-size: 12px;
   font-weight: 600;
-  color: #fff;
+  color: var(--foreground);
   border: none;
   cursor: pointer;
 }
 
 .customButton:hover {
-  background-color: rgba(255, 255, 255, 0.2);
+  background-color: color-mix(in oklab, var(--theme-button) 30%, transparent);
 }
 
 .library-sidebar-game-title {
@@ -115,7 +130,7 @@
 .prose h4,
 .prose h5,
 .prose h6 {
-  color: #fff;
+  color: var(--foreground);
   font-weight: 600;
 }
 
@@ -134,9 +149,9 @@
 }
 
 .prose code {
-  background-color: rgba(255, 255, 255, 0.1);
+  background-color: color-mix(in oklab, var(--muted) 60%, transparent);
   padding: 0.125rem 0.25rem;
-  border-radius: 0.25rem;
+  border-radius: calc(var(--theme-border-radius) / 2);
   font-size: 0.875em;
   font-family:
     ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, "Liberation Mono",
@@ -144,9 +159,9 @@
 }
 
 .prose pre {
-  background-color: rgba(255, 255, 255, 0.05);
+  background-color: color-mix(in oklab, var(--muted) 40%, transparent);
   padding: 1rem;
-  border-radius: 0.5rem;
+  border-radius: var(--theme-border-radius);
   overflow-x: auto;
 }
 
@@ -377,8 +392,8 @@
   width: 16px;
   height: 16px;
   border-radius: 9999px;
-  border: 2px solid #ffffff;
-  background: #2563eb;
+  border: 2px solid var(--background);
+  background: var(--theme-accent);
   box-shadow: 0 1px 4px rgba(0, 0, 0, 0.35);
   margin-top: -2px;
 }
@@ -390,8 +405,8 @@
   width: 16px;
   height: 16px;
   border-radius: 9999px;
-  border: 2px solid #ffffff;
-  background: #2563eb;
+  border: 2px solid var(--background);
+  background: var(--theme-accent);
   box-shadow: 0 1px 4px rgba(0, 0, 0, 0.35);
 }
 .figma-range::-moz-range-track {
@@ -411,9 +426,9 @@
 .text-shimmer {
   background: linear-gradient(
     90deg,
-    #6b7280 25%,
-    #ffffff 50%,
-    #6b7280 75%
+    var(--muted-foreground) 25%,
+    var(--foreground) 50%,
+    var(--muted-foreground) 75%
   );
   background-size: 200% 100%;
   animation: text-shimmer 1.8s linear infinite;

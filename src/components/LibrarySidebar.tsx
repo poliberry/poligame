@@ -128,7 +128,6 @@ export const LibrarySidebar: React.FC<LibrarySidebarProps> = ({
           type="text"
           placeholder="Search games..."
           value={searchQuery}
-          style={{ fontFamily: "Google Sans Flex, sans-serif" }}
           onChange={(e) => onSearchChange(e.target.value)}
           className="flex-1 pl-8 placeholder:text-foreground/60 text-sm font-light rounded-t-2xl h-10 border-none"
         />
@@ -142,7 +141,6 @@ export const LibrarySidebar: React.FC<LibrarySidebarProps> = ({
               variant="ghost"
               className="text-foreground/60 font-light uppercase p-0"
               style={{
-                fontFamily: "Google Sans Flex, sans-serif",
                 paddingTop: "8px",
                 paddingBottom: "8px",
                 paddingRight: "8px",

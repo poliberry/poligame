@@ -318,10 +318,7 @@ const OverdriveGameDetails: React.FC = () => {
             animate={{ opacity: 1, scale: 1 }}
             transition={{ duration: 0.24, ease: [0.4, 0, 0.2, 1] }}
         >
-            <link rel="preconnect" href="https://fonts.googleapis.com" />
-            <link rel="preconnect" href="https://fonts.gstatic.com" />
-            <link href="https://fonts.googleapis.com/css2?family=Google+Sans+Flex:opsz,wght@6..144,1..1000&display=swap" rel="stylesheet"></link>
-            <OverdriveTopBar
+                <OverdriveTopBar
                 searchQuery={searchQuery}
                 onSearchQueryChange={setSearchQuery}
                 onSearchSubmit={() => {
@@ -339,7 +336,7 @@ const OverdriveGameDetails: React.FC = () => {
                     style={{
                         background: heroImage
                             ? `url(${heroImage}) center center / cover no-repeat`
-                            : "linear-gradient(135deg, #1a1f3a 0%, #0a0e27 100%)",
+                            : "var(--background)",
                     }}
                 />
                 <div className={`absolute inset-x-0 top-0 ${launching ? "h-full" : "h-[44vh]"} bg-gradient-to-b from-transparent to-gray-900`} />
@@ -360,7 +357,6 @@ const OverdriveGameDetails: React.FC = () => {
                     </div>
                     <h1
                         className="text-4xl font-semibold leading-tight"
-                        style={{ fontFamily: "Unbounded, sans-serif" }}
                     >
                         {displayGame.title}
                     </h1>
@@ -392,8 +388,7 @@ const OverdriveGameDetails: React.FC = () => {
                                 onMouseEnter={() => setFocusedAction("back")}
                                 onClick={handleBack}
                                 variant="outline"
-                                className={`cursor-pointer p-6 text-base border-white/20 bg-gray-900/50 hover:bg-gray-800/70 ${focusedAction === "back" ? "ring-2 ring-[#107c10]" : ""}`}
-                                style={{ fontFamily: "Livvic, sans-serif" }}
+                                className={`cursor-pointer p-6 text-base border-white/20 bg-card/50 hover:bg-card/70 ${focusedAction === "back" ? "ring-2 ring-[var(--theme-accent)]" : ""}`}
                             >
                                 <ArrowLeft className="w-5 h-5 mr-2" />
                                 Back
@@ -423,9 +418,8 @@ const OverdriveGameDetails: React.FC = () => {
                                 disabled={launching || (!displayGame.installed && !isGameRunning)}
                                 className={`cursor-pointer p-6 text-xl text-white hover:scale-105 hover:shadow-md ${isGameRunning
                                     ? "bg-gradient-to-br from-red-600 to-red-700"
-                                    : "bg-gradient-to-br from-green-600 to-green-700"
-                                    } ${focusedAction === "play" ? "ring-2 ring-[#107c10]" : ""}`}
-                                style={{ fontFamily: "Livvic, sans-serif" }}
+                                    : "bg-[var(--theme-button)]"
+                                    } ${focusedAction === "play" ? "ring-2 ring-[var(--theme-accent)]" : ""}`}
                             >
                                 {isGameRunning ? (
                                     <Square className="w-6 h-6 mr-3" />
@@ -436,9 +430,9 @@ const OverdriveGameDetails: React.FC = () => {
                             </Button>
                         </motion.div>
                         <div className="flex flex-col gap-0 items-start">
-                            <p style={{ fontFamily: "Google Sans Flex, sans-serif" }} className="text-xs text-white/60 uppercase tracking-[0.16em]">Playtime</p>
+                            <p className="text-xs text-white/60 uppercase tracking-[0.16em]">Playtime</p>
                             <div className="flex items-center gap-3">
-                                <p className="text-2xl font-semibold" style={{ fontFamily: "Google Sans Flex, sans-serif" }}>
+                                <p className="text-2xl font-semibold">
                                     {playtimeLabel}
                                 </p>
                             </div>
@@ -455,10 +449,10 @@ const OverdriveGameDetails: React.FC = () => {
                         transition={{ duration: 0.28, ease: [0.22, 1, 0.36, 1] }}
                         className="px-10 py-8 flex flex-col items-center gap-4"
                     >
-                        <p className="text-md font-thin text-white/70" style={{ fontFamily: "Google Sans Flex, sans-serif" }}>
+                        <p className="text-md font-thin text-white/70">
                             LAUNCHING...
                         </p>
-                        <p className="text-2xl text-white" style={{ fontFamily: "Google Sans Flex, sans-serif" }}>
+                        <p className="text-2xl text-white">
                             {displayGame.title}
                         </p>
                         <svg width="48" height="48" stroke="var(--theme-accent)" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><g><circle cx="12" cy="12" r="9.5" fill="none" stroke-width="3" stroke-linecap="round"><animate attributeName="stroke-dasharray" dur="1.5s" calcMode="spline" values="0 150;42 150;42 150;42 150" keyTimes="0;0.475;0.95;1" keySplines="0.42,0,0.58,1;0.42,0,0.58,1;0.42,0,0.58,1" repeatCount="indefinite" /><animate attributeName="stroke-dashoffset" dur="1.5s" calcMode="spline" values="0;-16;-59;-59" keyTimes="0;0.475;0.95;1" keySplines="0.42,0,0.58,1;0.42,0,0.58,1;0.42,0,0.58,1" repeatCount="indefinite" /></circle><animateTransform attributeName="transform" type="rotate" dur="2s" values="0 12 12;360 12 12" repeatCount="indefinite" /></g></svg>                    </motion.div>

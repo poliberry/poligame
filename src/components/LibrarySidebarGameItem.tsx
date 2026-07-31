@@ -182,7 +182,7 @@ export const LibrarySidebarGameItem: React.FC<LibrarySidebarGameItemProps> = ({
         <div
           ref={titleContainerRef}
           className="library-sidebar-game-title text-sm font-semibold flex items-center gap-1"
-          style={{ maxWidth: `${TITLE_MAX_WIDTH}px`, fontFamily: 'Livvic, sans-serif' }}
+          style={{ maxWidth: `${TITLE_MAX_WIDTH}px` }}
         >
           <span
             ref={titleTextRef}
@@ -207,8 +207,8 @@ export const LibrarySidebarGameItem: React.FC<LibrarySidebarGameItemProps> = ({
       </div>
           </div>
         </ContextMenuTrigger>
-        <ContextMenuContent style={{ fontFamily: 'Google Sans Flex, sans-serif' }} className="w-64 rounded-2xl space-y-2 p-2">
-          <ContextMenuItem className="rounded-full p-2 bg-[var(--theme-accent)] text-white font-light hover:bg-[var(--theme-accent)]/80 cursor-pointer" style={{ fontFamily: "Google Sans Flex, sans-serif" }} onClick={handleQuickLaunch}>
+        <ContextMenuContent className="w-64 rounded-2xl space-y-2 p-2">
+          <ContextMenuItem className="rounded-full p-2 bg-[var(--theme-accent)] text-white font-light hover:bg-[var(--theme-accent)]/80 cursor-pointer" onClick={handleQuickLaunch}>
             <Play className="mr-2 h-4 w-4" />
             Launch
           </ContextMenuItem>

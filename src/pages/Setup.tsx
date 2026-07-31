@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+﻿import React, { useState, useEffect } from "react";
 import { useMutation } from "convex/react";
 import { invoke } from "@tauri-apps/api/core";
 import { getCurrentWindow } from "@tauri-apps/api/window";
@@ -382,12 +382,6 @@ export const Setup: React.FC = () => {
   } else {
     return (
       <div className="w-full h-screen text-white flex flex-col drag-region">
-        <link rel="preconnect" href="https://fonts.googleapis.com" />
-        <link rel="preconnect" href="https://fonts.gstatic.com" />
-        <link
-          href="https://fonts.googleapis.com/css2?family=Google+Sans+Flex:opsz,wght@6..144,1..1000&family=Oswald:wght@200..700&display=swap"
-          rel="stylesheet"
-        />
         <audio
           ref={audioRef}
           src={welcomeAudio}
@@ -475,13 +469,13 @@ export const Setup: React.FC = () => {
                     <div>
                       <h1
                         className="text-xl font-light"
-                        style={{ fontFamily: "Google Sans Flex, sans-serif" }}
+                       
                       >
                         Get setup to play
                       </h1>
                       <p
                         className="text-sm text-white/60 font-thin"
-                        style={{ fontFamily: "Google Sans Flex, sans-serif" }}
+                       
                       >
                         {steps[currentStepIndex].description}
                       </p>
@@ -519,13 +513,13 @@ export const Setup: React.FC = () => {
                       <div className="text-left space-y-3 select-none">
                         <h2
                           className="text-xl font-light"
-                          style={{ fontFamily: "Google Sans Flex, sans-serif" }}
+                         
                         >
                           A home for all your games.
                         </h2>
                         <p
                           className="text-white/80 text-sm font-thin"
-                          style={{ fontFamily: "Google Sans Flex, sans-serif" }}
+                         
                         >
                           Ready to start gaming? Let's get you set up.
                         </p>
@@ -538,17 +532,11 @@ export const Setup: React.FC = () => {
                             <div className="flex flex-col">
                               <h3
                                 className="font-light text-lg"
-                                style={{
-                                  fontFamily: "Google Sans Flex, sans-serif",
-                                }}
                               >
                                 Set up your account
                               </h3>
                               <p
                                 className="text-sm text-white/60 font-thin"
-                                style={{
-                                  fontFamily: "Google Sans Flex, sans-serif",
-                                }}
                               >
                                 We'll help you login with your PoliGame account
                                 to access social features and account sync.
@@ -563,17 +551,11 @@ export const Setup: React.FC = () => {
                             <div className="flex flex-col">
                               <h3
                                 className="font-light text-lg"
-                                style={{
-                                  fontFamily: "Google Sans Flex, sans-serif",
-                                }}
                               >
                                 Change your look
                               </h3>
                               <p
                                 className="text-sm text-white/60 font-thin"
-                                style={{
-                                  fontFamily: "Google Sans Flex, sans-serif",
-                                }}
                               >
                                 Your launcher should reflect you. We'll help you
                                 setup a custom theme, or use the default.
@@ -589,7 +571,7 @@ export const Setup: React.FC = () => {
                       <div className="space-y-6">
                         <h2
                           className="text-2xl font-light mb-6"
-                          style={{ fontFamily: "Google Sans Flex, sans-serif" }}
+                         
                         >
                           {authMode === "signup"
                             ? "Set up your account"
@@ -602,9 +584,6 @@ export const Setup: React.FC = () => {
                               <div className="w-1/2">
                                 <Label
                                   className="text-sm font-thin mb-2 select-none"
-                                  style={{
-                                    fontFamily: "Google Sans Flex, sans-serif",
-                                  }}
                                 >
                                   Username
                                 </Label>
@@ -614,9 +593,6 @@ export const Setup: React.FC = () => {
                                   onChange={(e) => setUsername(e.target.value)}
                                   placeholder="Enter username"
                                   className="p-4 border-none rounded-full"
-                                  style={{
-                                    fontFamily: "Google Sans Flex, sans-serif",
-                                  }}
                                 />
                               </div>
                             )}
@@ -628,9 +604,6 @@ export const Setup: React.FC = () => {
                             >
                               <Label
                                 className="text-sm font-thin mb-2 select-none"
-                                style={{
-                                  fontFamily: "Google Sans Flex, sans-serif",
-                                }}
                               >
                                 Email
                               </Label>
@@ -641,9 +614,6 @@ export const Setup: React.FC = () => {
                                 placeholder="Enter your email"
                                 required
                                 className="p-4 border-none rounded-full"
-                                style={{
-                                  fontFamily: "Google Sans Flex, sans-serif",
-                                }}
                               />
                             </div>
                           </div>
@@ -651,9 +621,6 @@ export const Setup: React.FC = () => {
                           <div>
                             <Label
                               className="text-sm font-thin mb-2 select-none"
-                              style={{
-                                fontFamily: "Google Sans Flex, sans-serif",
-                              }}
                             >
                               Password
                             </Label>
@@ -664,9 +631,6 @@ export const Setup: React.FC = () => {
                               placeholder="Enter your password"
                               required
                               className="p-4 border-none rounded-full"
-                              style={{
-                                fontFamily: "Google Sans Flex, sans-serif",
-                              }}
                             />
                           </div>
 
@@ -686,9 +650,6 @@ export const Setup: React.FC = () => {
                                 setAuthError(null);
                               }}
                               variant="outline"
-                              style={{
-                                fontFamily: "Google Sans Flex, sans-serif",
-                              }}
                               className="text-xs font-thin rounded-full border-none px-4"
                             >
                               {authMode === "signin"
@@ -698,9 +659,6 @@ export const Setup: React.FC = () => {
                             <Button
                               type="submit"
                               variant="default"
-                              style={{
-                                fontFamily: "Google Sans Flex, sans-serif",
-                              }}
                               className="rounded-full px-6"
                               disabled={isAuthLoading}
                             >
@@ -720,13 +678,13 @@ export const Setup: React.FC = () => {
                       <div className="space-y-6">
                         <h2
                           className="text-2xl font-light mb-2"
-                          style={{ fontFamily: "Google Sans Flex, sans-serif" }}
+                         
                         >
                           Configure external accounts
                         </h2>
                         <p
                           className="text-white/60 mb-6 font-thin"
-                          style={{ fontFamily: "Google Sans Flex, sans-serif" }}
+                         
                         >
                           Enter your launcher user IDs to enable features like
                           achievements and game tracking. These are optional and
@@ -737,9 +695,6 @@ export const Setup: React.FC = () => {
                           <div>
                             <label
                               className="block text-sm font-light mb-2 flex items-center gap-2"
-                              style={{
-                                fontFamily: "Google Sans Flex, sans-serif",
-                              }}
                             >
                               <FaSteam className="w-4 h-4" />
                               Steam User ID
@@ -753,9 +708,6 @@ export const Setup: React.FC = () => {
                             />
                             <p
                               className="text-xs text-white/50 font-thin mt-1"
-                              style={{
-                                fontFamily: "Google Sans Flex, sans-serif",
-                              }}
                             >
                               Find your Steam ID at steamid.io or check your
                               Steam profile URL
@@ -765,9 +717,6 @@ export const Setup: React.FC = () => {
                           <div>
                             <label
                               className="block text-sm font-light mb-2 flex items-center gap-2"
-                              style={{
-                                fontFamily: "Google Sans Flex, sans-serif",
-                              }}
                             >
                               <SiEpicgames size={18} /> Epic Games User ID
                             </label>
@@ -780,9 +729,6 @@ export const Setup: React.FC = () => {
                             />
                             <p
                               className="text-xs text-white/50 font-thin mt-1"
-                              style={{
-                                fontFamily: "Google Sans Flex, sans-serif",
-                              }}
                             >
                               Find your Epic Games ID at epicgames.com or check
                               your Epic Games profile URL
@@ -792,9 +738,6 @@ export const Setup: React.FC = () => {
                           <div>
                             <label
                               className="block text-sm font-light mb-2 flex items-center gap-2"
-                              style={{
-                                fontFamily: "Google Sans Flex, sans-serif",
-                              }}
                             >
                               <TbBrandElectronicArts size={18} /> EA User ID
                             </label>
@@ -807,9 +750,6 @@ export const Setup: React.FC = () => {
                             />
                             <p
                               className="text-xs text-white/50 font-thin mt-1"
-                              style={{
-                                fontFamily: "Google Sans Flex, sans-serif",
-                              }}
                             >
                               Find your EA User ID at ea.com or check your EA
                               profile URL
@@ -819,9 +759,6 @@ export const Setup: React.FC = () => {
                           <div>
                             <label
                               className="block text-sm font-light mb-2 flex items-center gap-2"
-                              style={{
-                                fontFamily: "Google Sans Flex, sans-serif",
-                              }}
                             >
                               <SiRockstargames size={18} /> Rockstar User ID
                             </label>
@@ -836,9 +773,6 @@ export const Setup: React.FC = () => {
                             />
                             <p
                               className="text-xs text-white/50 font-thin mt-1"
-                              style={{
-                                fontFamily: "Google Sans Flex, sans-serif",
-                              }}
                             >
                               Find your Rockstar User ID at rockstar.com or
                               check your Rockstar profile URL
@@ -853,13 +787,13 @@ export const Setup: React.FC = () => {
                       <div className="space-y-6 -mt-8">
                         <h2
                           className="text-2xl font-light mb-1"
-                          style={{ fontFamily: "Google Sans Flex, sans-serif" }}
+                         
                         >
                           Change your look
                         </h2>
                         <p
                           className="text-white/60 font-thin mb-2"
-                          style={{ fontFamily: "Google Sans Flex, sans-serif" }}
+                         
                         >
                           Choose your preferred colors. You can change these
                           anytime in settings.
@@ -938,9 +872,6 @@ export const Setup: React.FC = () => {
                           <div className="p-4 w-120 bg-white/5 rounded-lg border border-white/10">
                             <p
                               className="text-sm font-light mb-2"
-                              style={{
-                                fontFamily: "Google Sans Flex, sans-serif",
-                              }}
                             >
                               Preview
                             </p>
@@ -953,9 +884,6 @@ export const Setup: React.FC = () => {
                             >
                               <div
                                 className="flex-1 flex flex-row items-center gap-2 p-2"
-                                style={{
-                                  fontFamily: "Google Sans Flex, sans-serif",
-                                }}
                               >
                                 <img
                                   src={logo}
@@ -975,18 +903,12 @@ export const Setup: React.FC = () => {
                                           type="button"
                                           className="px-3 pb-1 flex items-center gap-1 text-sm cursor-pointer text-foreground/70 hover:text-foreground transition-colors cursor-pointer"
                                           title="General"
-                                          style={{
-                                            fontFamily: "Livvic, sans-serif",
-                                          }}
                                         >
                                           General
                                         </button>
                                       </DropdownMenuTrigger>
                                       <DropdownMenuContent
                                         className="z-[99] w-60 bg-muted border border-border overflow-hidden"
-                                        style={{
-                                          fontFamily: "Livvic, sans-serif",
-                                        }}
                                       >
                                         <div className="flex flex-col gap-1 p-2">
                                           {user && (
@@ -1042,18 +964,12 @@ export const Setup: React.FC = () => {
                                             type="button"
                                             className="px-3 pb-1 flex items-center gap-1 text-sm cursor-pointer text-foreground/70 hover:text-foreground transition-colors"
                                             title="Friends"
-                                            style={{
-                                              fontFamily: "Livvic, sans-serif",
-                                            }}
                                           >
                                             Friends
                                           </button>
                                         </DropdownMenuTrigger>
                                         <DropdownMenuContent
                                           className="z-[99] w-60 bg-muted border border-border overflow-hidden"
-                                          style={{
-                                            fontFamily: "Livvic, sans-serif",
-                                          }}
                                         >
                                           <div className="flex flex-col gap-1 p-2">
                                             <button
@@ -1078,18 +994,12 @@ export const Setup: React.FC = () => {
                                           type="button"
                                           className="px-3 pb-1 flex items-center gap-1 text-sm cursor-pointer text-foreground/70 hover:text-foreground transition-colors cursor-pointer"
                                           title="View"
-                                          style={{
-                                            fontFamily: "Livvic, sans-serif",
-                                          }}
                                         >
                                           View
                                         </button>
                                       </DropdownMenuTrigger>
                                       <DropdownMenuContent
                                         className="z-[99] w-60 bg-muted border border-border overflow-hidden"
-                                        style={{
-                                          fontFamily: "Livvic, sans-serif",
-                                        }}
                                       >
                                         <div className="flex flex-col gap-1 p-2">
                                           <button
@@ -1122,18 +1032,12 @@ export const Setup: React.FC = () => {
                                           type="button"
                                           className="px-3 pb-1 flex items-center gap-1 text-sm cursor-pointer text-foreground/70 hover:text-foreground transition-colors cursor-pointer"
                                           title="Help"
-                                          style={{
-                                            fontFamily: "Livvic, sans-serif",
-                                          }}
                                         >
                                           Help
                                         </button>
                                       </DropdownMenuTrigger>
                                       <DropdownMenuContent
                                         className="z-[99] w-60 bg-muted border border-border overflow-hidden"
-                                        style={{
-                                          fontFamily: "Livvic, sans-serif",
-                                        }}
                                       >
                                         <div className="flex flex-col gap-1 p-2">
                                           <button
@@ -1180,10 +1084,6 @@ export const Setup: React.FC = () => {
                                       </span>
                                       <span
                                         className={`font-light text-sm`}
-                                        style={{
-                                          fontFamily:
-                                            "Google Sans Flex, sans-serif",
-                                        }}
                                       >
                                         Library
                                       </span>
@@ -1202,13 +1102,13 @@ export const Setup: React.FC = () => {
                       <div className="space-y-6">
                         <h2
                           className="text-2xl font-light mb-2"
-                          style={{ fontFamily: "Google Sans Flex, sans-serif" }}
+                         
                         >
                           Customise your profile
                         </h2>
                         <p
                           className="text-white/60 font-thin mb-4"
-                          style={{ fontFamily: "Google Sans Flex, sans-serif" }}
+                         
                         >
                           Add a bio and avatar to personalize your profile.
                           These are optional.
@@ -1247,7 +1147,6 @@ export const Setup: React.FC = () => {
                                   variant="default"
                                   className="border-none rounded-full"
                                   style={{
-                                    fontFamily: "Google Sans Flex, sans-serif",
                                     backgroundColor: buttonColor,
                                     color: accentColor,
                                   }}
@@ -1258,9 +1157,6 @@ export const Setup: React.FC = () => {
                               </label>
                               <p
                                 className="text-xs font-thin text-white/50 mt-1"
-                                style={{
-                                  fontFamily: "Google Sans Flex, sans-serif",
-                                }}
                               >
                                 Max 2MB
                               </p>
@@ -1271,9 +1167,6 @@ export const Setup: React.FC = () => {
                           <div>
                             <Label
                               className="block text-sm font-light mb-2 select-none"
-                              style={{
-                                fontFamily: "Google Sans Flex, sans-serif",
-                              }}
                             >
                               Username
                             </Label>
@@ -1283,18 +1176,12 @@ export const Setup: React.FC = () => {
                               onChange={(e) => setUsername(e.target.value)}
                               placeholder="Enter username"
                               className="rounded-full border-none"
-                              style={{
-                                fontFamily: "Google Sans Flex, sans-serif",
-                              }}
                             />
                           </div>
 
                           <div>
                             <Label
                               className="block text-sm font-light mb-2 select-none"
-                              style={{
-                                fontFamily: "Google Sans Flex, sans-serif",
-                              }}
                             >
                               Bio
                             </Label>
@@ -1304,9 +1191,6 @@ export const Setup: React.FC = () => {
                               placeholder="Tell us about yourself..."
                               rows={4}
                               className="w-full rounded-lg border-none"
-                              style={{
-                                fontFamily: "Google Sans Flex, sans-serif",
-                              }}
                             />
                           </div>
                         </div>
@@ -1322,13 +1206,13 @@ export const Setup: React.FC = () => {
                         />
                         <h2
                           className="text-3xl font-light"
-                          style={{ fontFamily: "Google Sans Flex, sans-serif" }}
+                         
                         >
                           You're ready to play.
                         </h2>
                         <p
                           className="text-white/80 text-lg font-thin"
-                          style={{ fontFamily: "Google Sans Flex, sans-serif" }}
+                         
                         >
                           You're all set! Let's get you into some games.
                         </p>
@@ -1350,7 +1234,6 @@ export const Setup: React.FC = () => {
                           variant="default"
                           className="mt-6 rounded-full border-none"
                           style={{
-                            fontFamily: "Google Sans Flex, sans-serif",
                             backgroundColor: buttonColor,
                             color: accentColor,
                           }}
@@ -1370,7 +1253,6 @@ export const Setup: React.FC = () => {
                       disabled={currentStepIndex === 0}
                       variant="outline"
                       style={{
-                        fontFamily: "Google Sans Flex, sans-serif",
                         backgroundColor: buttonSecondaryColor,
                         color: accentColor,
                       }}
@@ -1397,7 +1279,6 @@ export const Setup: React.FC = () => {
                       variant="default"
                       className="rounded-full border-none cursor-pointer"
                       style={{
-                        fontFamily: "Google Sans Flex, sans-serif",
                         backgroundColor: buttonColor,
                         color: accentColor,
                       }}

@@ -45,7 +45,7 @@ const Loader: React.FC = () => {
     <div
       className="w-full h-screen text-white drag-region relative"
       style={{
-        backgroundColor: '#000000',
+        backgroundColor: 'var(--background)',
         minHeight: '100vh',
         width: '100%',
         height: '100%',
@@ -55,9 +55,7 @@ const Loader: React.FC = () => {
         zIndex: 9999
       }}
     >
-      <link rel="preconnect" href="https://fonts.googleapis.com" />
-      <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
-      <link href="https://fonts.googleapis.com/css2?family=Livvic:ital,wght@0,100;0,200;0,300;0,400;0,500;0,600;0,700;0,900;1,100;1,200;1,300;1,400;1,500;1,600;1,700;1,900&family=Unbounded:wght@200..900&display=swap" rel="stylesheet"></link>
+
       <video
         src={welcomeVideo}
         autoPlay
@@ -76,7 +74,7 @@ const Loader: React.FC = () => {
         <div className="flex flex-col items-center gap-6 w-full h-full justify-center">
           {/* Logo/App Name */}
           <div className="text-center">
-            <h1 className="text-2xl font-bold text-white mb-2 uppercase italic" style={{ fontFamily: 'Unbounded, sans-serif' }}>
+            <h1 className="text-2xl font-bold text-white mb-2 uppercase italic">
               {isAuthenticated ? "Loading your games..." : "Loading..."}
             </h1>
           </div>
@@ -98,7 +96,7 @@ const Loader: React.FC = () => {
             <>
               <div className="flex flex-row items-center gap-2 mt-4">
                 <img src={avatar} alt="Avatar" className="w-10 h-10" />
-                <p className="text-white text-lg" style={{ fontFamily: 'Livvic, sans-serif' }}>{username}</p>
+                <p className="text-white text-lg">{username}</p>
               </div>
             </>
           )}

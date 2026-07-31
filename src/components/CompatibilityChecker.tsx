@@ -168,7 +168,7 @@ export const CompatibilityChecker: React.FC<CompatibilityCheckerProps> = ({
 
   return (
     <div className="flex flex-col gap-4 p-2">
-      <h2 className="text-xl font-bold text-foreground/60 uppercase italic" style={{ fontFamily: 'Unbounded, sans-serif' }}>System Compatibility</h2>
+      <h2 className="text-xl font-bold text-foreground/60 uppercase italic">System Compatibility</h2>
       
       {/* System Requirements Section */}
       {error && (

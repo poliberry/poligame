@@ -315,7 +315,7 @@ const OverdriveGlobalKeyboard: React.FC = () => {
                     className={cn(
                       "h-11 rounded-lg border px-2 text-sm text-white transition-all",
                       focused
-                        ? "border-[#107c10] bg-[#107c10]/30"
+                        ? "border-[var(--theme-accent)] bg-[var(--theme-accent)]/30"
                         : "border-white/15 bg-white/10 hover:bg-white/20",
                     )}
                     style={{

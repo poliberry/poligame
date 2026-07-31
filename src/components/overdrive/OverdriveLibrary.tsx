@@ -78,7 +78,7 @@ const GameItem: React.FC<GameItemProps> = ({
       <motion.div
         className={`relative overflow-hidden rounded-lg shadow-2xl ${
           isFocused
-            ? "ring-4 ring-[#107c10] shadow-[#107c10]/50"
+            ? "ring-4 ring-[var(--theme-accent)] shadow-[var(--theme-accent)]/50"
             : "ring-2 ring-white/20"
         }`}
         animate={{
@@ -92,7 +92,7 @@ const GameItem: React.FC<GameItemProps> = ({
         style={{
           background: coverArt
             ? `url(${coverArt})`
-            : "linear-gradient(135deg, #1a1f3a 0%, #0a0e27 100%)",
+            : "var(--background)",
           backgroundSize: "100% 100%",
           backgroundPosition: "center",
           backgroundRepeat: "no-repeat"
@@ -118,7 +118,7 @@ const GameItem: React.FC<GameItemProps> = ({
         <div
           className="absolute -inset-2 rounded-lg pointer-events-none"
           style={{
-            background: "linear-gradient(135deg, rgba(16,124,16,0.3) 0%, rgba(16,124,16,0.1) 100%)",
+            background: "linear-gradient(135deg, color-mix(in oklab, var(--theme-accent) 30%, transparent) 0%, color-mix(in oklab, var(--theme-accent) 10%, transparent) 100%)",
             filter: "blur(12px)",
             zIndex: -1,
           }}
@@ -439,7 +439,6 @@ const OverdriveLibrary: React.FC<OverdriveLibraryProps> = ({
         <div
           className="flex items-center gap-3 px-6 py-3 bg-black/80 rounded-lg backdrop-blur-md border border-white/10"
           style={{
-            fontFamily: "'Livvic', 'Unbounded', Arial, sans-serif",
             boxShadow: "0 4px 16px rgba(0,0,0,0.5)",
           }}
         >
@@ -452,7 +451,7 @@ const OverdriveLibrary: React.FC<OverdriveLibraryProps> = ({
                 size="sm" 
               />
             ) : (
-              <kbd className="px-3 py-1.5 rounded bg-white/90 text-black font-bold text-sm shadow-md" style={{ fontFamily: 'Livvic, sans-serif' }}>
+              <kbd className="px-3 py-1.5 rounded bg-white/90 text-black font-bold text-sm shadow-md">
                 Enter
               </kbd>
             )}
@@ -462,7 +461,7 @@ const OverdriveLibrary: React.FC<OverdriveLibraryProps> = ({
             {isConnected && controllerType ? (
               <ControllerButton controllerType={controllerType} button="menu" size="sm" />
             ) : (
-              <kbd className="px-3 py-1.5 rounded bg-white/90 text-black font-bold text-sm shadow-md" style={{ fontFamily: 'Livvic, sans-serif' }}>
+              <kbd className="px-3 py-1.5 rounded bg-white/90 text-black font-bold text-sm shadow-md">
                 M
               </kbd>
             )}
@@ -470,7 +469,7 @@ const OverdriveLibrary: React.FC<OverdriveLibraryProps> = ({
           </div>
           <div className="w-px h-6 bg-white/20" />
           {/* Navigation buttons */}
-          <div className="flex items-center gap-2" style={{ fontFamily: 'Livvic, sans-serif' }}>
+          <div className="flex items-center gap-2">
             {isConnected && controllerType ? (
               <>
                 <ControllerButton controllerType={controllerType} button="lb" size="sm" />

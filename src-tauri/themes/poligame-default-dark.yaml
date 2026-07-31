@@ -29,7 +29,7 @@ colors:
   theme_panel: "#1F2937"
 
 typography:
-  font_family: "system-ui"
+  font_family: "Google Sans Flex"
 
 appearance:
   border_radius: "0.625rem"

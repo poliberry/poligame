@@ -300,16 +300,7 @@ export const Auth: React.FC = () => {
 
   return (
     <div className="w-full h-screen text-white drag-region relative">
-      <link rel="preconnect" href="https://fonts.googleapis.com" />
-      <link
-        rel="preconnect"
-        href="https://fonts.gstatic.com"
-        crossOrigin="anonymous"
-      />
-      <link
-        href="https://fonts.googleapis.com/css2?family=Livvic:ital,wght@0,100;0,200;0,300;0,400;0,500;0,600;0,700;0,900;1,100;1,200;1,300;1,400;1,500;1,600;1,700;1,900&family=Unbounded:wght@200..900&display=swap"
-        rel="stylesheet"
-      ></link>
+
       <video
         src={loginVideo}
         autoPlay
@@ -334,7 +325,6 @@ export const Auth: React.FC = () => {
                 <CardTitle
                   className="text-2xl uppercase italic text-left mb-6"
                   style={{
-                    fontFamily: "Unbounded, sans-serif",
                     fontWeight: "600",
                   }}
                 >
@@ -345,7 +335,6 @@ export const Auth: React.FC = () => {
                       <div>
                         <Label
                           className="text-sm text-white/80 mb-1 block"
-                          style={{ fontFamily: "Livvic, sans-serif" }}
                         >
                           Username (optional)
                         </Label>
@@ -362,7 +351,6 @@ export const Auth: React.FC = () => {
                     <div>
                       <Label
                         className="text-sm text-white/80 mb-1 block"
-                        style={{ fontFamily: "Livvic, sans-serif" }}
                       >
                         Email
                       </Label>
@@ -379,7 +367,6 @@ export const Auth: React.FC = () => {
                     <div>
                       <Label
                         className="text-sm text-white/80 mb-1 block"
-                        style={{ fontFamily: "Livvic, sans-serif" }}
                       >
                         Password
                       </Label>
@@ -435,7 +422,6 @@ export const Auth: React.FC = () => {
                     <CardTitle
                       className="text-2xl uppercase italic text-center mb-6"
                       style={{
-                        fontFamily: "Unbounded, sans-serif",
                         fontWeight: "600",
                       }}
                     >
@@ -478,7 +464,6 @@ export const Auth: React.FC = () => {
                     <CardTitle
                       className="text-2xl uppercase italic text-center mb-6"
                       style={{
-                        fontFamily: "Unbounded, sans-serif",
                         fontWeight: "600",
                       }}
                     >

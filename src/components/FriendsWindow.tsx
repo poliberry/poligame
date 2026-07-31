@@ -527,7 +527,7 @@ export const FriendsWindow: React.FC<FriendsWindowProps> = ({ onClose }) => {
         <div className="flex items-center justify-between py-1 px-2 border-b border-white/10 drag-region" data-tauri-drag-region>
           <div className="flex items-center gap-2">
             <Users size={16} />
-            <h2 className="text-sm font-semibold uppercase italic" style={{ fontFamily: 'Unbounded, sans-serif' }}>Friends</h2>
+            <h2 className="text-sm font-semibold uppercase italic">Friends</h2>
           </div>
           <div className="flex items-center gap-2 no-drag-region" data-tauri-drag-region="false">
             {/* Window Controls */}
@@ -564,14 +564,12 @@ export const FriendsWindow: React.FC<FriendsWindowProps> = ({ onClose }) => {
 
   return (
     <div className="flex flex-col h-full bg-[var(--theme-background)]">
-      <link rel="preconnect" href="https://fonts.googleapis.com" />
-      <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
-      <link href="https://fonts.googleapis.com/css2?family=Unbounded:wght@200..900&display=swap" rel="stylesheet"></link>
+
       {/* Header */}
       <div className="flex items-center justify-between py-1 px-2 border-b border-white/10 drag-region" data-tauri-drag-region>
         <div className="flex items-center gap-2">
           <Users size={16} />
-          <h2 className="text-sm font-semibold uppercase italic" style={{ fontFamily: 'Unbounded, sans-serif' }}>Friends</h2>
+          <h2 className="text-sm font-semibold uppercase italic">Friends</h2>
           {unreadCount !== undefined && unreadCount > 0 && (
             <span className="bg-red-500 text-white text-xs px-2 py-0.5 rounded-full">
               {unreadCount}

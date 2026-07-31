@@ -218,7 +218,6 @@ const OverdriveMenu: React.FC<OverdriveMenuProps> = ({
             exit={{ x: -24, opacity: 0 }}
             transition={{ duration: 0.24, ease: [0.4, 0, 0.2, 1] }}
             className="fixed top-16 left-0 h-[calc(100%-4rem)] w-96 bg-black/80 shadow-md backdrop-blur-xl border-r border-white/10 z-[101]"
-            style={{ fontFamily: "Google Sans Flex, sans-serif" }}
           >
             <div className="flex flex-col h-full">
               <div className="flex items-center justify-between pt-6 px-6">
@@ -249,8 +248,8 @@ const OverdriveMenu: React.FC<OverdriveMenuProps> = ({
                         "w-full justify-start gap-3 p-8 border text-left transition-all duration-200",
                         item.danger
                           ? "border-red-500/20 bg-red-500/5 hover:bg-red-500/10 hover:border-red-500/40"
-                          : "border-white/10 bg-white/5 hover:bg-white/10 hover:border-[#107c10]",
-                        isFocused && "ring-2 ring-[#107c10] border-[#107c10] bg-white/10",
+                          : "border-white/10 bg-white/5 hover:bg-white/10 hover:border-[var(--theme-accent)]",
+                        isFocused && "ring-2 ring-[var(--theme-accent)] border-[var(--theme-accent)] bg-white/10",
                       )}
                     >
                       <Icon className="w-4 h-4 shrink-0" />

@@ -761,7 +761,6 @@ const OverdriveTopBar: React.FC<OverdriveTopBarProps> = ({
               }}
               placeholder="Search games, posts, settings..."
               className={cn(isSearchActive ? "text-black placeholder:text-black/40" : "text-transparent placeholder:text-transparent hover:placeholder:text-black/40", "w-full bg-transparent text-sm focus:outline-none")}
-              style={{ fontFamily: "Google Sans Flex, sans-serif" }}
             />
           </div>
 
@@ -885,13 +884,13 @@ const OverdriveTopBar: React.FC<OverdriveTopBarProps> = ({
                               )}
                             >
                               <div className={cn(
-                                "relative h-[180px] overflow-hidden rounded-lg border border-white/15 bg-[#1a1f3a]",
-                                isFocused ? "ring-2 ring-[#9cf39c] border-[#9cf39c]/80" : "group-hover:border-[#107c10]/70"
+                                "relative h-[180px] overflow-hidden rounded-lg border border-white/15 bg-background",
+                                isFocused ? "ring-2 ring-[var(--theme-accent)] border-[var(--theme-accent)]/80" : "group-hover:border-[var(--theme-accent)]/70"
                               )}>
                                 {coverArt ? (
                                   <img src={coverArt} alt={game.title} className="absolute inset-0 h-full w-full object-cover" draggable={false} />
                                 ) : (
-                                  <div className="absolute inset-0 bg-gradient-to-br from-[#1a1f3a] to-[#0a0e27]" />
+                                  <div className="absolute inset-0 bg-gradient-to-br from-background to-background" />
                                 )}
                                 <div className="absolute inset-0 bg-black/25" />
                               </div>
