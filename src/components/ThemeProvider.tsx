@@ -73,15 +73,17 @@ const ThemeVarsApplier: React.FC = () => {
     applyThemeVars(activeTheme, root);
   }, [activeTheme]);
 
-  // Overlay quick-edit color overrides on top of theme
+  // Legacy quick-edit overrides — skipped when a manifest theme is active so the
+  // manifest's theme_* colors are not clobbered by the legacy palette.
   useEffect(() => {
+    if (activeTheme) return;
     const root = document.documentElement;
     root.style.setProperty("--theme-accent", colors.accent);
     root.style.setProperty("--theme-button", colors.button);
     root.style.setProperty("--theme-button-secondary", colors.buttonSecondary || colors.accent);
     root.style.setProperty("--theme-background", colors.background);
     root.style.setProperty("--theme-panel", colors.panel);
-  }, [colors.accent, colors.button, colors.buttonSecondary, colors.background, colors.panel]);
+  }, [activeTheme, colors.accent, colors.button, colors.buttonSecondary, colors.background, colors.panel]);
 
   return null;
 };

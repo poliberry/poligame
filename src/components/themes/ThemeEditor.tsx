@@ -58,6 +58,7 @@ export const ThemeEditor: React.FC<ThemeEditorProps> = ({ initial, onBack, onSav
   const [fontWarning, setFontWarning] = useState<string | null>(null);
   const [isSaving, setIsSaving] = useState(false);
   const [bgImageAsset, setBgImageAsset] = useState<string | null>(null);
+  const [isNewBgImage, setIsNewBgImage] = useState(false);
 
   const isEditing = !!initial;
   const themeId = initial?.id ?? generateId(name);
@@ -100,13 +101,20 @@ export const ThemeEditor: React.FC<ThemeEditorProps> = ({ initial, onBack, onSav
       if (!selected) return;
 
       const bytes = await readFile(selected as string);
-      const base64 = btoa(String.fromCharCode(...bytes));
+      // Chunk to avoid exceeding the engine's max argument count on large files.
+      const CHUNK = 0x8000;
+      let binary = "";
+      for (let i = 0; i < bytes.length; i += CHUNK) {
+        binary += String.fromCharCode(...bytes.subarray(i, i + CHUNK));
+      }
+      const base64 = btoa(binary);
       const ext = (selected as string).split(".").pop()?.toLowerCase() ?? "png";
       const mime = ext === "jpg" || ext === "jpeg" ? "image/jpeg" : `image/${ext}`;
       const dataUrl = `data:${mime};base64,${base64}`;
 
       setBgImageAsset(base64);
       setBgImage(dataUrl);
+      setIsNewBgImage(true);
     } catch (err) {
       toast.error("Failed to load image");
     }
@@ -124,7 +132,7 @@ export const ThemeEditor: React.FC<ThemeEditorProps> = ({ initial, onBack, onSav
 
       // If a new bg image was picked, save it as an asset
       let finalBgImage = bgImage;
-      if (bgImageAsset && !bgImage.startsWith("data:")) {
+      if (bgImageAsset && isNewBgImage) {
         const filename = "background.png";
         await invoke("save_theme_asset", {
           themeId: id,
@@ -351,6 +359,7 @@ export const ThemeEditor: React.FC<ThemeEditorProps> = ({ initial, onBack, onSav
                   onClick={() => {
                     setBgImage("");
                     setBgImageAsset(null);
+                    setIsNewBgImage(false);
                   }}
                   className="text-xs text-muted-foreground hover:text-destructive transition-colors"
                 >

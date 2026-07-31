@@ -125,8 +125,11 @@ export const useThemeStore = create<ThemeStore>((set, get) => ({
     try {
       const themes = await invoke<ThemeManifest[]>("list_themes");
       const activeId = get().activeThemeId;
-      const active = themes.find((t) => t.id === activeId) ?? themes[0] ?? null;
-      set({ installedThemes: themes, activeTheme: active, themesLoaded: true });
+      const exact = themes.find((t) => t.id === activeId);
+      const active = exact ?? themes[0] ?? null;
+      const resolvedId = active?.id ?? activeId;
+      if (resolvedId !== activeId) saveActiveThemeIdToStorage(resolvedId);
+      set({ installedThemes: themes, activeTheme: active, activeThemeId: resolvedId, themesLoaded: true });
     } catch (err) {
       console.error("Failed to load themes:", err);
       set({ themesLoaded: true });

@@ -324,7 +324,7 @@ const Library: React.FC = () => {
     <div className="relative flex flex-col gap-4 p-4 h-full w-full pb-8">
       {bgImage && (
         <div
-          className="absolute inset-0 bg-cover bg-center bg-no-repeat pointer-events-none"
+          className="absolute inset-0 -z-10 bg-cover bg-center bg-no-repeat pointer-events-none"
           style={{ backgroundImage: `url(${bgImage})`, opacity: bgOpacity }}
           aria-hidden="true"
         />
