@@ -1,8 +1,7 @@
 name: Release
 
 on:
-  pull_request:
-    types: [closed]
+  push:
     branches:
       - main
 
@@ -11,7 +10,6 @@ on:
 
 jobs:
   release:
-    if: github.event.pull_request.merged == true || github.event_name == 'workflow_dispatch'
     permissions:
       contents: write
     outputs:
@@ -114,7 +112,6 @@ jobs:
 
   publish-release:
     needs: release
-    if: github.event.pull_request.merged == true || github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-latest
     permissions:
       contents: write
