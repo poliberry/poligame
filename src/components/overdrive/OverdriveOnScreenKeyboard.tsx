@@ -189,7 +189,7 @@ export default function OverdriveOnScreenKeyboard({
                     "h-11 rounded-lg border px-3 text-sm transition-all",
                     isWide ? "flex-1" : "min-w-11",
                     focused
-                      ? "border-[#107c10] bg-[#107c10]/30 text-white"
+                      ? "border-[var(--theme-accent)] bg-[var(--theme-accent)]/30 text-white"
                       : "border-white/15 bg-white/5 text-white/90 hover:bg-white/15",
                     isAction && "font-medium",
                   )}

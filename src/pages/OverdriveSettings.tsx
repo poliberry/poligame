@@ -692,7 +692,7 @@ const OverdriveSettings: React.FC = () => {
                   disabled={installingUpdate || !updateInfo?.available}
                   data-settings-action="updates-install"
                   className={cn(
-                    "rounded-full border border-[#107c10]/60 bg-[#107c10]/20 px-4 py-2 text-sm text-[#9cf39c] hover:bg-[#107c10]/35 disabled:opacity-60",
+                    "rounded-full border border-[var(--theme-accent)]/60 bg-[var(--theme-accent)]/20 px-4 py-2 text-sm text-[var(--theme-accent)] hover:bg-[var(--theme-accent)]/35 disabled:opacity-60",
                     isActionFocused("updates-install") && "ring-2 ring-[var(--theme-accent)]",
                   )}
                 >
@@ -859,7 +859,7 @@ const OverdriveSettings: React.FC = () => {
                     className={cn(
                       "rounded-full border px-4 py-2 text-sm",
                       showBatteryIndicator
-                        ? "border-[#107c10]/60 bg-[#107c10]/20 text-[#9cf39c]"
+                        ? "border-[var(--theme-accent)]/60 bg-[var(--theme-accent)]/20 text-[var(--theme-accent)]"
                         : "border-white/20 bg-white/5 text-white/75",
                       isActionFocused("interface-battery-toggle") && "ring-2 ring-[var(--theme-accent)]",
                     )}

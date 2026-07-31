@@ -290,8 +290,7 @@ export const AddCustomAppDialog: React.FC<AddCustomAppDialogProps> = ({
     <div className="w-full h-screen flex items-center justify-center">
       <link rel="preconnect" href="https://fonts.googleapis.com" />
       <link rel="preconnect" href="https://fonts.gstatic.com" />
-      <link href="https://fonts.googleapis.com/css2?family=Google+Sans+Flex:opsz,wght@6..144,1..1000&display=swap" rel="stylesheet"></link>
-      <div style={{ fontFamily: "'Google Sans Flex', sans-serif" }} className="w-full h-full">
+      <div className="w-full h-full">
         <div data-tauri-drag-region className="drag-region flex items-center bg-background justify-between border-b px-1 py-1">
           <h2 className="text-sm font-light text-muted-foreground">Add Custom App</h2>
           <Button variant="ghost" size="icon" onClick={onClose}>

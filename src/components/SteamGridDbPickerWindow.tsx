@@ -253,10 +253,7 @@ export const SteamGridDbPickerWindow: React.FC = () => {
     };
 
     return (
-        <div style={{ fontFamily: "Google Sans Flex, sans-serif" }} className="w-full h-screen overflow-hidden bg-background text-foreground flex flex-col">
-            <link rel="preconnect" href="https://fonts.googleapis.com" />
-            <link rel="preconnect" href="https://fonts.gstatic.com" />
-            <link href="https://fonts.googleapis.com/css2?family=Google+Sans+Flex:opsz,wght@6..144,1..1000&display=swap" rel="stylesheet"></link>
+        <div className="w-full h-screen overflow-hidden bg-background text-foreground flex flex-col">
             <div data-tauri-drag-region className="drag-region flex items-center justify-between border-b px-2 py-1">
                 <h1 className="text-sm font-light text-muted-foreground">SteamGridDB Artwork Picker</h1>
                 <Button type="button" variant="ghost" size="icon" onClick={() => void closeWindow()}>

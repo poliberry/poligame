@@ -210,16 +210,13 @@ const GameDetailsView: React.FC<GameDetailsViewProps> = ({ gameId, onBack, onHin
       exit={{ opacity: 0, scale: 0.98 }}
       transition={{ duration: 0.24, ease: [0.4, 0, 0.2, 1] }}
     >
-      <link rel="preconnect" href="https://fonts.googleapis.com" />
-      <link rel="preconnect" href="https://fonts.gstatic.com" />
-      <link href="https://fonts.googleapis.com/css2?family=Google+Sans+Flex:opsz,wght@6..144,1..1000&display=swap" rel="stylesheet" />
       <div className="absolute inset-0">
         <div
           className={cn("absolute inset-x-0 top-0", launching ? "h-full" : "h-[44vh]")}
           style={{
             background: heroImage
               ? `url(${heroImage}) center center / cover no-repeat`
-              : "linear-gradient(135deg, #1a1f3a 0%, #0a0e27 100%)",
+              : "var(--background)",
           }}
         />
         <div className={cn("absolute inset-x-0 top-0 bg-gradient-to-b from-transparent to-gray-900", launching ? "h-full" : "h-[44vh]")} />
@@ -235,7 +232,7 @@ const GameDetailsView: React.FC<GameDetailsViewProps> = ({ gameId, onBack, onHin
                 </div>
               )}
             </div>
-            <h1 className="text-4xl font-semibold leading-tight" style={{ fontFamily: "Unbounded, sans-serif" }}>
+            <h1 className="text-4xl font-semibold leading-tight">
               {displayGame.title}
             </h1>
           </div>
@@ -253,8 +250,7 @@ const GameDetailsView: React.FC<GameDetailsViewProps> = ({ gameId, onBack, onHin
                 onMouseEnter={() => setFocusedAction("back")}
                 onClick={onBack}
                 variant="outline"
-                className={cn("cursor-pointer p-6 text-base border-white/20 bg-gray-900/50 hover:bg-gray-800/70", focusedAction === "back" && "ring-2 ring-[#107c10]")}
-                style={{ fontFamily: "Livvic, sans-serif" }}
+                className={cn("cursor-pointer p-6 text-base border-white/20 bg-card/50 hover:bg-card/70", focusedAction === "back" && "ring-2 ring-[var(--theme-accent)]")}
               >
                 <ArrowLeft className="w-5 h-5 mr-2" />
                 Back
@@ -271,10 +267,9 @@ const GameDetailsView: React.FC<GameDetailsViewProps> = ({ gameId, onBack, onHin
                 disabled={launching || (!displayGame.installed && !isGameRunning)}
                 className={cn(
                   "cursor-pointer p-6 text-xl text-white hover:scale-105 hover:shadow-md",
-                  isGameRunning ? "bg-gradient-to-br from-red-600 to-red-700" : "bg-gradient-to-br from-green-600 to-green-700",
-                  focusedAction === "play" && "ring-2 ring-[#107c10]",
+                  isGameRunning ? "bg-gradient-to-br from-red-600 to-red-700" : "bg-[var(--theme-button)]",
+                  focusedAction === "play" && "ring-2 ring-[var(--theme-accent)]",
                 )}
-                style={{ fontFamily: "Livvic, sans-serif" }}
               >
                 {isGameRunning ? <Square className="w-6 h-6 mr-3" /> : <Play className="w-6 h-6 mr-3" />}
                 {launching ? "Playing..." : isGameRunning ? "Quit" : "Play"}
@@ -282,8 +277,8 @@ const GameDetailsView: React.FC<GameDetailsViewProps> = ({ gameId, onBack, onHin
             </motion.div>
 
             <div className="flex flex-col gap-0 items-start">
-              <p style={{ fontFamily: "Google Sans Flex, sans-serif" }} className="text-xs text-white/60 uppercase tracking-[0.16em]">Playtime</p>
-              <p className="text-2xl font-semibold" style={{ fontFamily: "Google Sans Flex, sans-serif" }}>{playtimeLabel}</p>
+              <p className="text-xs text-white/60 uppercase tracking-[0.16em]">Playtime</p>
+              <p className="text-2xl font-semibold">{playtimeLabel}</p>
             </div>
           </div>
         </div>
@@ -297,8 +292,8 @@ const GameDetailsView: React.FC<GameDetailsViewProps> = ({ gameId, onBack, onHin
             transition={{ duration: 0.28 }}
             className="px-10 py-8 flex flex-col items-center gap-4"
           >
-            <p className="text-md font-thin text-white/70" style={{ fontFamily: "Google Sans Flex, sans-serif" }}>LAUNCHING...</p>
-            <p className="text-2xl text-white" style={{ fontFamily: "Google Sans Flex, sans-serif" }}>{displayGame.title}</p>
+            <p className="text-md font-thin text-white/70">LAUNCHING...</p>
+            <p className="text-2xl text-white">{displayGame.title}</p>
             <svg width="48" height="48" stroke="var(--theme-accent)" viewBox="0 0 24 24">
               <g><circle cx="12" cy="12" r="9.5" fill="none" strokeWidth="3" strokeLinecap="round">
                 <animate attributeName="stroke-dasharray" dur="1.5s" calcMode="spline" values="0 150;42 150;42 150;42 150" keyTimes="0;0.475;0.95;1" keySplines="0.42,0,0.58,1;0.42,0,0.58,1;0.42,0,0.58,1" repeatCount="indefinite" />

@@ -34,7 +34,7 @@ export const Leaderboard: React.FC<LeaderboardProps> = ({ gameId, limit = 10 }) 
     return (
       <MicaCard className="p-8 text-center">
         <Trophy className="w-12 h-12 mx-auto mb-4 text-foreground/40" />
-        <p className="text-foreground/60" style={{ fontFamily: 'Livvic, sans-serif' }}>
+        <p className="text-foreground/60">
           No leaderboard data yet
         </p>
       </MicaCard>
@@ -50,7 +50,7 @@ export const Leaderboard: React.FC<LeaderboardProps> = ({ gameId, limit = 10 }) 
 
   return (
     <div className="flex flex-col gap-2">
-      <h2 className="text-lg font-bold uppercase italic mb-2" style={{ fontFamily: 'Unbounded, sans-serif' }}>
+      <h2 className="text-lg font-bold uppercase italic mb-2">
         {gameId ? "Game Leaderboard" : "Global Leaderboard"}
       </h2>
       <div className="flex flex-col gap-2">
@@ -78,11 +78,11 @@ export const Leaderboard: React.FC<LeaderboardProps> = ({ gameId, limit = 10 }) 
               </div>
             )}
             <div className="flex-1 min-w-0">
-              <p className="font-medium text-foreground truncate" style={{ fontFamily: 'Livvic, sans-serif' }}>
+              <p className="font-medium text-foreground truncate">
                 {entry.username}
               </p>
               {entry.level && (
-                <p className="text-xs text-foreground/60" style={{ fontFamily: 'Livvic, sans-serif' }}>
+                <p className="text-xs text-foreground/60">
                   Level {entry.level}
                 </p>
               )}
@@ -90,12 +90,12 @@ export const Leaderboard: React.FC<LeaderboardProps> = ({ gameId, limit = 10 }) 
             <div className="flex flex-col items-end">
               <div className="flex items-center gap-1">
                 <Trophy className="w-4 h-4 text-[var(--theme-accent)]" />
-                <span className="font-bold text-foreground" style={{ fontFamily: 'Livvic, sans-serif' }}>
+                <span className="font-bold text-foreground">
                   {gameId ? entry.gameXP?.toLocaleString() : entry.totalXP?.toLocaleString()}
                 </span>
               </div>
               {gameId && entry.gameXP && (
-                <span className="text-xs text-foreground/60" style={{ fontFamily: 'Livvic, sans-serif' }}>
+                <span className="text-xs text-foreground/60">
                   {Math.floor(entry.gameXP / 3600)}h {Math.floor((entry.gameXP % 3600) / 60)}m
                 </span>
               )}

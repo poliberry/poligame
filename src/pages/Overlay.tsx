@@ -60,16 +60,7 @@ const Overlay: React.FC = () => {
 
   return (
     <div className="fixed inset-0 w-screen h-screen bg-black/80 flex items-center justify-center">
-      <link rel="preconnect" href="https://fonts.googleapis.com" />
-      <link
-        rel="preconnect"
-        href="https://fonts.gstatic.com"
-        crossOrigin="anonymous"
-      />
-      <link
-        href="https://fonts.googleapis.com/css2?family=Livvic:ital,wght@0,100;0,200;0,300;0,400;0,500;0,600;0,700;0,900;1,100;1,200;1,300;1,400;1,500;1,600;1,700;1,900&family=Unbounded:wght@200..900&display=swap"
-        rel="stylesheet"
-      ></link>
+
       <div className="absolute top-0 left-0 bg-gradient-to-b from-black to-transparent w-full h-64"></div>
 
       <div className="absolute top-0 left-0 z-[30] w-full h-fit">
@@ -77,13 +68,11 @@ const Overlay: React.FC = () => {
           <div className="flex flex-col items-start gap-0 w-fit">
             <h1
               className="text-md font-bold italic uppercase"
-              style={{ fontFamily: "Unbounded, sans-serif" }}
             >
               {time.toLocaleTimeString()}
             </h1>
             <h1
               className="text-xs font-bold text-muted-foreground"
-              style={{ fontFamily: "Livvic, sans-serif" }}
             >
               {time.toLocaleDateString("en-US", {
                 weekday: "long",
@@ -159,7 +148,6 @@ const Overlay: React.FC = () => {
             <img src={user?.avatar} alt="Avatar" className="w-8 h-8" />
             <span
               className="text-sm font-normal text-foreground"
-              style={{ fontFamily: "Livvic, sans-serif" }}
             >
               {user?.username}
             </span>

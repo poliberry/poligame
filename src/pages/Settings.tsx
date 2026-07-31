@@ -4,23 +4,19 @@ import { MicaCard } from "@/components/MicaCard";
 import { MicaInput } from "@/components/MicaInput";
 import { useSettingsStore } from "@/stores/settingsStore";
 import { Settings as SettingsType } from "@/types";
-import { Cog, Minus, Square, X } from "lucide-react";
+import { Cog, Monitor, Moon, Sun } from "lucide-react";
 import { VscChromeClose, VscChromeMaximize, VscChromeMinimize } from "react-icons/vsc";
-import { Checkbox } from "@/components/ui/checkbox";
 import { Switch } from "@/components/ui/switch";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { useTheme } from "next-themes";
-
-//@ts-ignore
-import lightAppearanceHeader from "@/public/appearance-header-light.svg";
-//@ts-ignore
-import darkAppearanceHeader from "@/public/appearance-header-dark.svg";
-import { DropdownMenu, DropdownMenuItem, DropdownMenuContent, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { useThemeStore } from "@/stores/themeStore";
 import { LibraryHygiene } from "@/components/LibraryHygiene";
+import { ThemeGallery } from "@/components/themes/ThemeGallery";
+import { ThemeEditor } from "@/components/themes/ThemeEditor";
+import type { ThemeManifest } from "@/types/theme";
 
-type TabId = "general" | "library" | "browser" | "accessibility" | "about";
+type TabId = "general" | "library" | "browser" | "accessibility" | "themes" | "about";
 
 interface UpdateCheckResult {
   available: boolean;
@@ -42,6 +38,8 @@ const Settings: React.FC = () => {
   const [backgroundColor, setBackgroundColor] = useState(themeColors.background);
   const [panelColor, setPanelColor] = useState(themeColors.panel);
   const [updateInfo, setUpdateInfo] = useState<UpdateCheckResult | null>(null);
+  const [themeEditorTarget, setThemeEditorTarget] = useState<ThemeManifest | null | undefined>(undefined);
+  // undefined = gallery view, null = new theme, ThemeManifest = edit theme
   const [isCheckingUpdates, setIsCheckingUpdates] = useState(false);
   const [isInstallingUpdate, setIsInstallingUpdate] = useState(false);
   const [updateMessage, setUpdateMessage] = useState<string | null>(null);
@@ -149,13 +147,11 @@ const Settings: React.FC = () => {
 
   return (
     <div className="w-full h-full flex flex-col bg-background">
-      <link rel="preconnect" href="https://fonts.googleapis.com" />
-      <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
-      <link href="https://fonts.googleapis.com/css2?family=Livvic:ital,wght@0,100;0,200;0,300;0,400;0,500;0,600;0,700;0,900;1,100;1,200;1,300;1,400;1,500;1,600;1,700;1,900&family=Unbounded:wght@200..900&display=swap" rel="stylesheet"></link>
+
       <div className="flex items-center justify-between py-1 px-2 border-b border-border bg-muted drag-region" data-tauri-drag-region>
         <div className="flex items-center gap-2 text-foreground/70">
           <Cog size={16} />
-          <h2 className="text-sm font-semibold uppercase italic" style={{ fontFamily: 'Unbounded, sans-serif' }}>Settings</h2>
+          <h2 className="text-sm font-semibold uppercase italic">Settings</h2>
         </div>
         <div className="flex items-end gap-2 no-drag-region text-foreground/70" data-tauri-drag-region="false">
           {/* Window Controls */}
@@ -224,6 +220,15 @@ const Settings: React.FC = () => {
               Accessibility
             </button>
             <button
+              onClick={() => setActiveTab("themes")}
+              className={`w-full text-left px-4 py-2 rounded transition-colors ${activeTab === "themes"
+                ? "bg-[var(--theme-accent)]/20 text-[var(--theme-accent)] font-medium"
+                : "text-foreground/70 hover:bg-muted/50 hover:text-foreground"
+                }`}
+            >
+              Themes
+            </button>
+            <button
               onClick={() => setActiveTab("about")}
               className={`w-full text-left px-4 py-2 rounded transition-colors ${activeTab === "about"
                 ? "bg-[var(--theme-accent)]/20 text-[var(--theme-accent)] font-medium"
@@ -240,8 +245,37 @@ const Settings: React.FC = () => {
           <div className="p-6">
             {activeTab === "general" && (
               <>
+                {/* Light / Dark / System mode */}
+                <div className="flex flex-col gap-2 mb-6">
+                  <label className="text-foreground/70 font-medium">Appearance</label>
+                  <div className="flex gap-2">
+                    {(["light", "dark", "system"] as const).map((m) => {
+                      const Icon = m === "light" ? Sun : m === "dark" ? Moon : Monitor;
+                      const isActive = themeMode === m;
+                      return (
+                        <button
+                          key={m}
+                          onClick={() => { setThemeMode(m); setTheme(m); }}
+                          className={`flex items-center gap-2 px-4 py-2 rounded text-sm capitalize transition-colors ${
+                            isActive
+                              ? "bg-[var(--theme-accent)]/20 text-[var(--theme-accent)] font-medium"
+                              : "bg-muted/50 text-foreground/70 hover:bg-muted hover:text-foreground"
+                          }`}
+                        >
+                          <Icon size={14} />
+                          {m}
+                        </button>
+                      );
+                    })}
+                  </div>
+                  <p className="text-xs text-muted-foreground">
+                    "System" syncs with your OS colour scheme automatically.
+                  </p>
+                </div>
+
                 <div className="flex flex-col gap-2 mt-4">
-                  <label className="text-foreground/70 font-medium" style={{ fontFamily: 'Livvic, sans-serif' }}>Theme</label>
+                  <label className="text-foreground/70 font-medium">Colour Overrides</label>
+                  <p className="text-xs text-muted-foreground -mt-1">These override the active theme's accent and button colours.</p>
                   <div className="flex flex-row items-center gap-2 w-full">
                     <Card className="p-2 text-foreground">
                       <label className="text-sm text-foreground/80 mb-1 block">Accent Color</label>
@@ -449,13 +483,13 @@ const Settings: React.FC = () => {
 
             {activeTab === "accessibility" && (
               <MicaCard className="settings-section">
-                <h2 className="text-foreground/70 font-medium uppercase italic text-lg mb-4" style={{ fontFamily: 'Unbounded, sans-serif' }}>Accessibility</h2>
+                <h2 className="text-foreground/70 font-medium uppercase italic text-lg mb-4">Accessibility</h2>
                 <div className="flex flex-col gap-4">
                   <div className="settings-group">
                     <label className="flex items-center justify-between cursor-pointer">
                       <div>
-                        <div className="font-medium text-foreground/90" style={{ fontFamily: 'Livvic, sans-serif' }}>Grayscale Mode</div>
-                        <div className="text-sm text-foreground/60" style={{ fontFamily: 'Livvic, sans-serif' }}>
+                        <div className="font-medium text-foreground/90">Grayscale Mode</div>
+                        <div className="text-sm text-foreground/60">
                           Apply grayscale filter to the entire application
                         </div>
                       </div>
@@ -475,8 +509,8 @@ const Settings: React.FC = () => {
                   <div className="settings-group">
                     <label className="flex items-center justify-between cursor-pointer">
                       <div>
-                        <div className="font-medium text-foreground/90" style={{ fontFamily: 'Livvic, sans-serif' }}>High Contrast Mode</div>
-                        <div className="text-sm text-foreground/60" style={{ fontFamily: 'Livvic, sans-serif' }}>
+                        <div className="font-medium text-foreground/90">High Contrast Mode</div>
+                        <div className="text-sm text-foreground/60">
                           Increase contrast for better visibility
                         </div>
                       </div>
@@ -495,6 +529,28 @@ const Settings: React.FC = () => {
                   </div>
                 </div>
               </MicaCard>
+            )}
+
+            {activeTab === "themes" && (
+              <div className="flex flex-col gap-4">
+                <div>
+                  <h2 className="text-foreground/70 font-medium uppercase italic text-base">Themes</h2>
+                  <p className="text-xs text-muted-foreground mt-1">Install themes from .yaml files or create your own.</p>
+                </div>
+
+                {themeEditorTarget !== undefined ? (
+                  <ThemeEditor
+                    initial={themeEditorTarget}
+                    onBack={() => setThemeEditorTarget(undefined)}
+                    onSaved={() => setThemeEditorTarget(undefined)}
+                  />
+                ) : (
+                  <ThemeGallery
+                    onCreateNew={() => setThemeEditorTarget(null)}
+                    onEdit={(t) => setThemeEditorTarget(t)}
+                  />
+                )}
+              </div>
             )}
 
             {activeTab === "about" && (

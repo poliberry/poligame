@@ -426,7 +426,7 @@ export const GameForum: React.FC<GameForumProps> = ({ gameId }) => {
     const isAuthor = user?.userId === post.authorId;
 
     return (
-      <div className="p-2 border-b h-fit border-foreground/10" style={{ fontFamily: "Google Sans Flex, sans-serif" }}>
+      <div className="p-2 border-b h-fit border-foreground/10">
         <div className="flex items-start justify-between mb-3">
           <div className="flex items-center gap-3 flex-1">
             {post.authorAvatar ? (
@@ -591,7 +591,6 @@ export const GameForum: React.FC<GameForumProps> = ({ gameId }) => {
             >
               <span
                 className="text-sm font-light"
-                style={{ fontFamily: "Google Sans Flex, sans-serif" }}
               >
                 Create
               </span>
@@ -619,7 +618,6 @@ export const GameForum: React.FC<GameForumProps> = ({ gameId }) => {
                       : "bg-foreground/10 text-foreground/60 hover:text-foreground"
                   }`}
                   style={{
-                    fontFamily: "Google Sans Flex, sans-serif",
                     fontSize: "0.875rem",
                     cursor: "pointer",
                     transition: "all 0.2s ease-in-out",
@@ -636,7 +634,6 @@ export const GameForum: React.FC<GameForumProps> = ({ gameId }) => {
                       : "bg-foreground/10 text-foreground/60 hover:text-foreground"
                   }`}
                   style={{
-                    fontFamily: "Google Sans Flex, sans-serif",
                     fontSize: "0.875rem",
                     cursor: "pointer",
                     transition: "all 0.2s ease-in-out",
@@ -669,7 +666,6 @@ export const GameForum: React.FC<GameForumProps> = ({ gameId }) => {
                     padding: "0.5rem 1rem",
                     color: "var(--theme-foreground)",
                     fontSize: "0.875rem",
-                    fontFamily: "Google Sans Flex, sans-serif",
                   }}
                   onClick={() => {
                     setNewPostTitle("");
@@ -687,7 +683,6 @@ export const GameForum: React.FC<GameForumProps> = ({ gameId }) => {
                     padding: "0.5rem 1rem",
                     color: "white",
                     fontSize: "0.875rem",
-                    fontFamily: "Google Sans Flex, sans-serif",
                     transition: "all 0.2s ease-in-out",
                   }}
                   className="bg-[var(--theme-button)] rounded-full flex flex-row items-center gap-2 text-sm cursor-pointer border-none"
@@ -709,7 +704,6 @@ export const GameForum: React.FC<GameForumProps> = ({ gameId }) => {
         </div>
       ) : (
         <div
-          style={{ fontFamily: "Google Sans Flex, sans-serif" }}
           className="text-center text-xs text-white/60 py-8"
         >
           {isAuthenticated

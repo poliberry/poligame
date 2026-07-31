@@ -112,7 +112,7 @@ const ChatPanel: React.FC = () => {
             <div className="flex-1 overflow-y-auto space-y-2 mb-2">
               {(chatMessages as any[] | undefined)?.map((msg) => (
                 <div key={msg._id} className="text-sm">
-                  <span className="font-semibold text-[#9cf39c] mr-2">{msg.senderUsername}</span>
+                  <span className="font-semibold text-[var(--theme-accent)] mr-2">{msg.senderUsername}</span>
                   <span className="text-white/80">{msg.content.replace(/<[^>]*>/g, "")}</span>
                 </div>
               ))}
@@ -123,12 +123,12 @@ const ChatPanel: React.FC = () => {
                 onChange={(e) => setMessage(e.target.value)}
                 onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); void handleSend(); } }}
                 placeholder="Type a message..."
-                className="flex-1 rounded-xl bg-white/10 border border-white/15 px-3 py-2 text-sm text-white placeholder:text-white/35 focus:outline-none focus:ring-1 focus:ring-[#107c10]"
+                className="flex-1 rounded-xl bg-white/10 border border-white/15 px-3 py-2 text-sm text-white placeholder:text-white/35 focus:outline-none focus:ring-1 focus:ring-[var(--theme-accent)]"
               />
               <button
                 type="button"
                 onClick={() => void handleSend()}
-                className="px-4 py-2 rounded-xl bg-[#107c10]/30 border border-[#107c10]/50 text-[#9cf39c] text-sm hover:bg-[#107c10]/50"
+                className="px-4 py-2 rounded-xl bg-[var(--theme-accent)]/30 border border-[var(--theme-accent)]/50 text-[var(--theme-accent)] text-sm hover:bg-[var(--theme-accent)]/50"
               >
                 Send
               </button>
@@ -162,7 +162,7 @@ const SettingsPanel: React.FC = () => {
           <input
             type="range" min={0} max={100} value={volume}
             onChange={(e) => setVolume(Number(e.target.value))}
-            className="w-full accent-[#107c10]"
+            className="w-full accent-[var(--theme-accent)]"
           />
         </div>
         <div>
@@ -173,7 +173,7 @@ const SettingsPanel: React.FC = () => {
           <input
             type="range" min={10} max={100} value={brightness}
             onChange={(e) => setBrightness(Number(e.target.value))}
-            className="w-full accent-[#107c10]"
+            className="w-full accent-[var(--theme-accent)]"
           />
         </div>
       </div>
@@ -439,9 +439,7 @@ const OverdriveOverlayPage: React.FC = () => {
       {/* Force transparent backgrounds — overrides index.html inline styles */}
       <style>{`html, body, #root { background: transparent !important; }`}</style>
 
-      <link rel="preconnect" href="https://fonts.googleapis.com" />
-      <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
-      <link href="https://fonts.googleapis.com/css2?family=Livvic:wght@400;600;700&family=Unbounded:wght@200..900&display=swap" rel="stylesheet" />
+
 
       <AnimatePresence>
         {visible && (
@@ -451,7 +449,6 @@ const OverdriveOverlayPage: React.FC = () => {
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             transition={{ duration: 0.2 }}
-            style={{ fontFamily: "Livvic, sans-serif" }}
           >
             {/* Subtle darkening scrim — transparent window shows the game behind */}
             <div
@@ -472,7 +469,7 @@ const OverdriveOverlayPage: React.FC = () => {
               {/* Header */}
               <div className="flex items-center justify-between px-6 py-4 border-b border-white/10 flex-shrink-0">
                 <div>
-                  <p className="text-xl font-bold" style={{ fontFamily: "Unbounded, sans-serif" }}>
+                  <p className="text-xl font-bold">
                     {time.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
                   </p>
                   <p className="text-xs text-white/50">
@@ -480,9 +477,9 @@ const OverdriveOverlayPage: React.FC = () => {
                   </p>
                 </div>
                 {runningGameId && (
-                  <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-[#107c10]/20 border border-[#107c10]/40">
-                    <div className="w-2 h-2 rounded-full bg-[#9cf39c] animate-pulse" />
-                    <span className="text-xs text-[#9cf39c]">Game running</span>
+                  <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-[var(--theme-accent)]/20 border border-[var(--theme-accent)]/40">
+                    <div className="w-2 h-2 rounded-full bg-[var(--theme-accent)] animate-pulse" />
+                    <span className="text-xs text-[var(--theme-accent)]">Game running</span>
                   </div>
                 )}
                 <div className="flex items-center gap-3">
@@ -511,7 +508,7 @@ const OverdriveOverlayPage: React.FC = () => {
                         "w-full flex items-center gap-3 px-4 py-3 rounded-2xl text-left transition-all",
                         activeTab === tab.id ? "bg-white/15 text-white" : "text-white/60 hover:bg-white/10 hover:text-white",
                         panelFocusRegion === "tabs" && tabFocusIndex === i
-                          ? "ring-2 ring-[#107c10] ring-offset-1 ring-offset-transparent"
+                          ? "ring-2 ring-[var(--theme-accent)] ring-offset-1 ring-offset-transparent"
                           : "",
                       )}
                     >

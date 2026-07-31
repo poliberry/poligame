@@ -47,7 +47,7 @@ const ControllerButton: React.FC<ControllerButtonProps> = ({
         switch (button) {
           case "a":
             return (
-              <div className={`${sizeClasses[size]} rounded-full bg-[#107c10] text-white flex items-center justify-center font-bold shadow-lg`}>
+              <div className={`${sizeClasses[size]} rounded-full bg-[var(--theme-accent)] text-white flex items-center justify-center font-bold shadow-lg`}>
                 A
               </div>
             );
@@ -59,7 +59,7 @@ const ControllerButton: React.FC<ControllerButtonProps> = ({
             );
           case "x":
             return (
-              <div className={`${sizeClasses[size]} rounded-full bg-[#107c10] text-white flex items-center justify-center font-bold shadow-lg`}>
+              <div className={`${sizeClasses[size]} rounded-full bg-[var(--theme-accent)] text-white flex items-center justify-center font-bold shadow-lg`}>
                 X
               </div>
             );
@@ -175,7 +175,7 @@ const ControllerButton: React.FC<ControllerButtonProps> = ({
             );
           case "y":
             return (
-              <div className={`${sizeClasses[size]} rounded-full bg-[#107c10] text-white flex items-center justify-center font-bold shadow-lg`}>
+              <div className={`${sizeClasses[size]} rounded-full bg-[var(--theme-accent)] text-white flex items-center justify-center font-bold shadow-lg`}>
                 Y
               </div>
             );

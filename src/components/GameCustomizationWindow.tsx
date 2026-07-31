@@ -417,12 +417,6 @@ export const GameCustomizationWindow: React.FC<
 
   return (
     <div className="w-full h-screen flex flex-col bg-background text-white overflow-y-hidden">
-      <link rel="preconnect" href="https://fonts.googleapis.com" />
-      <link rel="preconnect" href="https://fonts.gstatic.com" />
-      <link
-        href="https://fonts.googleapis.com/css2?family=Google+Sans+Flex:opsz,wght@6..144,1..1000&family=Oswald:wght@200..700&display=swap"
-        rel="stylesheet"
-      />
       {/* Header */}
       <div
         className="flex items-center justify-between bg-[var(--theme-background)] py-0.5 px-2 z-[50] drag-region"
@@ -431,7 +425,6 @@ export const GameCustomizationWindow: React.FC<
         <div className="flex-1 flex-grow">
           <h1
             className="text-sm font-light text-muted-foreground p-2 select-none"
-            style={{ fontFamily: "Google Sans Flex, sans-serif" }}
           >
             Customise {game?.title}
           </h1>
@@ -464,7 +457,6 @@ export const GameCustomizationWindow: React.FC<
             >
               <span
                 className="text-sm font-medium text-foreground flex flex-row items-center gap-2"
-                style={{ fontFamily: "Livvic, sans-serif" }}
               >
                 <Settings className="w-4 h-4" />
                 General
@@ -477,7 +469,6 @@ export const GameCustomizationWindow: React.FC<
             >
               <span
                 className="text-sm font-medium text-foreground flex flex-row items-center gap-2"
-                style={{ fontFamily: "Livvic, sans-serif" }}
               >
                 <Palette className="w-4 h-4" />
                 Artwork
@@ -491,7 +482,6 @@ export const GameCustomizationWindow: React.FC<
               <div className="space-y-6">
                 <h2
                   className="text-lg font-light text-white"
-                  style={{ fontFamily: "Google Sans Flex, sans-serif" }}
                 >
                   General
                 </h2>
@@ -560,7 +550,6 @@ export const GameCustomizationWindow: React.FC<
               <div className="space-y-6 pb-20">
                 <h2
                   className="text-lg font-light text-white"
-                  style={{ fontFamily: "Google Sans Flex, sans-serif" }}
                 >
                   Artwork
                 </h2>

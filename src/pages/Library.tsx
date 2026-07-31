@@ -1,4 +1,6 @@
 import React, { useEffect, useState } from "react";
+import { MascotOverlay } from "@/components/MascotOverlay";
+import { useThemeStore } from "@/stores/themeStore";
 import { listen } from "@tauri-apps/api/event";
 import { useGameStore } from "@/stores/gameStore";
 import { useLibraryContext } from "@/contexts/LibraryContext";
@@ -314,19 +316,19 @@ const Library: React.FC = () => {
   const shouldShowSections =
     !searchQuery && filterLauncher === "all" && viewMode === "grid";
 
-  return (
-    <div className="flex flex-col gap-4 p-4 h-full w-full pb-8">
-      <link rel="preconnect" href="https://fonts.googleapis.com" />
-      <link
-        rel="preconnect"
-        href="https://fonts.gstatic.com"
-        crossOrigin="anonymous"
-      />
-      <link
-        href="https://fonts.googleapis.com/css2?family=Livvic:ital,wght@0,100;0,200;0,300;0,400;0,500;0,600;0,700;0,900;1,100;1,200;1,300;1,400;1,500;1,600;1,700;1,900&family=Unbounded:wght@200..900&display=swap"
-        rel="stylesheet"
-      />
+  const activeTheme = useThemeStore((s) => s.activeTheme);
+  const bgImage = activeTheme?.appearance?.background_image;
+  const bgOpacity = activeTheme?.appearance?.background_image_opacity ?? 0.15;
 
+  return (
+    <div className="relative flex flex-col gap-4 p-4 h-full w-full pb-8">
+      {bgImage && (
+        <div
+          className="absolute inset-0 -z-10 bg-cover bg-center bg-no-repeat pointer-events-none"
+          style={{ backgroundImage: `url(${bgImage})`, opacity: bgOpacity }}
+          aria-hidden="true"
+        />
+      )}
       {/* Game Roulette Button */}
       {!isLoading && filteredGames.length > 0 && (
         <div className="flex justify-end gap-2">
@@ -376,7 +378,6 @@ const Library: React.FC = () => {
             <div className="flex items-center gap-2 mb-4">
               <h2
                 className="text-xl font-light"
-                style={{ fontFamily: "Google Sans Flex, sans-serif" }}
               >
                 Let's jump back in
               </h2>
@@ -434,7 +435,6 @@ const Library: React.FC = () => {
                 <div className="flex items-center gap-2 mb-4">
                   <h2
                     className="text-lg font-light"
-                    style={{ fontFamily: "Google Sans Flex, sans-serif" }}
                   >
                     Your most played games
                   </h2>
@@ -477,14 +477,12 @@ const Library: React.FC = () => {
                       )}
                       <h2
                         className="text-lg font-light"
-                        style={{ fontFamily: "Google Sans Flex, sans-serif" }}
                       >
                         {launcherNames[launcher] ||
                           launcher.charAt(0).toUpperCase() + launcher.slice(1)}
                       </h2>
                       <span
                         className="text-sm text-foreground/60"
-                        style={{ fontFamily: "Livvic, sans-serif" }}
                       >
                         ({launcherGames.length})
                       </span>
@@ -561,6 +559,7 @@ const Library: React.FC = () => {
           display: none;
         }
       `}</style>
+      <MascotOverlay />
     </div>
   );
 };

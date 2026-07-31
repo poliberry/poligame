@@ -172,7 +172,6 @@ export const GameCard: React.FC<GameCardProps> = ({
                     ? "white"
                     : "white",
               fontSize: "0.85rem",
-              fontFamily: "Google Sans Flex, sans-serif",
             }}
             className={`text-sm font-light flex flex-row gap-1 items-center p-2 max-w-md`}
           >
@@ -223,7 +222,6 @@ export const GameCard: React.FC<GameCardProps> = ({
         <div className="col-span-1 min-w-0">
           <div
             className="text-base font-semibold text-white truncate group-hover:text-white/90 flex items-center gap-2"
-            style={{ fontFamily: "Unbounded, sans-serif" }}
           >
             {displayGame.title}
             {hasCustomizations && <Palette className="h-3 w-3 text-white/60" />}
@@ -292,7 +290,6 @@ export const GameCard: React.FC<GameCardProps> = ({
         <ContextMenuContent className="w-56 rounded-none">
           <ContextMenuItem
             className="rounded-none p-2 bg-[var(--theme-accent)] text-white uppercase italic font-bold hover:bg-[var(--theme-accent)]/80 cursor-pointer"
-            style={{ fontFamily: "Unbounded, sans-serif" }}
             onClick={handleQuickLaunch}
           >
             <Play className="mr-2 h-4 w-4" />

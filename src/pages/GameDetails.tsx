@@ -664,7 +664,6 @@ const GameDetails: React.FC = () => {
               <h1
                 className={`font-light transition-all duration-300 ${isScrolled ? "text-base" : "text-xl"
                   }`}
-                style={{ fontFamily: "Google Sans Flex, sans-serif" }}
               >
                 {game?.title}
               </h1>
@@ -672,9 +671,6 @@ const GameDetails: React.FC = () => {
                 {isGameRunning ? (
                   <Button
                     className="font-light bg-red-300 hover:bg-red-800 text-red-700 hover:text-red-400 rounded-full border-none transition-all duration-300 cursor-pointer"
-                    style={{
-                      fontFamily: "Google Sans Flex, sans-serif",
-                    }}
                     onClick={handleClose}
                   >
                     <X size={isScrolled ? 14 : 18} />
@@ -683,9 +679,6 @@ const GameDetails: React.FC = () => {
                 ) : (
                   <Button
                     className="font-light bg-transparent backdrop-blur-xl hover:bg-[var(--theme-button)] text-[var(--theme-button-secondary)] rounded-full border-none transition-all duration-300 cursor-pointer"
-                    style={{
-                      fontFamily: "Google Sans Flex, sans-serif",
-                    }}
                     onClick={handleLaunch}
                   >
                     <IoPlay size={isScrolled ? 14 : 18} />
@@ -729,7 +722,6 @@ const GameDetails: React.FC = () => {
                     ? "text-[var(--theme-accent)] hover:text-foreground bg-[var(--theme-button)] backdrop-blur-md"
                     : "text-foreground/60 hover:text-foreground"
                   }`}
-                style={{ fontFamily: "Google Sans Flex, sans-serif" }}
               >
                 Overview
               </Button>
@@ -740,7 +732,6 @@ const GameDetails: React.FC = () => {
                       ? "text-[var(--theme-accent)] hover:text-foreground bg-[var(--theme-button)] backdrop-blur-md"
                       : "text-foreground/60 hover:text-foreground"
                     }`}
-                  style={{ fontFamily: "Google Sans Flex, sans-serif" }}
                 >
                   <Trophy size={16} className="inline mr-1" />
                   Achievements
@@ -752,7 +743,6 @@ const GameDetails: React.FC = () => {
                     ? "text-[var(--theme-accent)] hover:text-foreground bg-[var(--theme-button)] backdrop-blur-md"
                     : "text-foreground/60 hover:text-foreground"
                   }`}
-                style={{ fontFamily: "Google Sans Flex, sans-serif" }}
               >
                 <MessageSquare size={16} className="inline mr-1" />
                 Forum
@@ -764,7 +754,6 @@ const GameDetails: React.FC = () => {
                       ? "text-[var(--theme-accent)] hover:text-foreground bg-[var(--theme-button)] backdrop-blur-md"
                       : "text-foreground/60 hover:text-foreground"
                     }`}
-                  style={{ fontFamily: "Google Sans Flex, sans-serif" }}
                 >
                   <CheckCircle2 size={16} className="inline mr-1" />
                   Compatibility
@@ -776,7 +765,6 @@ const GameDetails: React.FC = () => {
                     ? "text-[var(--theme-accent)] hover:text-foreground bg-[var(--theme-button)] backdrop-blur-md"
                     : "text-foreground/60 hover:text-foreground"
                   }`}
-                style={{ fontFamily: "Google Sans Flex, sans-serif" }}
               >
                 <ImageIcon size={16} className="inline mr-1" />
                 Gallery
@@ -811,7 +799,7 @@ const GameDetails: React.FC = () => {
                             </p>
                           </div>
                         ) : news.length > 0 ? (
-                          <div className="flex flex-col gap-4" style={{ fontFamily: "Google Sans Flex, sans-serif" }}>
+                          <div className="flex flex-col gap-4">
                             {news
                               .filter((item: any) => {
                                 // Filter by appId if available, otherwise trust newsGameIdRef
@@ -877,7 +865,6 @@ const GameDetails: React.FC = () => {
                                       className="text-sm px-2 rounded-full font-medium hover:opacity-80 transition-opacity cursor-pointer bg-transparent border-none text-left"
                                       style={{
                                         color: "var(--theme-button-secondary)",
-                                        fontFamily: "Google Sans Flex, sans-serif",
                                       }}
                                     >
                                       Read more →
@@ -912,9 +899,6 @@ const GameDetails: React.FC = () => {
                                 <Clock className="w-4 h-4 text-[var(--theme-accent)]" />
                                 <h2
                                   className="text-sm font-light text-foreground/90"
-                                  style={{
-                                    fontFamily: "Google Sans Flex, sans-serif",
-                                  }}
                                 >
                                   Your playtime on {game?.title}
                                 </h2>
@@ -924,17 +908,11 @@ const GameDetails: React.FC = () => {
                                   <div className="flex items-center justify-between">
                                     <span
                                       className="text-sm text-foreground/70"
-                                      style={{
-                                        fontFamily: "Google Sans Flex, sans-serif",
-                                      }}
                                     >
                                       You've played this game for...
                                     </span>
                                     <span
                                       className="text-sm font-medium text-foreground"
-                                      style={{
-                                        fontFamily: "Google Sans Flex, sans-serif",
-                                      }}
                                     >
                                       {Math.floor(
                                         userPlaytime.totalPlaytime / 3600,
@@ -952,17 +930,11 @@ const GameDetails: React.FC = () => {
                                   <div className="flex items-center justify-between">
                                     <span
                                       className="text-sm text-foreground/70"
-                                      style={{
-                                        fontFamily: "Google Sans Flex, sans-serif",
-                                      }}
                                     >
                                       You last played this game on...
                                     </span>
                                     <span
                                       className="text-sm font-medium text-foreground"
-                                      style={{
-                                        fontFamily: "Google Sans Flex, sans-serif",
-                                      }}
                                     >
                                       {new Date(
                                         userPlaytime.lastPlayed,
@@ -975,17 +947,11 @@ const GameDetails: React.FC = () => {
                                     <div className="flex items-center justify-between">
                                       <span
                                         className="text-sm text-foreground/70"
-                                        style={{
-                                          fontFamily: "Google Sans Flex, sans-serif",
-                                        }}
                                       >
                                         You've played this game...
                                       </span>
                                       <span
                                         className="text-sm font-medium text-foreground"
-                                        style={{
-                                          fontFamily: "Google Sans Flex, sans-serif",
-                                        }}
                                       >
                                         {userPlaytime.sessions.length} times
                                       </span>
@@ -1002,7 +968,6 @@ const GameDetails: React.FC = () => {
                               <Users className="w-4 h-4 text-[var(--theme-accent)]" />
                               <h2
                                 className="text-sm font-semibold text-foreground/90"
-                                style={{ fontFamily: "Google Sans Flex, sans-serif" }}
                               >
                                 How much your friends have played {game?.title}
                               </h2>
@@ -1033,18 +998,12 @@ const GameDetails: React.FC = () => {
                                       <div className="flex flex-col">
                                         <span
                                           className="text-sm font-medium text-foreground"
-                                          style={{
-                                            fontFamily: "Google Sans Flex, sans-serif",
-                                          }}
                                         >
                                           {friend.username}
                                         </span>
                                         {friend.lastPlayed && (
                                           <span
                                             className="text-xs text-foreground/60"
-                                            style={{
-                                              fontFamily: "Google Sans Flex, sans-serif",
-                                            }}
                                           >
                                             Last played{" "}
                                             {new Date(
@@ -1057,9 +1016,6 @@ const GameDetails: React.FC = () => {
                                     <div className="flex flex-col items-end">
                                       <span
                                         className="text-sm font-medium text-foreground"
-                                        style={{
-                                          fontFamily: "Google Sans Flex, sans-serif",
-                                        }}
                                       >
                                         {Math.floor(
                                           friend.totalPlaytime / 3600,
@@ -1073,9 +1029,6 @@ const GameDetails: React.FC = () => {
                                       {friend.sessionCount > 0 && (
                                         <span
                                           className="text-xs text-foreground/60"
-                                          style={{
-                                            fontFamily: "Google Sans Flex, sans-serif",
-                                          }}
                                         >
                                           {friend.sessionCount} session
                                           {friend.sessionCount !== 1 ? "s" : ""}
@@ -1095,7 +1048,6 @@ const GameDetails: React.FC = () => {
                             <div className="flex flex-col gap-1 w-full border-b border-foreground/10 pb-4 mb-4">
                               <h2
                                 className="text-sm font-light mb-2 text-left text-foreground/60"
-                                style={{ fontFamily: "Google Sans Flex, sans-serif" }}
                               >
                                 You've unlocked {unlockedCount} out of {totalCount} achievements
                               </h2>
@@ -1124,7 +1076,6 @@ const GameDetails: React.FC = () => {
                         <div className="flex flex-col gap-2 w-full">
                           <h2
                             className="text-sm font-light mb-2 text-left text-foreground/60"
-                            style={{ fontFamily: "Google Sans Flex, sans-serif" }}
                           >
                             What people are saying about {game?.title}
                           </h2>

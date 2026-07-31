@@ -101,11 +101,11 @@ export const MediaGallery: React.FC<MediaGalleryProps> = ({ gameId, userId }) =>
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
           <ImageIcon className="w-5 h-5 text-[var(--theme-accent)]" />
-          <h2 className="text-lg font-bold uppercase italic" style={{ fontFamily: 'Unbounded, sans-serif' }}>
+          <h2 className="text-lg font-bold uppercase italic">
             Media Gallery
           </h2>
           {screenshots.length > 0 && (
-            <span className="text-sm text-foreground/60" style={{ fontFamily: 'Livvic, sans-serif' }}>
+            <span className="text-sm text-foreground/60">
               ({screenshots.length})
             </span>
           )}
@@ -126,7 +126,7 @@ export const MediaGallery: React.FC<MediaGalleryProps> = ({ gameId, userId }) =>
       {screenshots.length === 0 ? (
         <MicaCard className="p-8 text-center">
           <ImageIcon className="w-12 h-12 mx-auto mb-4 text-foreground/40" />
-          <p className="text-foreground/60 mb-4" style={{ fontFamily: 'Livvic, sans-serif' }}>
+          <p className="text-foreground/60 mb-4">
             No screenshots yet
           </p>
           {user?.userId && (
@@ -156,7 +156,7 @@ export const MediaGallery: React.FC<MediaGalleryProps> = ({ gameId, userId }) =>
                 />
                 <div className="absolute inset-0 bg-black/0 group-hover:bg-black/40 transition-all flex items-center justify-center opacity-0 group-hover:opacity-100">
                   {screenshot.caption && (
-                    <p className="text-white text-sm px-2 text-center line-clamp-2" style={{ fontFamily: 'Livvic, sans-serif' }}>
+                    <p className="text-white text-sm px-2 text-center line-clamp-2">
                       {screenshot.caption}
                     </p>
                   )}
@@ -220,7 +220,7 @@ export const MediaGallery: React.FC<MediaGalleryProps> = ({ gameId, userId }) =>
             className="w-full max-w-md p-6"
             onClick={(e) => e.stopPropagation()}
           >
-            <h3 className="text-lg font-semibold mb-4" style={{ fontFamily: 'Unbounded, sans-serif' }}>
+            <h3 className="text-lg font-semibold mb-4">
               Edit Caption
             </h3>
             <textarea
@@ -231,7 +231,6 @@ export const MediaGallery: React.FC<MediaGalleryProps> = ({ gameId, userId }) =>
               className="w-full p-3 rounded bg-foreground/5 border border-foreground/10 text-foreground mb-4 resize-none"
               rows={3}
               placeholder="Add a caption..."
-              style={{ fontFamily: 'Livvic, sans-serif' }}
             />
             <div className="flex gap-2 justify-end">
               <Button

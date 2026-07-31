@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from "react";
+﻿import React, { useState, useRef, useEffect } from "react";
 import { LogOut, Minus, Square, X, Settings, Users } from "lucide-react";
 import { invoke } from "@tauri-apps/api/core";
 import { useNavigate } from "react-router-dom";
@@ -202,7 +202,6 @@ export const TopBar: React.FC = () => {
       style={{
         margin: 0,
         padding: 0,
-        borderRadius: 0,
         border: "none",
         boxShadow: "none",
         boxSizing: "border-box",
@@ -218,7 +217,6 @@ export const TopBar: React.FC = () => {
       >
         <div
           className="flex-1 flex flex-row items-center gap-2 p-2"
-          style={{ fontFamily: "Unbounded, sans-serif" }}
         >
           <img
             src={logo}
@@ -240,14 +238,12 @@ export const TopBar: React.FC = () => {
                     type="button"
                     className="px-3 flex items-center gap-1 text-sm cursor-pointer text-foreground/70 hover:text-[var(--theme-accent)] transition-colors cursor-pointer"
                     title="General"
-                    style={{ fontFamily: "Google Sans Flex, sans-serif" }}
                   >
                     General
                   </button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent
                   className="z-[99] w-60 bg-muted border border-border overflow-hidden"
-                  style={{ fontFamily: "Google Sans Flex, sans-serif" }}
                 >
                   <div className="flex flex-col gap-1 p-2">
                     {isAuthenticated && user && (
@@ -314,14 +310,12 @@ export const TopBar: React.FC = () => {
                       type="button"
                       className="px-3 flex items-center gap-1 text-sm cursor-pointer text-foreground/70 hover:text-[var(--theme-accent)] transition-colors cursor-pointer"
                       title="Friends"
-                      style={{ fontFamily: "Google Sans Flex, sans-serif" }}
                     >
                       Friends
                     </button>
                   </DropdownMenuTrigger>
                   <DropdownMenuContent
                     className="z-[99] w-60 bg-muted border border-border overflow-hidden"
-                    style={{ fontFamily: "Google Sans Flex, sans-serif" }}
                   >
                     <div className="flex flex-col gap-1 p-2">
                       <button
@@ -348,14 +342,12 @@ export const TopBar: React.FC = () => {
                     type="button"
                     className="px-3 flex items-center gap-1 text-sm cursor-pointer text-foreground/70 hover:text-[var(--theme-accent)] transition-colors cursor-pointer"
                     title="View"
-                    style={{ fontFamily: "Google Sans Flex, sans-serif" }}
                   >
                     View
                   </button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent
                   className="z-[99] w-60 bg-muted border border-border overflow-hidden"
-                  style={{ fontFamily: "Google Sans Flex, sans-serif" }}
                 >
                   <div className="flex flex-col gap-1 p-2">
                     <button
@@ -390,14 +382,12 @@ export const TopBar: React.FC = () => {
                     type="button"
                     className="px-3 flex items-center gap-1 text-sm cursor-pointer text-foreground/70 hover:text-[var(--theme-accent)] transition-colors cursor-pointer"
                     title="Help"
-                    style={{ fontFamily: "Google Sans Flex, sans-serif" }}
                   >
                     Help
                   </button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent
                   className="z-[99] w-60 bg-muted border border-border overflow-hidden"
-                  style={{ fontFamily: "Google Sans Flex, sans-serif" }}
                 >
                   <div className="flex flex-col gap-1 p-2">
                     <button
@@ -449,7 +439,7 @@ export const TopBar: React.FC = () => {
                     style={{
                       backgroundColor: "var(--theme-background)",
                       padding: "1px",
-                      borderRadius: "360px",
+                      borderRadius: "var(--theme-border-radius)",
                     }}
                   />
                 )}
@@ -464,7 +454,6 @@ export const TopBar: React.FC = () => {
                 />
                 <span
                   className={cn("text-sm font-light", runningGame ? "text-[var(--theme-accent)]" : "text-foreground")}
-                  style={{ fontFamily: "Google Sans Flex, sans-serif" }}
                 >
                   {user.username || user.email}
                 </span>
@@ -508,7 +497,6 @@ export const TopBar: React.FC = () => {
               variant="default"
               onClick={handleOpenAuth}
               className="h-fit py-1 px-2 text-xs cursor-pointer"
-              style={{ fontFamily: "Google Sans Flex, sans-serif" }}
             >
               Sign In
             </Button>

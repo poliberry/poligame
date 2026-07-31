@@ -31,7 +31,6 @@ const OverdriveNavigationHints: React.FC<OverdriveNavigationHintsProps> = ({
       <div
         className="flex items-center justify-between gap-3 border-t border-white/10 bg-black/60 px-6 py-2 backdrop-blur-md"
         style={{
-          fontFamily: "'Livvic', 'Unbounded', Arial, sans-serif",
           boxShadow: "0 4px 16px rgba(0,0,0,0.5)",
         }}
       >
@@ -53,7 +52,6 @@ const OverdriveNavigationHints: React.FC<OverdriveNavigationHintsProps> = ({
             ) : (
               <kbd
                 className="rounded-full bg-white/90 px-3 py-1.5 text-sm font-bold uppercase text-black shadow-md"
-                style={{ fontFamily: "Livvic, sans-serif" }}
               >
                 {item.keyLabel}
               </kbd>

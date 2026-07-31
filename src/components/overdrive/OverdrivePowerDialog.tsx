@@ -225,7 +225,6 @@ const OverdrivePowerDialog: React.FC<OverdrivePowerDialogProps> = ({
       <DialogContent
         showCloseButton={false}
         className="max-w-xl border-white/10 bg-black/90 px-0 py-0 text-white backdrop-blur-xl"
-        style={{ fontFamily: "Google Sans Flex, sans-serif" }}
       >
         <div ref={panelRef} onKeyDownCapture={handleDialogKeyDown}>
         <div className="border-b border-white/10 px-6 py-5">
@@ -250,8 +249,8 @@ const OverdrivePowerDialog: React.FC<OverdrivePowerDialogProps> = ({
                   "w-full justify-start gap-3 p-8 border text-left transition-all duration-200",
                   action.danger
                     ? "border-red-500/20 bg-red-500/5 hover:bg-red-500/10 hover:border-red-500/40"
-                    : "border-white/10 bg-white/5 hover:bg-white/10 hover:border-[#107c10]",
-                  isFocused && "ring-2 ring-[#107c10] border-[#107c10] bg-white/10",
+                    : "border-white/10 bg-white/5 hover:bg-white/10 hover:border-[var(--theme-accent)]",
+                  isFocused && "ring-2 ring-[var(--theme-accent)] border-[var(--theme-accent)] bg-white/10",
                 )}
               >
                 <Icon className="w-4 h-4 shrink-0" />

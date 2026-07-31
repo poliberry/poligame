@@ -108,8 +108,7 @@ const TrayPanel: React.FC = () => {
 
   const panelStyle = useMemo(
     () => ({
-      fontFamily:
-        '"Google Sans Flex", "Google Sans Text", "Roboto Flex", "Segoe UI Variable", "Segoe UI", sans-serif',
+      fontFamily: "var(--theme-font-family)",
       background:
         "linear-gradient(180deg, color-mix(in oklab, var(--theme-panel, var(--card)) 92%, black 8%) 0%, color-mix(in oklab, var(--theme-background, var(--background)) 96%, black 4%) 100%)",
       color: "var(--foreground)",
