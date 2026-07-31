@@ -257,16 +257,37 @@ fn collect_fonts_from_dir(dir: &PathBuf, families: &mut BTreeSet<String>) {
             continue;
         }
         if let Some(ext) = path.extension().and_then(|e| e.to_str()) {
-            if matches!(ext.to_lowercase().as_str(), "ttf" | "otf" | "woff" | "woff2") {
-                if let Some(stem) = path.file_stem().and_then(|s| s.to_str()) {
-                    let family = clean_font_name(stem);
-                    if !family.is_empty() && family.len() > 1 {
-                        families.insert(family);
+            if matches!(ext.to_lowercase().as_str(), "ttf" | "otf") {
+                if let Some(family) = read_font_family(&path) {
+                    families.insert(family);
+                }
+            }
+        }
+    }
+}
+
+/// Extract the CSS-usable family name from a font file by reading its name table.
+/// Prefers Name ID 16 (Typographic Family) over Name ID 1 (Font Family), and
+/// Windows Unicode (platform 3) over Mac Roman (platform 1).
+fn read_font_family(path: &PathBuf) -> Option<String> {
+    let data = fs::read(path).ok()?;
+    let face = ttf_parser::Face::parse(&data, 0).ok()?;
+
+    for &name_id in &[16u16, 1u16] {
+        for plat in [ttf_parser::PlatformId::Windows, ttf_parser::PlatformId::Macintosh] {
+            for name in face.names() {
+                if name.name_id == name_id && name.platform_id == plat {
+                    if let Some(s) = name.to_string() {
+                        let s = s.trim().to_string();
+                        if s.len() > 1 {
+                            return Some(s);
+                        }
                     }
                 }
             }
         }
     }
+    None
 }
 
 fn system_font_dirs() -> Vec<PathBuf> {
@@ -307,58 +328,3 @@ fn system_font_dirs() -> Vec<PathBuf> {
     font_dirs
 }
 
-fn clean_font_name(stem: &str) -> String {
-    let weight_style_suffixes = [
-        "-Regular",
-        "-Bold",
-        "-Italic",
-        "-BoldItalic",
-        "-Light",
-        "-Medium",
-        "-SemiBold",
-        "-ExtraBold",
-        "-Black",
-        "-Thin",
-        "-ExtraLight",
-        "-Heavy",
-        "-Condensed",
-        "-Expanded",
-        "-Oblique",
-        "Regular",
-        "Bold",
-        "Italic",
-        "Light",
-        "Medium",
-        "Semibold",
-        "-100",
-        "-200",
-        "-300",
-        "-400",
-        "-500",
-        "-600",
-        "-700",
-        "-800",
-        "-900",
-        "100",
-        "200",
-        "300",
-        "400",
-        "500",
-        "600",
-        "700",
-        "800",
-        "900",
-    ];
-
-    let mut name = stem.to_string();
-
-    // Remove weight/style suffixes (try longest match first)
-    for suffix in &weight_style_suffixes {
-        if name.ends_with(suffix) {
-            name = name[..name.len() - suffix.len()].to_string();
-            break;
-        }
-    }
-
-    name.replace('-', " ").replace('_', " ").trim().to_string()
-}
