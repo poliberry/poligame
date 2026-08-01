@@ -21,6 +21,7 @@ import {
 } from "lucide-react";
 import { Button } from "./ui/button";
 import { Input } from "./ui/input";
+import { isPostHogInitialized, posthog } from "@/lib/posthog";
 
 interface GameForumProps {
   gameId: string;
@@ -92,6 +93,12 @@ export const GameForum: React.FC<GameForumProps> = ({ gameId }) => {
         contentFormat: newPostFormat,
         images: [],
       });
+      if (isPostHogInitialized) {
+        posthog.capture("forum_post_created", {
+          game_id: gameId,
+          content_format: newPostFormat,
+        });
+      }
       setNewPostTitle("");
       setNewPostContent("");
       setShowNewPost(false);
@@ -108,10 +115,19 @@ export const GameForum: React.FC<GameForumProps> = ({ gameId }) => {
     }
 
     try {
+      const post = posts?.find((candidate) => candidate._id === postId);
       await toggleLikePost({
         postId,
         userId: user.userId as unknown as Id<"users">,
       });
+      if (isPostHogInitialized) {
+        posthog.capture("forum_post_like_toggled", {
+          game_id: gameId,
+          liked: !Boolean(
+            post?.likes?.includes(user.userId as unknown as Id<"users">),
+          ),
+        });
+      }
     } catch (error) {
       console.error("Failed to toggle like:", error);
     }
@@ -128,6 +144,9 @@ export const GameForum: React.FC<GameForumProps> = ({ gameId }) => {
         commentId,
         userId: user.userId as unknown as Id<"users">,
       });
+      if (isPostHogInitialized) {
+        posthog.capture("forum_comment_like_toggled", { game_id: gameId });
+      }
     } catch (error) {
       console.error("Failed to toggle like:", error);
     }
@@ -172,6 +191,13 @@ export const GameForum: React.FC<GameForumProps> = ({ gameId }) => {
         parentCommentId,
         images: [],
       });
+      if (isPostHogInitialized) {
+        posthog.capture("forum_comment_created", {
+          game_id: gameId,
+          is_reply: Boolean(parentCommentId),
+          content_format: replyFormat,
+        });
+      }
       setReplyContent("");
       setReplyingTo(null);
       // Expand the post to show comments

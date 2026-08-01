@@ -12,6 +12,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
 import { Button } from "./ui/button";
+import { isPostHogInitialized, posthog } from "@/lib/posthog";
 
 interface SteamGridDbArtworkSelectionEvent {
   requestId: string;
@@ -361,6 +362,16 @@ export const GameCustomizationWindow: React.FC<
       setOriginalCustomLogo(customLogo);
       setOriginalCustomHeroArt(customHeroArt);
 
+      if (isPostHogInitialized) {
+        posthog.capture("game_customization_saved", {
+          game_id: gameId,
+          is_custom_app: isCustomApp,
+          has_cover_art: Boolean(customCoverArt),
+          has_grid_cover_art: Boolean(customGridCoverArt),
+          has_logo: Boolean(customLogo),
+          has_hero_art: Boolean(customHeroArt),
+        });
+      }
       toast.success("Customizations saved");
     } catch (err: any) {
       setError(err.message || "Failed to save customizations");

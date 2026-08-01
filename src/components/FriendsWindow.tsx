@@ -24,6 +24,7 @@ import {
 import { Button } from "./ui/button";
 import { toast } from "sonner";
 import { showNotification } from "@/utils/notifications";
+import { isPostHogInitialized, posthog } from "@/lib/posthog";
 
 interface FriendsWindowProps {
   onClose: () => void;
@@ -341,6 +342,9 @@ export const FriendsWindow: React.FC<FriendsWindowProps> = ({ onClose }) => {
         }
       });
 
+      if (isPostHogInitialized) {
+        posthog.capture("chat_message_sent", { chat_type: chat.type });
+      }
       setMessageContent("");
     } catch (error: any) {
       console.error("Failed to send message:", error);
@@ -399,6 +403,9 @@ export const FriendsWindow: React.FC<FriendsWindowProps> = ({ onClose }) => {
         }
       });
 
+      if (isPostHogInitialized) {
+        posthog.capture("friend_request_sent");
+      }
       setSearchQuery("");
       setShowAddFriend(false);
     } catch (error: any) {
@@ -417,6 +424,9 @@ export const FriendsWindow: React.FC<FriendsWindowProps> = ({ onClose }) => {
         userId: user.userId as unknown as Id<"users">,
         friendId,
       });
+      if (isPostHogInitialized) {
+        posthog.capture("friend_request_accepted");
+      }
     } catch (error: any) {
       console.error("Failed to accept friend request:", error);
       toast.error("Failed to accept friend request", {
