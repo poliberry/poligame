@@ -2,7 +2,7 @@ use base64::Engine;
 use serde::{Deserialize, Serialize};
 use std::collections::BTreeSet;
 use std::fs;
-use std::io::Write;
+use std::io::{Read, Write};
 use std::path::PathBuf;
 
 #[derive(Debug, Serialize, Deserialize, Clone, Default)]
@@ -294,6 +294,18 @@ pub fn export_pgtheme(theme_id: String, dest_path: String) -> Result<(), String>
 
 #[tauri::command]
 pub fn import_pgtheme(src_path: String) -> Result<ThemeManifest, String> {
+    // Reject any path component that could escape the intended directories.
+    fn is_safe_filename(s: &str) -> bool {
+        !s.is_empty()
+            && !s.contains("..")
+            && !s.contains('/')
+            && !s.contains('\\')
+            && !std::path::Path::new(s).is_absolute()
+    }
+
+    // Per-entry decompressed size cap (50 MB).
+    const MAX_ENTRY_BYTES: u64 = 50 * 1024 * 1024;
+
     let file = fs::File::open(&src_path).map_err(|e| e.to_string())?;
     let mut archive = zip::ZipArchive::new(file).map_err(|e| e.to_string())?;
 
@@ -305,17 +317,27 @@ pub fn import_pgtheme(src_path: String) -> Result<ThemeManifest, String> {
         let name = entry.name().to_string();
 
         if name.ends_with(".yaml") && !name.contains('/') {
+            if entry.size() > MAX_ENTRY_BYTES {
+                return Err("Theme YAML exceeds the 50 MB size limit".to_string());
+            }
             let mut content = String::new();
-            std::io::Read::read_to_string(&mut entry, &mut content)
+            (&mut entry)
+                .take(MAX_ENTRY_BYTES)
+                .read_to_string(&mut content)
                 .map_err(|e| e.to_string())?;
             yaml_content = Some(content);
         } else if name.starts_with("assets/") && !name.ends_with('/') {
             let rel = name.trim_start_matches("assets/").to_string();
-            if rel.is_empty() {
-                continue;
+            if !is_safe_filename(&rel) {
+                return Err(format!("Unsafe asset path in archive: {}", rel));
+            }
+            if entry.size() > MAX_ENTRY_BYTES {
+                return Err(format!("Asset '{}' exceeds the 50 MB size limit", rel));
             }
             let mut bytes = Vec::new();
-            std::io::Read::read_to_end(&mut entry, &mut bytes)
+            (&mut entry)
+                .take(MAX_ENTRY_BYTES)
+                .read_to_end(&mut bytes)
                 .map_err(|e| e.to_string())?;
             asset_files.push((rel, bytes));
         }
@@ -331,11 +353,15 @@ pub fn import_pgtheme(src_path: String) -> Result<ThemeManifest, String> {
         return Err("Cannot install themes with reserved publisher 'poligame'".to_string());
     }
 
+    // Validate manifest.id before using it as a path component.
+    if !is_safe_filename(&manifest.id) {
+        return Err("Theme id contains invalid path characters".to_string());
+    }
+
     let dir = themes_dir()?;
 
-    fs::write(dir.join(format!("{}.yaml", manifest.id)), &yaml)
-        .map_err(|e| e.to_string())?;
-
+    // Write assets first so that if a write fails the YAML is not yet committed,
+    // leaving no partially installed theme.
     if !asset_files.is_empty() {
         let assets_dir = dir.join("assets").join(&manifest.id);
         fs::create_dir_all(&assets_dir).map_err(|e| e.to_string())?;
@@ -343,6 +369,10 @@ pub fn import_pgtheme(src_path: String) -> Result<ThemeManifest, String> {
             fs::write(assets_dir.join(&rel_path), &bytes).map_err(|e| e.to_string())?;
         }
     }
+
+    // Write YAML last: only reachable if all assets succeeded.
+    fs::write(dir.join(format!("{}.yaml", manifest.id)), &yaml)
+        .map_err(|e| e.to_string())?;
 
     Ok(manifest)
 }

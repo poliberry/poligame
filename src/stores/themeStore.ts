@@ -164,9 +164,13 @@ export const useThemeStore = create<ThemeStore>((set, get) => ({
   setActiveThemeId: async (id) => {
     const { installedThemes } = get();
     const theme = installedThemes.find((t) => t.id === id) ?? null;
+    // Apply synchronously so the UI responds immediately (unresolved bg is fine temporarily).
+    set({ activeThemeId: id, activeTheme: theme });
     saveActiveThemeIdToStorage(id);
     const resolved = theme ? await resolveThemeBgImage(theme) : null;
-    set({ activeThemeId: id, activeTheme: resolved });
+    // Guard against a newer selection that arrived while we were resolving.
+    if (get().activeThemeId !== id) return;
+    set({ activeTheme: resolved });
   },
 
   installThemeFromFile: async (yamlContent) => {

@@ -72,7 +72,8 @@ export const ThemeEditor: React.FC<ThemeEditorProps> = ({ initial, onBack, onSav
       .catch(() => setSystemFonts(["system-ui", "sans-serif", "serif", "monospace"]));
   }, []);
 
-  // Resolve bare filenames to data URLs for preview
+  // Resolve bare filenames to data URLs for preview only.
+  // On failure the state stays as the bare filename so the manifest is never corrupted.
   useEffect(() => {
     if (!initial?.id) return;
 
@@ -84,7 +85,7 @@ export const ThemeEditor: React.FC<ThemeEditorProps> = ({ initial, onBack, onSav
           const mime = ext === "jpg" || ext === "jpeg" ? "image/jpeg" : `image/${ext}`;
           setBgImage(`data:${mime};base64,${b64}`);
         })
-        .catch(() => setBgImage(""));
+        .catch(() => { /* keep bgImage as bare filename — save will preserve it */ });
     }
 
     const mf = initial.mascot_file;
@@ -95,7 +96,7 @@ export const ThemeEditor: React.FC<ThemeEditorProps> = ({ initial, onBack, onSav
           const mime = ext === "jpg" || ext === "jpeg" ? "image/jpeg" : `image/${ext}`;
           setMascotFile(`data:${mime};base64,${b64}`);
         })
-        .catch(() => setMascotFile(""));
+        .catch(() => { /* keep mascotFile as bare filename — save will preserve it */ });
     }
   }, []);
 
