@@ -229,7 +229,7 @@ fn process_matches_executable(process: &sysinfo::Process, path: &str, candidates
             .strip_suffix(".exe")
             .or_else(|| candidate.strip_suffix(".app"))
             .unwrap_or(&candidate);
-        candidate_stem.len() >= 5
+        candidate_stem.chars().count() >= 5
             && (proc_name.contains(candidate_stem)
                 || proc_stem.contains(candidate_stem)
                 || proc_file.contains(candidate_stem))
