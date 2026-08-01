@@ -2,6 +2,7 @@ use base64::Engine;
 use serde::{Deserialize, Serialize};
 use std::collections::BTreeSet;
 use std::fs;
+use std::io::Write;
 use std::path::PathBuf;
 
 #[derive(Debug, Serialize, Deserialize, Clone, Default)]
@@ -221,6 +222,129 @@ pub fn save_theme_asset(
 #[tauri::command]
 pub fn get_themes_dir_path() -> Result<String, String> {
     themes_dir().map(|p| p.to_string_lossy().to_string())
+}
+
+#[tauri::command]
+pub fn open_path_in_explorer(path: String) -> Result<(), String> {
+    #[cfg(target_os = "windows")]
+    {
+        std::process::Command::new("explorer")
+            .arg(&path)
+            .spawn()
+            .map_err(|e| e.to_string())?;
+    }
+    #[cfg(target_os = "macos")]
+    {
+        std::process::Command::new("open")
+            .arg(&path)
+            .spawn()
+            .map_err(|e| e.to_string())?;
+    }
+    #[cfg(target_os = "linux")]
+    {
+        std::process::Command::new("xdg-open")
+            .arg(&path)
+            .spawn()
+            .map_err(|e| e.to_string())?;
+    }
+    Ok(())
+}
+
+#[tauri::command]
+pub fn export_pgtheme(theme_id: String, dest_path: String) -> Result<(), String> {
+    let dir = themes_dir()?;
+    let yaml_path = dir.join(format!("{}.yaml", theme_id));
+
+    if !yaml_path.exists() {
+        return Err(format!("Theme '{}' not found", theme_id));
+    }
+
+    let yaml_bytes = fs::read(&yaml_path).map_err(|e| e.to_string())?;
+
+    let file = fs::File::create(&dest_path).map_err(|e| e.to_string())?;
+    let mut zip = zip::ZipWriter::new(file);
+    let options = zip::write::FileOptions::default()
+        .compression_method(zip::CompressionMethod::Deflated);
+
+    zip.start_file(format!("{}.yaml", theme_id), options)
+        .map_err(|e| e.to_string())?;
+    zip.write_all(&yaml_bytes).map_err(|e| e.to_string())?;
+
+    let assets_dir = dir.join("assets").join(&theme_id);
+    if assets_dir.exists() {
+        for entry in fs::read_dir(&assets_dir).map_err(|e| e.to_string())? {
+            let entry = entry.map_err(|e| e.to_string())?;
+            let path = entry.path();
+            if path.is_file() {
+                let filename = path
+                    .file_name()
+                    .map(|n| n.to_string_lossy().to_string())
+                    .unwrap_or_default();
+                let bytes = fs::read(&path).map_err(|e| e.to_string())?;
+                zip.start_file(format!("assets/{}", filename), options)
+                    .map_err(|e| e.to_string())?;
+                zip.write_all(&bytes).map_err(|e| e.to_string())?;
+            }
+        }
+    }
+
+    zip.finish().map_err(|e| e.to_string())?;
+    Ok(())
+}
+
+#[tauri::command]
+pub fn import_pgtheme(src_path: String) -> Result<ThemeManifest, String> {
+    let file = fs::File::open(&src_path).map_err(|e| e.to_string())?;
+    let mut archive = zip::ZipArchive::new(file).map_err(|e| e.to_string())?;
+
+    let mut yaml_content: Option<String> = None;
+    let mut asset_files: Vec<(String, Vec<u8>)> = Vec::new();
+
+    for i in 0..archive.len() {
+        let mut entry = archive.by_index(i).map_err(|e| e.to_string())?;
+        let name = entry.name().to_string();
+
+        if name.ends_with(".yaml") && !name.contains('/') {
+            let mut content = String::new();
+            std::io::Read::read_to_string(&mut entry, &mut content)
+                .map_err(|e| e.to_string())?;
+            yaml_content = Some(content);
+        } else if name.starts_with("assets/") && !name.ends_with('/') {
+            let rel = name.trim_start_matches("assets/").to_string();
+            if rel.is_empty() {
+                continue;
+            }
+            let mut bytes = Vec::new();
+            std::io::Read::read_to_end(&mut entry, &mut bytes)
+                .map_err(|e| e.to_string())?;
+            asset_files.push((rel, bytes));
+        }
+    }
+
+    let yaml =
+        yaml_content.ok_or_else(|| "No theme YAML found in .pgtheme file".to_string())?;
+
+    let manifest: ThemeManifest = serde_yaml::from_str(&yaml)
+        .map_err(|e| format!("Invalid theme: {}", e))?;
+
+    if manifest.publisher == "poligame" {
+        return Err("Cannot install themes with reserved publisher 'poligame'".to_string());
+    }
+
+    let dir = themes_dir()?;
+
+    fs::write(dir.join(format!("{}.yaml", manifest.id)), &yaml)
+        .map_err(|e| e.to_string())?;
+
+    if !asset_files.is_empty() {
+        let assets_dir = dir.join("assets").join(&manifest.id);
+        fs::create_dir_all(&assets_dir).map_err(|e| e.to_string())?;
+        for (rel_path, bytes) in asset_files {
+            fs::write(assets_dir.join(&rel_path), &bytes).map_err(|e| e.to_string())?;
+        }
+    }
+
+    Ok(manifest)
 }
 
 #[tauri::command]

@@ -1,4 +1,5 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
+import { invoke } from "@tauri-apps/api/core";
 import { useThemeStore } from "@/stores/themeStore";
 import { OFFICIAL_PUBLISHER } from "@/types/theme";
 
@@ -8,15 +9,33 @@ interface MascotOverlayProps {
 
 export const MascotOverlay: React.FC<MascotOverlayProps> = ({ size = 80 }) => {
   const activeTheme = useThemeStore((s) => s.activeTheme);
-  const [imageError, setImageError] = useState(false);
+  const [resolvedSrc, setResolvedSrc] = useState<string | null>(null);
 
-  if (!activeTheme) return null;
-  if (activeTheme.publisher !== OFFICIAL_PUBLISHER) return null;
-  if (!activeTheme.mascot_file) return null;
-  if (imageError) return null;
+  useEffect(() => {
+    if (!activeTheme?.mascot_file) {
+      setResolvedSrc(null);
+      return;
+    }
 
-  // Official mascots are bundled as static assets in /themes/mascots/
-  const mascotSrc = `/themes/mascots/${activeTheme.mascot_file}`;
+    if (activeTheme.publisher === OFFICIAL_PUBLISHER) {
+      setResolvedSrc(`/themes/mascots/${activeTheme.mascot_file}`);
+      return;
+    }
+
+    // User theme: load from the assets folder
+    invoke<string>("get_theme_asset_base64", {
+      themeId: activeTheme.id,
+      assetFilename: activeTheme.mascot_file,
+    })
+      .then((base64) => {
+        const ext = activeTheme.mascot_file!.split(".").pop()?.toLowerCase() ?? "png";
+        const mime = ext === "jpg" || ext === "jpeg" ? "image/jpeg" : `image/${ext}`;
+        setResolvedSrc(`data:${mime};base64,${base64}`);
+      })
+      .catch(() => setResolvedSrc(null));
+  }, [activeTheme?.id, activeTheme?.mascot_file, activeTheme?.publisher]);
+
+  if (!resolvedSrc) return null;
 
   return (
     <div
@@ -24,11 +43,11 @@ export const MascotOverlay: React.FC<MascotOverlayProps> = ({ size = 80 }) => {
       aria-hidden="true"
     >
       <img
-        src={mascotSrc}
+        src={resolvedSrc}
         alt=""
         width={size}
         height={size}
-        onError={() => setImageError(true)}
+        onError={() => setResolvedSrc(null)}
         style={{ opacity: 0.85, objectFit: "contain" }}
         draggable={false}
       />
