@@ -8,17 +8,12 @@ import { Toaster } from "@/components/ui/sonner";
 import { useRunningGameStore } from "@/stores/runningGameStore";
 import { useGameStore } from "@/stores/gameStore";
 import { useAuthStore } from "@/stores/authStore";
+import { useThemeStore } from "@/stores/themeStore";
 import { usePresence } from "@/hooks/usePresence";
 import { useGamePresence } from "@/hooks/useGamePresence";
-import { Game } from "@/types";
-import { LauncherType } from "@/types";
 import NotificationListener from "./NotificationListener";
 // @ts-ignore
 import welcomeBkg from "@/public/setup-bkg.png";
-import { getImageUrl } from "@/utils/imageUtils";
-import { useQuery } from "convex/react";
-import { api } from "../../convex/_generated/api";
-import { Id } from "node_modules/convex/dist/esm-types/values/value";
 
 interface AppShellProps {
   children: React.ReactNode;
@@ -29,17 +24,9 @@ export const AppShell: React.FC<AppShellProps> = ({ children }) => {
   const [isChecking, setIsChecking] = useState(true);
   const { setKnownGames, startRealtimeMonitoring, stopRealtimeMonitoring, syncCurrentGame } =
     useRunningGameStore();
-  const { games, setGames, setLoading, activeHoverGame } = useGameStore();
+  const { games, setGames, setLoading } = useGameStore();
   const { user } = useAuthStore();
-  const activeHoverGameCust = useQuery(
-    api.gameCustomizations.getGameCustomization,
-    user && activeHoverGame
-      ? {
-          userId: user.userId as unknown as Id<"users">,
-          gameId: activeHoverGame?.id,
-        }
-      : "skip",
-  );
+  const activeTheme = useThemeStore((s) => s.activeTheme);
 
   // Manage presence (online/away/offline)
   usePresence(user?.userId || null);
@@ -124,7 +111,7 @@ export const AppShell: React.FC<AppShellProps> = ({ children }) => {
         <div
           className="flex flex-col gap-0 w-full flex-1 overflow-hidden transition-all ease-in-out duration-300"
           style={{
-            background: `url(${activeHoverGame ? activeHoverGameCust?.customHeroArt ? getImageUrl(activeHoverGameCust.customHeroArt) : getImageUrl(activeHoverGame.headerArt) : welcomeBkg}) center center / 100% 100% no-repeat`,
+            background: `url(${activeTheme?.appearance?.background_image || welcomeBkg}) center center / 100% 100% no-repeat`,
           }}
         >
           <div

@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { invoke } from "@tauri-apps/api/core";
+import { getCurrentWindow } from "@tauri-apps/api/window";
 import { useLocation } from "react-router-dom";
 import { useRunningGameStore } from "@/stores/runningGameStore";
 import { Game } from "@/types";
@@ -145,6 +146,34 @@ export function useDiscordRichPresence(enabled: boolean = true) {
       setIsConnected(false);
       previousPayloadRef.current = "";
       void invoke("discord_presence_clear").catch(() => undefined);
+    };
+  }, [enabled]);
+
+  // Clear presence when the main window is hidden to the system tray.
+  useEffect(() => {
+    if (!enabled) {
+      return;
+    }
+
+    const appWindow = getCurrentWindow();
+    if (appWindow.label !== "main") {
+      return;
+    }
+
+    let unlisten: (() => void) | undefined;
+
+    appWindow
+      .onCloseRequested(() => {
+        setIsConnected(false);
+        previousPayloadRef.current = "";
+        void invoke("discord_presence_clear").catch(() => undefined);
+      })
+      .then((fn) => {
+        unlisten = fn;
+      });
+
+    return () => {
+      unlisten?.();
     };
   }, [enabled]);
 

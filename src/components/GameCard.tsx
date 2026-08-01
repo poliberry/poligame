@@ -36,7 +36,7 @@ export const GameCard: React.FC<GameCardProps> = ({
 }) => {
   const navigate = useNavigate();
   const { user } = useAuthStore();
-  const { setGames, setActiveHoverGame } = useGameStore();
+  const { setGames } = useGameStore();
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
 
   // Always get customizations from Convex (for both custom and non-custom games)
@@ -134,8 +134,6 @@ export const GameCard: React.FC<GameCardProps> = ({
       <div
         onContextMenu={(e) => e.stopPropagation()}
         onClick={() => navigate(`/game/${game.id}`)}
-        onMouseEnter={() => setActiveHoverGame(game)}
-        onMouseLeave={() => setActiveHoverGame(null)}
         className="game-card relative flex flex-row gap-2 cursor-pointer justify-end items-end overflow-hidden rounded-lg"
         style={{
           background: !displayGame.gridCoverArt
