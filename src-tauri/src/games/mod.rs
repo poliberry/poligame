@@ -214,12 +214,19 @@ fn process_matches_executable(process: &sysinfo::Process, path: &str, candidates
 
     let name_matches = |candidate: &str| {
         let candidate = normalize(candidate);
-        !candidate.is_empty()
-            && (proc_name == candidate
-                || proc_name.contains(&candidate)
-                || proc_stem == candidate
+        if candidate.is_empty() {
+            return false;
+        }
+        // Exact matches are always valid.
+        if proc_name == candidate || proc_stem == candidate || proc_file == candidate {
+            return true;
+        }
+        // Substring matching only for candidates long enough to be unique.
+        // Short candidates (e.g. "ace", "app") cause false positives across
+        // unrelated processes, so we require at least 5 characters.
+        candidate.len() >= 5
+            && (proc_name.contains(&candidate)
                 || proc_stem.contains(&candidate)
-                || proc_file == candidate
                 || proc_file.contains(&candidate))
     };
 

@@ -28,6 +28,11 @@ let monitoringInterval: ReturnType<typeof setInterval> | null = null;
 let monitoringInFlight = false;
 let pendingSyncRequested = false;
 let knownGames: Game[] = [];
+// How many consecutive polls have returned null while a game was thought to be
+// running. We clear the running game only after STOP_DEBOUNCE_COUNT consecutive
+// nulls to avoid flicker from transient process detection gaps.
+let consecutiveNullPolls = 0;
+const STOP_DEBOUNCE_COUNT = 2;
 
 const MONITOR_INTERVAL_MS = 1500;
 
@@ -84,11 +89,18 @@ export const useRunningGameStore = create<RunningGameStore>((set, get) => ({
 
       if (!currentGame) {
         if (get().runningGameId !== null) {
-          set({ runningGameId: null, runningGame: null, runningGameStartedAt: null });
+          consecutiveNullPolls++;
+          if (consecutiveNullPolls >= STOP_DEBOUNCE_COUNT) {
+            consecutiveNullPolls = 0;
+            set({ runningGameId: null, runningGame: null, runningGameStartedAt: null });
+          }
+        } else {
+          consecutiveNullPolls = 0;
         }
         return;
       }
 
+      consecutiveNullPolls = 0;
       const resolvedGame = resolveRunningGame(currentGame);
       const previous = get().runningGame;
 

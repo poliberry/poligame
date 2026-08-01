@@ -5,6 +5,13 @@ import { readFile } from "@tauri-apps/plugin-fs";
 import { useThemeStore } from "@/stores/themeStore";
 import type { ThemeManifest, ThemeColors, ThemeTypography, ThemeAppearance } from "@/types/theme";
 import { Button } from "@/components/ui/button";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { ArrowLeft, AlertTriangle, RefreshCw } from "lucide-react";
 import { toast } from "sonner";
 
@@ -362,17 +369,18 @@ export const ThemeEditor: React.FC<ThemeEditorProps> = ({ initial, onBack, onSav
           <div>
             <label className="text-xs text-muted-foreground mb-1 block">Font Family</label>
             <div className="flex gap-2">
-              <select
-                className="flex-1 px-2 py-1.5 text-sm rounded bg-input border border-border text-foreground focus:outline-none focus:ring-1 focus:ring-[var(--theme-accent)]"
-                value={fontFamily}
-                onChange={(e) => handleFontChange(e.target.value)}
-              >
-                {systemFonts.map((f) => (
-                  <option key={f} value={f} style={{ fontFamily: f }}>
-                    {f}
-                  </option>
-                ))}
-              </select>
+              <Select value={fontFamily} onValueChange={(v) => v && handleFontChange(v)}>
+                <SelectTrigger className="flex-1 text-sm h-[30px]">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {systemFonts.map((f) => (
+                    <SelectItem key={f} value={f}>
+                      <span style={{ fontFamily: f }}>{f}</span>
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
               <input
                 className="w-40 px-2 py-1.5 text-sm rounded bg-input border border-border text-foreground focus:outline-none focus:ring-1 focus:ring-[var(--theme-accent)]"
                 value={fontFamily}
