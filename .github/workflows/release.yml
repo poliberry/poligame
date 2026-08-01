@@ -1,13 +1,10 @@
-name: Release to Public Repo
+name: Release
 
 on:
   push:
     branches:
       - main
-      - master
-    tags:
-      - 'v*'  # Also trigger on version tags
-  
+
   # Manual trigger option
   workflow_dispatch:
 
@@ -42,26 +39,22 @@ jobs:
     runs-on: ${{ matrix.platform }}
 
     steps:
-      # Checkout private repo code
-      - name: Checkout private repository
+      - name: Checkout repository
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
 
-      # Setup Node
       - name: Setup Node
         uses: actions/setup-node@v4
         with:
           node-version: '20'
           cache: 'npm'
 
-      # Setup Rust
       - name: Install Rust stable
         uses: dtolnay/rust-toolchain@stable
         with:
           targets: ${{ matrix.platform == 'macos-latest' && 'aarch64-apple-darwin,x86_64-apple-darwin' || '' }}
 
-      # Install Linux dependencies
       - name: Install dependencies (ubuntu only)
         if: matrix.platform == 'ubuntu-22.04'
         run: |
@@ -83,34 +76,26 @@ jobs:
             gstreamer1.0-plugins-ugly \
             gstreamer1.0-libav
 
-      # Install dependencies
       - name: Install frontend dependencies
         run: npm install
 
-      # Get version from package.json or tag
       - name: Get version
         id: get_version
         shell: bash
         run: |
-          if [[ $GITHUB_REF == refs/tags/v* ]]; then
-            VERSION=${GITHUB_REF#refs/tags/v}
-          else
-            VERSION=$(node -p "require('./package.json').version")
-          fi
+          VERSION=$(node -p "require('./package.json').version")
           echo "VERSION=$VERSION" >> $GITHUB_OUTPUT
-          echo "version=$VERSION" >> $GITHUB_OUTPUT
 
-      # Build Tauri app
       - name: Build Tauri app
         uses: tauri-apps/tauri-action@v1
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_PRIVATE_KEY }}
           TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_KEY_PASSWORD }}
         with:
           args: ${{ matrix.args }}
+          includeRelease: false
+          includeUpdaterJson: false
 
-      # Prepare assets for release
       - name: Prepare release assets
         shell: bash
         run: |
@@ -138,7 +123,6 @@ jobs:
 
           ls -la release-assets/
 
-      # Upload artifacts temporarily
       - name: Upload artifacts
         uses: actions/upload-artifact@v4
         with:
@@ -146,13 +130,12 @@ jobs:
           path: release-assets/*
           retention-days: 1
 
-  # Create release in public repo with all assets
   publish-release:
     needs: release
     runs-on: ubuntu-latest
     permissions:
       contents: write
-    
+
     steps:
       - name: Download all artifacts
         uses: actions/download-artifact@v4
@@ -164,9 +147,9 @@ jobs:
       - name: List downloaded assets
         run: ls -la release-assets/
 
-      # Generate updater JSON if using Tauri updater
       - name: Generate updater JSON
         id: updater
+        shell: bash
         run: |
           VERSION="${{ needs.release.outputs.version }}"
           BASE="https://github.com/poliberry/poligame/releases/download/v${VERSION}"
@@ -178,72 +161,38 @@ jobs:
             "pub_date": "$(date -u +"%Y-%m-%dT%H:%M:%SZ")",
             "platforms": {
               "darwin-aarch64": {
-                "signature": "$(cat release-assets/PoliGame_aarch64.app.tar.gz.sig 2>/dev/null || echo '')",
-                "url": "$BASE/PoliGame_aarch64.app.tar.gz"
+                "signature": "$MACOS_AARCH64_SIG",
+                "url": "https://github.com/poliberry/poligame/releases/download/v$VERSION/$MACOS_AARCH64"
               },
               "darwin-x86_64": {
-                "signature": "$(cat release-assets/PoliGame_x86_64.app.tar.gz.sig 2>/dev/null || echo '')",
-                "url": "$BASE/PoliGame_x86_64.app.tar.gz"
+                "signature": "$MACOS_X86_64_SIG",
+                "url": "https://github.com/poliberry/poligame/releases/download/v$VERSION/$MACOS_X86_64"
               },
               "linux-x86_64": {
-                "signature": "$(cat release-assets/PoliGame_${VERSION}_amd64.AppImage.tar.gz.sig 2>/dev/null || echo '')",
-                "url": "$BASE/PoliGame_${VERSION}_amd64.AppImage.tar.gz"
+                "signature": "$LINUX_SIG",
+                "url": "https://github.com/poliberry/poligame/releases/download/v$VERSION/$LINUX"
               },
               "windows-x86_64": {
-                "signature": "$(cat release-assets/PoliGame_${VERSION}_x64-setup.nsis.zip.sig 2>/dev/null || echo '')",
-                "url": "$BASE/PoliGame_${VERSION}_x64-setup.nsis.zip"
+                "signature": "$WINDOWS_SIG",
+                "url": "https://github.com/poliberry/poligame/releases/download/v$VERSION/$WINDOWS"
               }
             }
           }
           EOF
 
-      # Create release in PUBLIC releases repo
-      - name: Create Release in Public Repo
+      - name: Create Release
         uses: softprops/action-gh-release@v1
         with:
-          repository: poliberry/poligame
-          token: ${{ secrets.RELEASES_TOKEN }}  # PAT with access to releases repo
+          token: ${{ secrets.GITHUB_TOKEN }}
           tag_name: v${{ needs.release.outputs.version }}
           name: Release v${{ needs.release.outputs.version }}
           body: |
             ## PoliGame v${{ needs.release.outputs.version }}
 
-            ### What's New
-
-            #### Custom Themes System
-            - Full YAML-based theme system — create, install, and switch between themes from Settings → Themes
-            - Two built-in themes ship with this release: **PoliGame Dark** and **PoliGame Light**
-            - Default dark theme uses the PoliGame brand palette: mint accent (`#4CE4B1`), deep teal buttons (`#006B4F`)
-            - Light theme uses slightly lighter variants of the same palette
-            - Themes live in your local app data folder (`%APPDATA%\PoliGame\themes\` on Windows) — open the folder from the Themes gallery to add your own
-            - Theme editor built-in: customise colors, font family, border radius, and library background image
-            - Official themes update automatically on each launch to stay current
-
-            #### App-Wide Theme Integration
-            - **Google Sans Flex** is now the global font, loaded once and applied via the theme system — custom themes can override it
-            - All hardcoded font references (Livvic, Unbounded, per-component Google Fonts `<link>` tags) removed; everything inherits from the theme
-            - Overdrive gamepad mode now fully theme-aware: focus rings, active states, and accent colors all respond to the active theme accent color
-            - Scrollbars, buttons, sliders, and prose elements use theme CSS variables throughout
-            - New `.theme-btn` utility applies the button background/foreground hover-swap automatically
-
-            ### Installation
-
-            Download the appropriate installer for your platform:
-            - **Windows**: `.msi` or `.exe` installer
-            - **macOS**: `.dmg` or `.app.tar.gz`
-            - **Linux**: `.AppImage` or `.deb`
-
-            ### Auto-Update
-
-            This release supports automatic updates. The app will notify you when a newer version is available.
-
-            ### Checksums
-
-            See attached `.sig` files for signature verification.
+            Version bump.
           files: |
             release-assets/*.msi
             release-assets/*.exe
-            release-assets/*.zip
             release-assets/*.dmg
             release-assets/*.AppImage
             release-assets/*.deb
@@ -252,19 +201,15 @@ jobs:
             release-assets/latest.json
           draft: false
           prerelease: false
-        env:
-          GITHUB_TOKEN: ${{ secrets.RELEASES_TOKEN }}
 
-      # Update latest.json in releases repo (for Tauri updater)
-      - name: Update latest.json in releases repo
+      - name: Update latest.json in repo
         uses: actions/github-script@v7
         with:
-          github-token: ${{ secrets.RELEASES_TOKEN }}
+          github-token: ${{ secrets.GITHUB_TOKEN }}
           script: |
             const fs = require('fs');
             const content = fs.readFileSync('release-assets/latest.json', 'base64');
-            
-            // Get the SHA of existing latest.json if it exists
+
             let sha;
             try {
               const { data } = await github.rest.repos.getContent({
@@ -277,7 +222,6 @@ jobs:
               // File doesn't exist yet
             }
 
-            // Create or update latest.json
             await github.rest.repos.createOrUpdateFileContents({
               owner: 'poliberry',
               repo: 'poligame',
