@@ -1422,12 +1422,29 @@ pub async fn launch_game(
 
             "epic" => {
 
-                let url =
-                    format!(
-                        "com.epicgames.launcher://apps/{}?action=launch",
-                        game.title
+                if let Err(e) = crate::launchers::epic::ensure_epic_launcher_running().await {
+                    emit_status(
+                        &app_handle,
+                        &launch_id_clone,
+                        &game_id_clone,
+                        "error",
+                        &format!("Could not start Epic Games Launcher: {}", e),
                     );
+                    close_launch_window(&app_handle, &launch_id_clone);
+                    return;
+                }
 
+                let app_name = game
+                    .metadata_json
+                    .as_deref()
+                    .and_then(|m| serde_json::from_str::<serde_json::Value>(m).ok())
+                    .and_then(|j| j.get("appName").and_then(|v| v.as_str()).map(String::from))
+                    .unwrap_or_else(|| game.launcher_game_id.clone());
+
+                let url = format!(
+                    "com.epicgames.launcher://apps/{}?action=launch",
+                    app_name
+                );
 
                 #[cfg(target_os="windows")]
                 {
@@ -1689,9 +1706,20 @@ pub async fn launch_game_overdrive(game_id: String) -> Result<(), String> {
         }
         "steam" => launch_steam_silent(&game.launcher_game_id),
         "epic" => {
+            if let Err(e) = crate::launchers::epic::ensure_epic_launcher_running().await {
+                return Err(format!("Could not start Epic Games Launcher: {}", e));
+            }
+
+            let app_name = game
+                .metadata_json
+                .as_deref()
+                .and_then(|m| serde_json::from_str::<serde_json::Value>(m).ok())
+                .and_then(|j| j.get("appName").and_then(|v| v.as_str()).map(String::from))
+                .unwrap_or_else(|| game.launcher_game_id.clone());
+
             let url = format!(
                 "com.epicgames.launcher://apps/{}?action=launch",
-                game.title
+                app_name
             );
 
             #[cfg(target_os="windows")]

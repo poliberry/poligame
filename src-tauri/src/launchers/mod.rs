@@ -289,6 +289,7 @@ pub async fn scan_all_games() -> Result<String, String> {
                     let game_name = game.title.clone();
                     let metadata_json = serde_json::json!({
                         "catalogItemId": game.id,
+                        "appName": game.app_name,
                         "title": game.title,
                         "installPath": game.install_path,
                         "executablePath": game.executable_path,
