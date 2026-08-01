@@ -28,7 +28,7 @@ jobs:
             arch: 'aarch64'
           - platform: 'macos-latest'
             args: '--target x86_64-apple-darwin'
-            arch: 'x64'
+            arch: 'x86_64'
           - platform: 'ubuntu-22.04'
             args: '--bundles appimage'
             arch: 'x64'
@@ -100,8 +100,27 @@ jobs:
         shell: bash
         run: |
           mkdir -p release-assets
-          # Search all target directories so cross-compiled macOS bundles are included
-          find src-tauri/target -path "*/release/bundle/*/*" -type f \( -name "*.msi" -o -name "*.exe" -o -name "*.dmg" -o -name "*.AppImage" -o -name "*.deb" -o -name "*.tar.gz" -o -name "*.sig" \) -exec cp {} release-assets/ \;
+          VERSION="${{ steps.get_version.outputs.VERSION }}"
+          ARCH="${{ matrix.arch }}"
+
+          # Collect from both native and cross-compilation target paths
+          for file in src-tauri/target/release/bundle/*/* src-tauri/target/*/release/bundle/*/*; do
+            if [ -f "$file" ]; then
+              filename=$(basename "$file")
+
+              # macOS .app.tar.gz has no version or arch — rename to include arch so
+              # aarch64 and x86_64 artifacts don't overwrite each other when merged.
+              if [[ "$filename" == "PoliGame.app.tar.gz" || "$filename" == "PoliGame.app.tar.gz.sig" ]]; then
+                ext="${filename#PoliGame.app}"
+                newname="PoliGame_${ARCH}.app${ext}"
+              else
+                newname="${filename//_0.0.0/_${VERSION}}"
+              fi
+
+              cp "$file" "release-assets/$newname"
+            fi
+          done
+
           ls -la release-assets/
 
       - name: Upload artifacts
@@ -133,42 +152,43 @@ jobs:
         shell: bash
         run: |
           VERSION="${{ needs.release.outputs.version }}"
+          BASE="https://github.com/poliberry/poligame/releases/download/v${VERSION}"
 
-          # Discover actual artifact filenames to build correct download URLs
-          MACOS_AARCH64=$(ls release-assets/*aarch64.app.tar.gz 2>/dev/null | head -1 | xargs -I{} basename {} 2>/dev/null || echo '')
-          MACOS_AARCH64_SIG=$(cat release-assets/*aarch64.app.tar.gz.sig 2>/dev/null || echo '')
-          MACOS_X86_64=$(ls release-assets/*x86_64.app.tar.gz 2>/dev/null | head -1 | xargs -I{} basename {} 2>/dev/null || echo '')
-          MACOS_X86_64_SIG=$(cat release-assets/*x86_64.app.tar.gz.sig 2>/dev/null || echo '')
-          LINUX=$(ls release-assets/*.AppImage.tar.gz 2>/dev/null | head -1 | xargs -I{} basename {} 2>/dev/null || echo '')
-          LINUX_SIG=$(cat release-assets/*.AppImage.tar.gz.sig 2>/dev/null || echo '')
-          WINDOWS=$(ls release-assets/*x64-setup.exe 2>/dev/null | head -1 | xargs -I{} basename {} 2>/dev/null || echo '')
-          WINDOWS_SIG=$(cat release-assets/*x64-setup.exe.sig 2>/dev/null || echo '')
+          # Discover artifacts and read signatures into named variables.
+          # Minisign .sig files are multi-line; jq --arg handles newline
+          # escaping so the resulting JSON is always valid.
+          MACOS_AARCH64="${BASE}/PoliGame_aarch64.app.tar.gz"
+          MACOS_AARCH64_SIG=$(cat release-assets/PoliGame_aarch64.app.tar.gz.sig 2>/dev/null || echo '')
+          MACOS_X86_64="${BASE}/PoliGame_x86_64.app.tar.gz"
+          MACOS_X86_64_SIG=$(cat release-assets/PoliGame_x86_64.app.tar.gz.sig 2>/dev/null || echo '')
+          LINUX="${BASE}/PoliGame_${VERSION}_amd64.AppImage.tar.gz"
+          LINUX_SIG=$(cat release-assets/PoliGame_${VERSION}_amd64.AppImage.tar.gz.sig 2>/dev/null || echo '')
+          WINDOWS="${BASE}/PoliGame_${VERSION}_x64-setup.nsis.zip"
+          WINDOWS_SIG=$(cat release-assets/PoliGame_${VERSION}_x64-setup.nsis.zip.sig 2>/dev/null || echo '')
 
-          cat > release-assets/latest.json << EOF
-          {
-            "version": "$VERSION",
-            "notes": "See full release notes at https://github.com/poliberry/poligame/releases/tag/v$VERSION",
-            "pub_date": "$(date -u +"%Y-%m-%dT%H:%M:%SZ")",
-            "platforms": {
-              "darwin-aarch64": {
-                "signature": "$MACOS_AARCH64_SIG",
-                "url": "https://github.com/poliberry/poligame/releases/download/v$VERSION/$MACOS_AARCH64"
-              },
-              "darwin-x86_64": {
-                "signature": "$MACOS_X86_64_SIG",
-                "url": "https://github.com/poliberry/poligame/releases/download/v$VERSION/$MACOS_X86_64"
-              },
-              "linux-x86_64": {
-                "signature": "$LINUX_SIG",
-                "url": "https://github.com/poliberry/poligame/releases/download/v$VERSION/$LINUX"
-              },
-              "windows-x86_64": {
-                "signature": "$WINDOWS_SIG",
-                "url": "https://github.com/poliberry/poligame/releases/download/v$VERSION/$WINDOWS"
+          jq -n \
+            --arg version "$VERSION" \
+            --arg notes "See full release notes at https://github.com/poliberry/poligame/releases/tag/v${VERSION}" \
+            --arg pub_date "$(date -u +"%Y-%m-%dT%H:%M:%SZ")" \
+            --arg macos_aarch64_url "$MACOS_AARCH64" \
+            --arg macos_aarch64_sig "$MACOS_AARCH64_SIG" \
+            --arg macos_x86_64_url "$MACOS_X86_64" \
+            --arg macos_x86_64_sig "$MACOS_X86_64_SIG" \
+            --arg linux_url "$LINUX" \
+            --arg linux_sig "$LINUX_SIG" \
+            --arg windows_url "$WINDOWS" \
+            --arg windows_sig "$WINDOWS_SIG" \
+            '{
+              version: $version,
+              notes: $notes,
+              pub_date: $pub_date,
+              platforms: {
+                "darwin-aarch64": {signature: $macos_aarch64_sig, url: $macos_aarch64_url},
+                "darwin-x86_64":  {signature: $macos_x86_64_sig, url: $macos_x86_64_url},
+                "linux-x86_64":   {signature: $linux_sig,         url: $linux_url},
+                "windows-x86_64": {signature: $windows_sig,       url: $windows_url}
               }
-            }
-          }
-          EOF
+            }' > release-assets/latest.json
 
       - name: Create Release
         uses: softprops/action-gh-release@v1
@@ -183,6 +203,7 @@ jobs:
           files: |
             release-assets/*.msi
             release-assets/*.exe
+            release-assets/*.zip
             release-assets/*.dmg
             release-assets/*.AppImage
             release-assets/*.deb
