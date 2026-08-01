@@ -1,23 +1,23 @@
 {
   "version": "1.2.8",
   "notes": "See full release notes at https://github.com/poliberry/poligame/releases/tag/v1.2.8",
-  "pub_date": "2026-08-01T01:25:02Z",
+  "pub_date": "2026-08-01T02:19:18Z",
   "platforms": {
     "darwin-aarch64": {
       "signature": "",
-      "url": "https://github.com/poliberry/poligame/releases/download/v1.2.8/"
+      "url": "https://github.com/poliberry/poligame/releases/download/v1.2.8/PoliGame_aarch64.app.tar.gz"
     },
     "darwin-x86_64": {
       "signature": "",
-      "url": "https://github.com/poliberry/poligame/releases/download/v1.2.8/"
+      "url": "https://github.com/poliberry/poligame/releases/download/v1.2.8/PoliGame_x86_64.app.tar.gz"
     },
     "linux-x86_64": {
       "signature": "",
-      "url": "https://github.com/poliberry/poligame/releases/download/v1.2.8/"
+      "url": "https://github.com/poliberry/poligame/releases/download/v1.2.8/PoliGame_1.2.8_amd64.AppImage.tar.gz"
     },
     "windows-x86_64": {
       "signature": "",
-      "url": "https://github.com/poliberry/poligame/releases/download/v1.2.8/PoliGame_1.2.8_x64-setup.exe"
+      "url": "https://github.com/poliberry/poligame/releases/download/v1.2.8/PoliGame_1.2.8_x64-setup.nsis.zip"
     }
   }
 }
