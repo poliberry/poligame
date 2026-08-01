@@ -1,6 +1,7 @@
 use serde::{Deserialize, Serialize};
 use std::path::PathBuf;
 use std::fs;
+use sysinfo::System;
 
 fn sanitize_executable_field(raw: &str) -> String {
     let trimmed = raw.trim().trim_matches('"');
@@ -18,6 +19,7 @@ fn sanitize_executable_field(raw: &str) -> String {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct EpicGame {
     pub id: String,
+    pub app_name: String,
     pub title: String,
     pub install_path: String,
     pub executable_path: Option<String>,
@@ -129,6 +131,11 @@ fn parse_epic_manifest(manifest_path: &PathBuf) -> Option<EpicGame> {
         }
     };
     
+    let app_name = json.get("AppName")
+        .and_then(|v| v.as_str())
+        .unwrap_or_default()
+        .to_string();
+
     let catalog_item_id = json.get("CatalogItemId")
         .or_else(|| json.get("CatalogNamespace"))
         .or_else(|| json.get("AppName"))
@@ -165,6 +172,7 @@ fn parse_epic_manifest(manifest_path: &PathBuf) -> Option<EpicGame> {
 
         Some(EpicGame {
             id: id.to_string(),
+            app_name,
             title: name.to_string(),
             install_path: path.to_string(),
             executable_path,
@@ -241,4 +249,89 @@ pub async fn get_epic_game_details(catalog_item_id: &str) -> Result<EpicGame, St
     }
     
     Err(format!("Epic game with ID {} not found", catalog_item_id))
+}
+
+#[cfg(target_os = "windows")]
+fn get_epic_launcher_exe() -> Option<PathBuf> {
+    use winreg::enums::*;
+    use winreg::RegKey;
+
+    let hklm = RegKey::predef(HKEY_LOCAL_MACHINE);
+    let uninstall_keys = [
+        r"SOFTWARE\WOW6432Node\Epic Games\EpicGamesLauncher",
+        r"SOFTWARE\Epic Games\EpicGamesLauncher",
+    ];
+
+    for key_path in &uninstall_keys {
+        if let Ok(key) = hklm.open_subkey(key_path) {
+            if let Ok(data_path) = key.get_value::<String, _>("AppDataPath") {
+                // AppDataPath is like C:\ProgramData\Epic\EpicGamesLauncher\Data
+                // The exe lives relative to the grandparent
+                let candidate = PathBuf::from(&data_path)
+                    .parent()?.parent()?.parent()?
+                    .join(r"Launcher\Portal\Binaries\Win64\EpicGamesLauncher.exe");
+                if candidate.exists() {
+                    return Some(candidate);
+                }
+            }
+        }
+    }
+
+    // Fall back to common install paths
+    let common = [
+        r"C:\Program Files (x86)\Epic Games\Launcher\Portal\Binaries\Win64\EpicGamesLauncher.exe",
+        r"C:\Program Files\Epic Games\Launcher\Portal\Binaries\Win64\EpicGamesLauncher.exe",
+    ];
+    for path in &common {
+        let p = PathBuf::from(path);
+        if p.exists() {
+            return Some(p);
+        }
+    }
+
+    None
+}
+
+pub fn is_epic_launcher_running() -> bool {
+    let mut system = System::new_all();
+    system.refresh_all();
+    system
+        .processes()
+        .values()
+        .any(|p| p.name().to_lowercase().contains("epicgameslauncher"))
+}
+
+pub async fn ensure_epic_launcher_running() -> Result<(), String> {
+    if is_epic_launcher_running() {
+        return Ok(());
+    }
+
+    #[cfg(target_os = "windows")]
+    {
+        let exe = get_epic_launcher_exe()
+            .ok_or_else(|| "Epic Games Launcher executable not found".to_string())?;
+
+        std::process::Command::new(&exe)
+            .arg("-nosplashscreen")
+            .spawn()
+            .map_err(|e| format!("Failed to start Epic Games Launcher: {}", e))?;
+
+        // Poll up to 15 s for the launcher process to appear
+        for _ in 0..30u8 {
+            tokio::time::sleep(tokio::time::Duration::from_millis(500)).await;
+            if is_epic_launcher_running() {
+                // Brief grace period for the launcher to finish initialising
+                tokio::time::sleep(tokio::time::Duration::from_secs(3)).await;
+                return Ok(());
+            }
+        }
+
+        Err("Timed out waiting for Epic Games Launcher to start".to_string())
+    }
+
+    #[cfg(not(target_os = "windows"))]
+    {
+        // On macOS/Linux the protocol handler is expected to bring up the launcher itself
+        Ok(())
+    }
 }

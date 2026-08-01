@@ -214,13 +214,25 @@ fn process_matches_executable(process: &sysinfo::Process, path: &str, candidates
 
     let name_matches = |candidate: &str| {
         let candidate = normalize(candidate);
-        !candidate.is_empty()
-            && (proc_name == candidate
-                || proc_name.contains(&candidate)
-                || proc_stem == candidate
-                || proc_stem.contains(&candidate)
-                || proc_file == candidate
-                || proc_file.contains(&candidate))
+        if candidate.is_empty() {
+            return false;
+        }
+        // Exact matches are always valid.
+        if proc_name == candidate || proc_stem == candidate || proc_file == candidate {
+            return true;
+        }
+        // For substring matching, use the stem (extension stripped) both for the
+        // length gate and the actual search.  Checking the full filename (e.g.
+        // "ace.exe") against proc_name would let "space.exe".contains("ace.exe")
+        // slip through even though the stem "ace" is only 3 characters.
+        let candidate_stem = candidate
+            .strip_suffix(".exe")
+            .or_else(|| candidate.strip_suffix(".app"))
+            .unwrap_or(&candidate);
+        candidate_stem.chars().count() >= 5
+            && (proc_name.contains(candidate_stem)
+                || proc_stem.contains(candidate_stem)
+                || proc_file.contains(candidate_stem))
     };
 
     // If only a game install directory is available, match processes whose executable
@@ -1422,12 +1434,29 @@ pub async fn launch_game(
 
             "epic" => {
 
-                let url =
-                    format!(
-                        "com.epicgames.launcher://apps/{}?action=launch",
-                        game.title
+                if let Err(e) = crate::launchers::epic::ensure_epic_launcher_running().await {
+                    emit_status(
+                        &app_handle,
+                        &launch_id_clone,
+                        &game_id_clone,
+                        "error",
+                        &format!("Could not start Epic Games Launcher: {}", e),
                     );
+                    close_launch_window(&app_handle, &launch_id_clone);
+                    return;
+                }
 
+                let app_name = game
+                    .metadata_json
+                    .as_deref()
+                    .and_then(|m| serde_json::from_str::<serde_json::Value>(m).ok())
+                    .and_then(|j| j.get("appName").and_then(|v| v.as_str()).map(String::from))
+                    .unwrap_or_else(|| game.launcher_game_id.clone());
+
+                let url = format!(
+                    "com.epicgames.launcher://apps/{}?action=launch",
+                    app_name
+                );
 
                 #[cfg(target_os="windows")]
                 {
@@ -1689,9 +1718,20 @@ pub async fn launch_game_overdrive(game_id: String) -> Result<(), String> {
         }
         "steam" => launch_steam_silent(&game.launcher_game_id),
         "epic" => {
+            if let Err(e) = crate::launchers::epic::ensure_epic_launcher_running().await {
+                return Err(format!("Could not start Epic Games Launcher: {}", e));
+            }
+
+            let app_name = game
+                .metadata_json
+                .as_deref()
+                .and_then(|m| serde_json::from_str::<serde_json::Value>(m).ok())
+                .and_then(|j| j.get("appName").and_then(|v| v.as_str()).map(String::from))
+                .unwrap_or_else(|| game.launcher_game_id.clone());
+
             let url = format!(
                 "com.epicgames.launcher://apps/{}?action=launch",
-                game.title
+                app_name
             );
 
             #[cfg(target_os="windows")]
