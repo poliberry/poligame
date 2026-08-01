@@ -62,6 +62,7 @@ const UpdateAvailableDialog: React.FC = () => {
       const didInstall = await invoke<boolean>("install_app_update");
       if (didInstall) {
         setInstalled(true);
+        setOpen(true); // reopen if the user dismissed the dialog while installing
       }
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to install update.");
@@ -103,7 +104,7 @@ const UpdateAvailableDialog: React.FC = () => {
   }
 
   return (
-    <Dialog open={open} onOpenChange={setOpen}>
+    <Dialog open={open} onOpenChange={(next) => { if (!isInstalling) setOpen(next); }}>
       <DialogContent className="max-w-lg border-white/10 bg-black/90 text-white backdrop-blur-xl">
         {installed ? (
           <>
