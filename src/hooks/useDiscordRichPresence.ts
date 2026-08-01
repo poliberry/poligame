@@ -89,10 +89,14 @@ export function useDiscordRichPresence(enabled: boolean = true) {
   const [isConnected, setIsConnected] = useState(false);
   const [sendTick, setSendTick] = useState(0);
   const previousPayloadRef = useRef<string>("");
-  // Tracks when game mode last ended; launcher updates are deferred until the
-  // cooldown expires to avoid flickering during transient detection gaps.
+  // Stamped when runningGame transitions to null; launcher updates are deferred
+  // until this timestamp passes so transient detection gaps don't flash Discord.
   const gameModeCooldownEndRef = useRef<number>(0);
   const launcherDebounceTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  // Tracks the previous runningGame value so we can detect the non-null → null
+  // transition and stamp the cooldown at the right moment — when the game clears,
+  // not when the last game update was sent (which may be much earlier).
+  const wasRunningRef = useRef<boolean>(false);
 
   const payload = useMemo<PresencePayload>(() => {
     if (!runningGame) {
@@ -112,6 +116,18 @@ export function useDiscordRichPresence(enabled: boolean = true) {
         : undefined,
     };
   }, [location.pathname, runningGame, runningGameStartedAt]);
+
+  // Stamp the cooldown the moment runningGame clears, not when a game update is
+  // sent. This means the window is correctly anchored to when the game actually
+  // disappears — so the debounce still works when Discord is mid-reconnect and
+  // isConnected is false (the update effect doesn't run during that gap).
+  useEffect(() => {
+    const isRunning = runningGame !== null;
+    if (wasRunningRef.current && !isRunning) {
+      gameModeCooldownEndRef.current = Date.now() + LAUNCHER_DEBOUNCE_MS;
+    }
+    wasRunningRef.current = isRunning;
+  }, [runningGame]);
 
   // Attempt connection on mount and retry every 30 s until connected. Re-runs
   // when isConnected drops to false (e.g. after a failed update) to recover.
@@ -228,12 +244,11 @@ export function useDiscordRichPresence(enabled: boolean = true) {
     const update = async () => {
       try {
         if (payload.mode === "game") {
-          // Cancel any pending launcher debounce and reset the cooldown window.
+          // Cancel any pending launcher debounce — game is back.
           if (launcherDebounceTimerRef.current !== null) {
             clearTimeout(launcherDebounceTimerRef.current);
             launcherDebounceTimerRef.current = null;
           }
-          gameModeCooldownEndRef.current = Date.now() + LAUNCHER_DEBOUNCE_MS;
           await invoke("discord_presence_update_game", {
             gameTitle: payload.gameTitle,
             launcher: payload.launcher,
