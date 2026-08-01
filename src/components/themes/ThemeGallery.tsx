@@ -1,11 +1,11 @@
 import React, { useState } from "react";
 import { invoke } from "@tauri-apps/api/core";
-import { open } from "@tauri-apps/plugin-dialog";
+import { open, save } from "@tauri-apps/plugin-dialog";
 import { readTextFile } from "@tauri-apps/plugin-fs";
 import { useThemeStore } from "@/stores/themeStore";
 import { isOfficialTheme, type ThemeManifest } from "@/types/theme";
 import { Button } from "@/components/ui/button";
-import { Check, Trash2, FolderOpen, Plus, Shield } from "lucide-react";
+import { Check, Trash2, FolderOpen, Plus, Shield, Download, Upload } from "lucide-react";
 import { toast } from "sonner";
 
 interface ThemeGalleryProps {
@@ -17,6 +17,7 @@ export const ThemeGallery: React.FC<ThemeGalleryProps> = ({ onCreateNew, onEdit 
   const { installedThemes, activeThemeId, setActiveThemeId, deleteTheme, installThemeFromFile, loadThemes } =
     useThemeStore();
   const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [exportingId, setExportingId] = useState<string | null>(null);
 
   const handleActivate = async (id: string) => {
     await setActiveThemeId(id);
@@ -39,27 +40,48 @@ export const ThemeGallery: React.FC<ThemeGalleryProps> = ({ onCreateNew, onEdit 
   const handleInstallFile = async () => {
     try {
       const selected = await open({
-        filters: [{ name: "Theme file", extensions: ["yaml", "yml"] }],
+        filters: [{ name: "Theme file", extensions: ["yaml", "yml", "pgtheme"] }],
         multiple: false,
       });
       if (!selected) return;
+      const filePath = selected as string;
 
-      const content = await readTextFile(selected as string);
-      const manifest = await installThemeFromFile(content);
-      await loadThemes();
-      toast.success(`Theme "${manifest.name}" installed`);
+      if (filePath.endsWith(".pgtheme")) {
+        const manifest = await invoke<ThemeManifest>("import_pgtheme", { srcPath: filePath });
+        await loadThemes();
+        toast.success(`Theme "${manifest.name}" imported`);
+      } else {
+        const content = await readTextFile(filePath);
+        const manifest = await installThemeFromFile(content);
+        await loadThemes();
+        toast.success(`Theme "${manifest.name}" installed`);
+      }
     } catch (err) {
       toast.error(`Failed to install theme: ${err}`);
+    }
+  };
+
+  const handleExportTheme = async (theme: ThemeManifest) => {
+    try {
+      const destPath = await save({
+        defaultPath: `${theme.id}.pgtheme`,
+        filters: [{ name: "PoliGame Theme", extensions: ["pgtheme"] }],
+      });
+      if (!destPath) return;
+      setExportingId(theme.id);
+      await invoke("export_pgtheme", { themeId: theme.id, destPath });
+      toast.success(`Theme "${theme.name}" exported`);
+    } catch (err) {
+      toast.error(`Failed to export theme: ${err}`);
+    } finally {
+      setExportingId(null);
     }
   };
 
   const handleOpenThemesFolder = async () => {
     try {
       const dir = await invoke<string>("get_themes_dir_path");
-      await invoke("open_path_in_explorer", { path: dir }).catch(() => {
-        // Fallback: just show the path
-        toast.info(`Themes folder: ${dir}`);
-      });
+      await invoke("open_path_in_explorer", { path: dir });
     } catch {
       toast.error("Could not open themes folder");
     }
@@ -73,8 +95,8 @@ export const ThemeGallery: React.FC<ThemeGalleryProps> = ({ onCreateNew, onEdit 
         </p>
         <div className="flex gap-2">
           <Button variant="outline" size="sm" onClick={handleInstallFile} className="text-xs gap-1.5">
-            <FolderOpen size={13} />
-            Install from file
+            <Upload size={13} />
+            Install / Import
           </Button>
           <Button size="sm" onClick={onCreateNew} className="text-xs gap-1.5 dark:bg-[var(--theme-button)] bg-[var(--theme-button-secondary)]">
             <Plus size={13} />
@@ -90,18 +112,21 @@ export const ThemeGallery: React.FC<ThemeGalleryProps> = ({ onCreateNew, onEdit 
             theme={theme}
             isActive={theme.id === activeThemeId}
             isDeleting={deletingId === theme.id}
+            isExporting={exportingId === theme.id}
             onActivate={() => handleActivate(theme.id)}
             onDelete={() => handleDelete(theme)}
             onEdit={() => onEdit(theme)}
+            onExport={() => handleExportTheme(theme)}
           />
         ))}
       </div>
 
-      <div className="pt-2 border-t border-border">
+      <div className="pt-2 border-t border-border flex items-center gap-3">
         <button
           onClick={handleOpenThemesFolder}
-          className="text-xs text-muted-foreground hover:text-foreground transition-colors"
+          className="text-xs text-muted-foreground hover:text-foreground transition-colors flex items-center gap-1"
         >
+          <FolderOpen size={11} />
           Open themes folder
         </button>
       </div>
@@ -113,18 +138,22 @@ interface ThemeCardProps {
   theme: ThemeManifest;
   isActive: boolean;
   isDeleting: boolean;
+  isExporting: boolean;
   onActivate: () => void;
   onDelete: () => void;
   onEdit: () => void;
+  onExport: () => void;
 }
 
 const ThemeCard: React.FC<ThemeCardProps> = ({
   theme,
   isActive,
   isDeleting,
+  isExporting,
   onActivate,
   onDelete,
   onEdit,
+  onExport,
 }) => {
   const official = isOfficialTheme(theme);
   const accent = theme.colors?.theme_accent ?? "#4CE4B1";
@@ -181,6 +210,17 @@ const ThemeCard: React.FC<ThemeCardProps> = ({
 
           {!official && (
             <>
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onExport();
+                }}
+                disabled={isExporting}
+                className="p-0.5 rounded hover:bg-muted/50 text-muted-foreground hover:text-foreground opacity-0 group-hover:opacity-100 transition-opacity"
+                title="Export as .pgtheme"
+              >
+                <Download size={12} />
+              </button>
               <button
                 onClick={(e) => {
                   e.stopPropagation();

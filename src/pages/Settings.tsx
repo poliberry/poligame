@@ -43,9 +43,11 @@ const Settings: React.FC = () => {
   const [isCheckingUpdates, setIsCheckingUpdates] = useState(false);
   const [isInstallingUpdate, setIsInstallingUpdate] = useState(false);
   const [updateMessage, setUpdateMessage] = useState<string | null>(null);
+  const [appVersion, setAppVersion] = useState<string>("");
 
   useEffect(() => {
     loadSettings();
+    invoke<string>("get_app_version").then(setAppVersion).catch(() => {});
   }, []);
 
   useEffect(() => {
@@ -560,7 +562,7 @@ const Settings: React.FC = () => {
                   <p>
                     <strong>PoliGame</strong>
                   </p>
-                  <p>Version 1.0.0</p>
+                  <p>Version {appVersion || "…"}</p>
                   <p>Game aggregator with marketplace functionality</p>
                 </div>
                 <div className="mt-6 space-y-3">

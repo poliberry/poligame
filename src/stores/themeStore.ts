@@ -72,6 +72,30 @@ function saveActiveThemeIdToStorage(id: string) {
   } catch {}
 }
 
+async function resolveThemeBgImage(theme: ThemeManifest): Promise<ThemeManifest> {
+  const bgImage = theme.appearance?.background_image;
+  if (!bgImage || bgImage.startsWith("data:") || bgImage.startsWith("http://") || bgImage.startsWith("https://")) {
+    return theme;
+  }
+  try {
+    const base64 = await invoke<string>("get_theme_asset_base64", {
+      themeId: theme.id,
+      assetFilename: bgImage,
+    });
+    const ext = bgImage.split(".").pop()?.toLowerCase() ?? "png";
+    const mime = ext === "jpg" || ext === "jpeg" ? "image/jpeg" : `image/${ext}`;
+    return {
+      ...theme,
+      appearance: {
+        ...theme.appearance,
+        background_image: `data:${mime};base64,${base64}`,
+      },
+    };
+  } catch {
+    return theme;
+  }
+}
+
 interface ThemeStore {
   // Legacy quick-edit colors
   colors: ThemeColors;
@@ -129,7 +153,8 @@ export const useThemeStore = create<ThemeStore>((set, get) => ({
       const active = exact ?? themes[0] ?? null;
       const resolvedId = active?.id ?? activeId;
       if (resolvedId !== activeId) saveActiveThemeIdToStorage(resolvedId);
-      set({ installedThemes: themes, activeTheme: active, activeThemeId: resolvedId, themesLoaded: true });
+      const resolvedActive = active ? await resolveThemeBgImage(active) : null;
+      set({ installedThemes: themes, activeTheme: resolvedActive, activeThemeId: resolvedId, themesLoaded: true });
     } catch (err) {
       console.error("Failed to load themes:", err);
       set({ themesLoaded: true });
@@ -139,8 +164,13 @@ export const useThemeStore = create<ThemeStore>((set, get) => ({
   setActiveThemeId: async (id) => {
     const { installedThemes } = get();
     const theme = installedThemes.find((t) => t.id === id) ?? null;
-    saveActiveThemeIdToStorage(id);
+    // Apply synchronously so the UI responds immediately (unresolved bg is fine temporarily).
     set({ activeThemeId: id, activeTheme: theme });
+    saveActiveThemeIdToStorage(id);
+    const resolved = theme ? await resolveThemeBgImage(theme) : null;
+    // Guard against a newer selection that arrived while we were resolving.
+    if (get().activeThemeId !== id) return;
+    set({ activeTheme: resolved });
   },
 
   installThemeFromFile: async (yamlContent) => {

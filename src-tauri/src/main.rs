@@ -676,6 +676,11 @@ async fn hide_overdrive_overlay(app: tauri::AppHandle) -> Result<(), String> {
 }
 
 #[tauri::command]
+fn get_app_version(app: tauri::AppHandle) -> String {
+    app.package_info().version.to_string()
+}
+
+#[tauri::command]
 fn focus_main_window(app: tauri::AppHandle) -> Result<(), String> {
     use tauri::Manager;
     if let Some(window) = app.get_webview_window("main") {
@@ -886,6 +891,10 @@ fn main() {
             themes::save_theme_asset,
             themes::get_themes_dir_path,
             themes::get_system_fonts,
+            themes::open_path_in_explorer,
+            themes::export_pgtheme,
+            themes::import_pgtheme,
+            get_app_version,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
