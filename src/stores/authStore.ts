@@ -102,14 +102,16 @@ export const useAuthStore = create<AuthStore>((set, get) => {
         }
         const currentUser = get().user;
         const userChanged = currentUser?.userId !== user?.userId;
-        if (user && userChanged && isPostHogInitialized) {
+        if (userChanged && isPostHogInitialized) {
           if (currentUser) {
             posthog.reset();
           }
-          posthog.identify(user.userId, {
-            email: user.email,
-            username: user.username,
-          });
+          if (user) {
+            posthog.identify(user.userId, {
+              email: user.email,
+              username: user.username,
+            });
+          }
         }
       set({ user, isAuthenticated: !!user, error: null });
     },
