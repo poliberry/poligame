@@ -66,15 +66,15 @@ pub async fn install_app_update(app: AppHandle) -> Result<bool, String> {
             .await
             .map_err(|e| format!("Failed to download and install update: {}", e))?;
 
-        // On Linux AppImage, app.restart() can fail because the old AppImage is
-        // still mounted/locked. Only auto-restart on Windows/macOS; on Linux
-        // return true so the frontend can prompt the user to relaunch manually.
-        #[cfg(target_os = "linux")]
+        // Installation complete on all platforms. Return true so the frontend
+        // can prompt the user to restart at their convenience.
         return Ok(true);
-
-        #[cfg(not(target_os = "linux"))]
-        app.restart();
     }
 
     Ok(false)
+}
+
+#[tauri::command]
+pub fn restart_app(app: AppHandle) {
+    app.restart();
 }

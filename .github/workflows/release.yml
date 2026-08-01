@@ -181,8 +181,8 @@ jobs:
           MACOS_X86_64_SIG=$(cat release-assets/PoliGame_x86_64.app.tar.gz.sig)
           LINUX="${BASE}/PoliGame_${VERSION}_amd64.AppImage.tar.gz"
           LINUX_SIG=$(cat release-assets/PoliGame_${VERSION}_amd64.AppImage.tar.gz.sig)
-          WINDOWS="${BASE}/PoliGame_${VERSION}_x64-setup.nsis.zip"
-          WINDOWS_SIG=$(cat release-assets/PoliGame_${VERSION}_x64-setup.nsis.zip.sig)
+          WINDOWS="${BASE}/PoliGame_${VERSION}_x64_en-US.msi.zip"
+          WINDOWS_SIG=$(cat release-assets/PoliGame_${VERSION}_x64_en-US.msi.zip.sig)
 
           jq -n \
             --arg version "$VERSION" \

@@ -24,6 +24,7 @@ const UpdateAvailableDialog: React.FC = () => {
   const [open, setOpen] = React.useState(false);
   const [isChecking, setIsChecking] = React.useState(false);
   const [isInstalling, setIsInstalling] = React.useState(false);
+  const [installed, setInstalled] = React.useState(false);
   const [update, setUpdate] = React.useState<UpdateCheckResult | null>(null);
   const [error, setError] = React.useState<string | null>(null);
 
@@ -58,11 +59,22 @@ const UpdateAvailableDialog: React.FC = () => {
     setError(null);
 
     try {
-      await invoke<boolean>("install_app_update");
+      const didInstall = await invoke<boolean>("install_app_update");
+      if (didInstall) {
+        setInstalled(true);
+      }
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to install update.");
     } finally {
       setIsInstalling(false);
+    }
+  }, []);
+
+  const handleRestart = React.useCallback(async () => {
+    try {
+      await invoke("restart_app");
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to restart.");
     }
   }, []);
 
@@ -93,31 +105,57 @@ const UpdateAvailableDialog: React.FC = () => {
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogContent className="max-w-lg border-white/10 bg-black/90 text-white backdrop-blur-xl">
-        <DialogHeader>
-          <DialogTitle className="text-xl">Update Available</DialogTitle>
-          <DialogDescription className="text-white/70">
-            Version {update.version} is available. You are currently on {update.current_version}.
-          </DialogDescription>
-        </DialogHeader>
+        {installed ? (
+          <>
+            <DialogHeader>
+              <DialogTitle className="text-xl">Restart Required</DialogTitle>
+              <DialogDescription className="text-white/70">
+                Version {update.version} has been installed. Restart PoliGame to apply the update.
+              </DialogDescription>
+            </DialogHeader>
 
-        {update.notes && (
-          <div className="max-h-52 overflow-y-auto rounded border border-white/10 bg-white/5 p-3 text-sm text-white/80 whitespace-pre-wrap">
-            {update.notes}
-          </div>
+            {error && (
+              <p className="text-sm text-red-300">{error}</p>
+            )}
+
+            <div className="flex items-center justify-end gap-2">
+              <Button variant="outline" onClick={() => setOpen(false)}>
+                Later
+              </Button>
+              <Button onClick={() => void handleRestart()}>
+                Restart Now
+              </Button>
+            </div>
+          </>
+        ) : (
+          <>
+            <DialogHeader>
+              <DialogTitle className="text-xl">Update Available</DialogTitle>
+              <DialogDescription className="text-white/70">
+                Version {update.version} is available. You are currently on {update.current_version}.
+              </DialogDescription>
+            </DialogHeader>
+
+            {update.notes && (
+              <div className="max-h-52 overflow-y-auto rounded border border-white/10 bg-white/5 p-3 text-sm text-white/80 whitespace-pre-wrap">
+                {update.notes}
+              </div>
+            )}
+
+            {error && (
+              <p className="text-sm text-red-300">{error}</p>
+            )}
+
+            <div className="flex items-center justify-end gap-2">
+              <Button variant="outline" onClick={handleLater} disabled={isInstalling}>
+                Later
+              </Button>
+              <Button onClick={() => void handleInstall()} disabled={isInstalling}>
+                {isInstalling ? "Installing..." : "Update Now"}
+              </Button>
+            </div>
+          </>
         )}
-
-        {error && (
-          <p className="text-sm text-red-300">{error}</p>
-        )}
-
-        <div className="flex items-center justify-end gap-2">
-          <Button variant="outline" onClick={handleLater} disabled={isInstalling}>
-            Later
-          </Button>
-          <Button onClick={() => void handleInstall()} disabled={isInstalling}>
-            {isInstalling ? "Installing..." : "Update Now"}
-          </Button>
-        </div>
       </DialogContent>
     </Dialog>
   );
