@@ -137,6 +137,11 @@ jobs:
       contents: write
 
     steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          path: repo
+
       - name: Download all artifacts
         uses: actions/download-artifact@v4
         with:
@@ -190,16 +195,13 @@ jobs:
               }
             }' > release-assets/latest.json
 
-      - name: Checkout repository
-        uses: actions/checkout@v4
-
       - name: Create Release
         uses: softprops/action-gh-release@v1
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
           tag_name: v${{ needs.release.outputs.version }}
           name: Release v${{ needs.release.outputs.version }}
-          body_path: release-notes.md
+          body_path: repo/release-notes.md
           files: |
             release-assets/*.msi
             release-assets/*.exe
