@@ -29,7 +29,7 @@ jobs:
           - platform: 'macos-latest'
             args: '--target x86_64-apple-darwin'
             arch: 'x86_64'
-          - platform: 'ubuntu-22.04'
+          - platform: 'blacksmith-4vcpu-ubuntu-2404'
             args: '--bundles appimage'
             arch: 'x64'
           - platform: 'blacksmith-4vcpu-windows-2025'
