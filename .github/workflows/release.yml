@@ -190,16 +190,16 @@ jobs:
               }
             }' > release-assets/latest.json
 
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
       - name: Create Release
         uses: softprops/action-gh-release@v1
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
           tag_name: v${{ needs.release.outputs.version }}
           name: Release v${{ needs.release.outputs.version }}
-          body: |
-            ## PoliGame v${{ needs.release.outputs.version }}
-
-            Version bump.
+          body_path: release-notes.md
           files: |
             release-assets/*.msi
             release-assets/*.exe
