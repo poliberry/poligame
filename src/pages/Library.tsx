@@ -78,7 +78,7 @@ const HorizontalGameRail: React.FC<HorizontalGameRailProps> = ({
   const scrollByCards = (direction: "left" | "right") => {
     const rail = railRef.current;
     if (!rail) return;
-    const amount = Math.max(rail.clientWidth * 0.75, 260);
+    const amount = Math.max(rail.clientWidth * 0.4, 200);
     rail.scrollBy({
       left: direction === "left" ? -amount : amount,
       behavior: "smooth",
@@ -106,7 +106,7 @@ const HorizontalGameRail: React.FC<HorizontalGameRailProps> = ({
           type="button"
           size="icon"
           variant="secondary"
-          className="absolute left-0 top-1/2 z-10 -translate-y-1/2 rounded-full bg-black/50 hover:bg-black/70 backdrop-blur-sm"
+          className="absolute left-0 top-1/2 z-[60] -translate-y-1/2 rounded-full bg-black/50 hover:bg-black/70 backdrop-blur-sm active:scale-95 transition-transform"
           onClick={() => scrollByCards("left")}
           aria-label="Scroll left"
         >
@@ -135,7 +135,7 @@ const HorizontalGameRail: React.FC<HorizontalGameRailProps> = ({
           type="button"
           size="icon"
           variant="secondary"
-          className="absolute right-0 top-1/2 z-10 -translate-y-1/2 rounded-full bg-black/50 hover:bg-black/70 backdrop-blur-sm"
+          className="absolute right-0 top-1/2 z-[60] -translate-y-1/2 rounded-full bg-black/50 hover:bg-black/70 backdrop-blur-sm active:scale-95 transition-transform"
           onClick={() => scrollByCards("right")}
           aria-label="Scroll right"
         >
