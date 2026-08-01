@@ -58,7 +58,18 @@ type SetupStep =
   | "userIds"
   | "theme"
   | "profile"
+  | "scanning"
   | "complete";
+
+interface LauncherStatus {
+  launcher_type: string;
+  installed: boolean;
+  path?: string;
+}
+
+interface ScannedGame {
+  launcher: string;
+}
 
 interface NavItem {
   path: string;
@@ -106,6 +117,12 @@ export const Setup: React.FC = () => {
   const [bio, setBio] = useState("");
   const [avatar, setAvatar] = useState<string | null>(null);
   const [isSaving, setIsSaving] = useState(false);
+
+  // Scanning step state
+  const [scanPhase, setScanPhase] = useState<"idle" | "scanning" | "done">("idle");
+  const [detectedLaunchers, setDetectedLaunchers] = useState<LauncherStatus[]>([]);
+  const [scanCounts, setScanCounts] = useState<Record<string, number>>({});
+  const [totalGamesFound, setTotalGamesFound] = useState(0);
 
   const signIn = useMutation(api.auth.signIn);
   const signUp = useMutation(api.auth.signUp);
@@ -157,6 +174,43 @@ export const Setup: React.FC = () => {
       setCurrentStep("userIds");
     }
   }, [user, currentStep]);
+
+  useEffect(() => {
+    if (currentStep !== "scanning" || scanPhase !== "idle") return;
+
+    const runScan = async () => {
+      setScanPhase("scanning");
+
+      try {
+        const statuses = await invoke<LauncherStatus[]>("scan_all_launchers");
+        setDetectedLaunchers(statuses);
+      } catch (e) {
+        console.error("Failed to detect launchers:", e);
+      }
+
+      try {
+        await invoke<string>("scan_all_games");
+      } catch (e) {
+        console.error("Game scan failed:", e);
+      }
+
+      try {
+        const allGames = await invoke<ScannedGame[]>("get_all_games");
+        const counts: Record<string, number> = {};
+        for (const game of allGames) {
+          counts[game.launcher] = (counts[game.launcher] || 0) + 1;
+        }
+        setScanCounts(counts);
+        setTotalGamesFound(allGames.length);
+      } catch (e) {
+        console.error("Failed to get games after scan:", e);
+      }
+
+      setScanPhase("done");
+    };
+
+    runScan();
+  }, [currentStep, scanPhase]);
 
   const handleAuthSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -253,7 +307,7 @@ export const Setup: React.FC = () => {
       // Mark setup as complete
       await invoke("set_setup_complete", { completed: true });
 
-      setCurrentStep("complete");
+      setCurrentStep("scanning");
     } catch (error: any) {
       console.error("Failed to save setup:", error);
       alert(error.message || "Failed to save setup");
@@ -276,6 +330,11 @@ export const Setup: React.FC = () => {
     },
     { key: "theme", title: "Theme", description: "Customize your colors" },
     { key: "profile", title: "Profile", description: "Set up your profile" },
+    {
+      key: "scanning",
+      title: "Scanning",
+      description: "Finding your games",
+    },
     { key: "complete", title: "Complete", description: "You're all set!" },
   ];
 
@@ -1197,6 +1256,95 @@ export const Setup: React.FC = () => {
                       </div>
                     )}
 
+                    {/* Scanning Step */}
+                    {currentStep === "scanning" && (() => {
+                      const LAUNCHERS = [
+                        { key: "steam", label: "Steam", icon: <FaSteam className="w-5 h-5" /> },
+                        { key: "epic", label: "Epic Games", icon: <SiEpicgames className="w-5 h-5" /> },
+                        { key: "ea", label: "EA", icon: <TbBrandElectronicArts className="w-5 h-5" /> },
+                        { key: "rockstar", label: "Rockstar Games", icon: <SiRockstargames className="w-5 h-5" /> },
+                      ];
+                      return (
+                        <div className="space-y-6">
+                          <div>
+                            <h2 className="text-xl font-light">
+                              {scanPhase === "done"
+                                ? "Library scan complete."
+                                : "Scanning your game library..."}
+                            </h2>
+                            <p className="text-sm text-white/60 font-thin mt-1">
+                              {scanPhase === "done"
+                                ? `Found ${totalGamesFound} game${totalGamesFound !== 1 ? "s" : ""} across your launchers.`
+                                : "This may take a moment while we find your games."}
+                            </p>
+                          </div>
+
+                          <div className="space-y-2">
+                            {LAUNCHERS.map(({ key, label, icon }) => {
+                              const status = detectedLaunchers.find(
+                                (s) => s.launcher_type === key,
+                              );
+                              const isInstalled =
+                                detectedLaunchers.length === 0 || (status?.installed ?? false);
+                              const count = scanCounts[key] ?? 0;
+
+                              return (
+                                <div
+                                  key={key}
+                                  className="flex items-center gap-3 p-3 rounded-xl bg-white/5"
+                                >
+                                  <div className="text-white/50">{icon}</div>
+                                  <div className="flex-1 min-w-0">
+                                    <div className="text-sm font-light">{label}</div>
+                                    <div className="text-xs text-white/50 font-thin">
+                                      {!isInstalled
+                                        ? "Not installed"
+                                        : scanPhase === "scanning"
+                                          ? "Scanning..."
+                                          : `${count} game${count !== 1 ? "s" : ""} found`}
+                                    </div>
+                                  </div>
+                                  <div className="shrink-0">
+                                    {!isInstalled ? (
+                                      <div className="w-2 h-2 rounded-full bg-white/20" />
+                                    ) : scanPhase === "scanning" ? (
+                                      <div
+                                        className="w-2 h-2 rounded-full animate-pulse"
+                                        style={{
+                                          backgroundColor: accentColor,
+                                          boxShadow: `0 0 8px ${accentColor}`,
+                                        }}
+                                      />
+                                    ) : (
+                                      <CheckCircle2
+                                        className="w-4 h-4"
+                                        style={{ color: accentColor }}
+                                      />
+                                    )}
+                                  </div>
+                                </div>
+                              );
+                            })}
+                          </div>
+
+                          {scanPhase === "done" && (
+                            <Button
+                              onClick={() => setCurrentStep("complete")}
+                              variant="default"
+                              className="w-full rounded-full border-none cursor-pointer"
+                              style={{
+                                backgroundColor: buttonColor,
+                                color: accentColor,
+                              }}
+                            >
+                              Continue
+                              <ArrowRight className="w-4 h-4 ml-2" />
+                            </Button>
+                          )}
+                        </div>
+                      );
+                    })()}
+
                     {/* Complete Step */}
                     {currentStep === "complete" && (
                       <div className="text-center space-y-6">
@@ -1246,7 +1394,7 @@ export const Setup: React.FC = () => {
                 </div>
 
                 {/* Footer Navigation */}
-                {currentStep !== "complete" && (
+                {currentStep !== "complete" && currentStep !== "scanning" && (
                   <div className="p-6 flex items-center justify-between">
                     <Button
                       onClick={handleBack}
@@ -1268,7 +1416,7 @@ export const Setup: React.FC = () => {
                     </Button>
 
                     <div className="text-sm text-white/60">
-                      Step {currentStepIndex + 1} of {steps.length - 1}
+                      Step {currentStepIndex + 1} of {steps.length - 2}
                     </div>
 
                     <Button
