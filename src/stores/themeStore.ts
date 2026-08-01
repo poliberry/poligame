@@ -206,3 +206,13 @@ export const useThemeStore = create<ThemeStore>((set, get) => ({
     }));
   },
 }));
+
+// Sync active theme across windows (e.g. Settings → main window) via the
+// shared localStorage storage event, matching the pattern in authStore.ts.
+if (typeof window !== "undefined") {
+  window.addEventListener("storage", (e: StorageEvent) => {
+    if (e.key === ACTIVE_THEME_ID_KEY && e.newValue && e.newValue !== useThemeStore.getState().activeThemeId) {
+      void useThemeStore.getState().setActiveThemeId(e.newValue);
+    }
+  });
+}
