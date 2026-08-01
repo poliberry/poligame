@@ -31,7 +31,7 @@ jobs:
             arch: 'aarch64'
           - platform: 'macos-latest'
             args: '--target x86_64-apple-darwin'
-            arch: 'x64'
+            arch: 'x86_64'
           - platform: 'ubuntu-22.04'
             args: '--bundles appimage'
             arch: 'x64'
@@ -115,17 +115,27 @@ jobs:
         shell: bash
         run: |
           mkdir -p release-assets
-          
-          # Find and rename artifacts with version
-          for file in src-tauri/target/release/bundle/*/*; do
+          VERSION="${{ steps.get_version.outputs.VERSION }}"
+          ARCH="${{ matrix.arch }}"
+
+          # Collect from both native and cross-compilation target paths
+          for file in src-tauri/target/release/bundle/*/* src-tauri/target/*/release/bundle/*/*; do
             if [ -f "$file" ]; then
               filename=$(basename "$file")
-              # Add version to filename
-              newname="${filename//_0.0.0/_${{ steps.get_version.outputs.VERSION }}}"
+
+              # macOS .app.tar.gz has no version or arch — rename to include arch so
+              # aarch64 and x86_64 artifacts don't overwrite each other when merged.
+              if [[ "$filename" == "PoliGame.app.tar.gz" || "$filename" == "PoliGame.app.tar.gz.sig" ]]; then
+                ext="${filename#PoliGame.app}"
+                newname="PoliGame_${ARCH}.app${ext}"
+              else
+                newname="${filename//_0.0.0/_${VERSION}}"
+              fi
+
               cp "$file" "release-assets/$newname"
             fi
           done
-          
+
           ls -la release-assets/
 
       # Upload artifacts temporarily
@@ -159,8 +169,8 @@ jobs:
         id: updater
         run: |
           VERSION="${{ needs.release.outputs.version }}"
-          
-          # Create latest.json for Tauri updater
+          BASE="https://github.com/poliberry/poligame/releases/download/v${VERSION}"
+
           cat > release-assets/latest.json << EOF
           {
             "version": "$VERSION",
@@ -168,20 +178,20 @@ jobs:
             "pub_date": "$(date -u +"%Y-%m-%dT%H:%M:%SZ")",
             "platforms": {
               "darwin-aarch64": {
-                "signature": "$(cat release-assets/*aarch64.app.tar.gz.sig 2>/dev/null || echo '')",
-                "url": "https://github.com/poliberry/poligame/releases/download/v$VERSION/app-$VERSION-aarch64.app.tar.gz"
+                "signature": "$(cat release-assets/PoliGame_aarch64.app.tar.gz.sig 2>/dev/null || echo '')",
+                "url": "$BASE/PoliGame_aarch64.app.tar.gz"
               },
               "darwin-x86_64": {
-                "signature": "$(cat release-assets/*x86_64.app.tar.gz.sig 2>/dev/null || echo '')",
-                "url": "https://github.com/poliberry/poligame/releases/download/v$VERSION/app-$VERSION-x86_64.app.tar.gz"
+                "signature": "$(cat release-assets/PoliGame_x86_64.app.tar.gz.sig 2>/dev/null || echo '')",
+                "url": "$BASE/PoliGame_x86_64.app.tar.gz"
               },
               "linux-x86_64": {
-                "signature": "$(cat release-assets/*.AppImage.tar.gz.sig 2>/dev/null || echo '')",
-                "url": "https://github.com/poliberry/poligame/releases/download/v$VERSION/app-$VERSION-x86_64.AppImage.tar.gz"
+                "signature": "$(cat release-assets/PoliGame_${VERSION}_amd64.AppImage.tar.gz.sig 2>/dev/null || echo '')",
+                "url": "$BASE/PoliGame_${VERSION}_amd64.AppImage.tar.gz"
               },
               "windows-x86_64": {
-                "signature": "$(cat release-assets/*x64-setup.exe.sig 2>/dev/null || echo '')",
-                "url": "https://github.com/poliberry/poligame/releases/download/v$VERSION/app-$VERSION-x64-setup.exe"
+                "signature": "$(cat release-assets/PoliGame_${VERSION}_x64-setup.nsis.zip.sig 2>/dev/null || echo '')",
+                "url": "$BASE/PoliGame_${VERSION}_x64-setup.nsis.zip"
               }
             }
           }
@@ -231,7 +241,15 @@ jobs:
 
             See attached `.sig` files for signature verification.
           files: |
-            release-assets/*
+            release-assets/*.msi
+            release-assets/*.exe
+            release-assets/*.zip
+            release-assets/*.dmg
+            release-assets/*.AppImage
+            release-assets/*.deb
+            release-assets/*.tar.gz
+            release-assets/*.sig
+            release-assets/latest.json
           draft: false
           prerelease: false
         env:
