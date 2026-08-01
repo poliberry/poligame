@@ -210,9 +210,15 @@ const Library: React.FC = () => {
 
   const scanGames = async () => {
     setScanning(true);
-    const result = await invoke<string>("scan_all_games");
-    console.log("Scan result:", result);
-    setScanning(false);
+    try {
+      const result = await invoke<string>("scan_all_games");
+      console.log("Scan result:", result);
+      await handleRefreshGames();
+    } catch (error) {
+      console.error("Error scanning games:", error);
+    } finally {
+      setScanning(false);
+    }
   };
 
   const handleGameRoulette = async () => {
