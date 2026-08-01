@@ -89,11 +89,12 @@ jobs:
       - name: Build Tauri app
         uses: tauri-apps/tauri-action@v1
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_PRIVATE_KEY }}
           TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_KEY_PASSWORD }}
         with:
           args: ${{ matrix.args }}
+          includeRelease: false
+          includeUpdaterJson: false
 
       - name: Prepare release assets
         shell: bash
@@ -178,40 +179,16 @@ jobs:
           body: |
             ## PoliGame v${{ needs.release.outputs.version }}
 
-            ### What's New
-
-            #### Custom Themes System
-            - Full YAML-based theme system — create, install, and switch between themes from Settings → Themes
-            - Two built-in themes ship with this release: **PoliGame Dark** and **PoliGame Light**
-            - Default dark theme uses the PoliGame brand palette: mint accent (`#4CE4B1`), deep teal buttons (`#006B4F`)
-            - Light theme uses slightly lighter variants of the same palette
-            - Themes live in your local app data folder (`%APPDATA%\PoliGame\themes\` on Windows) — open the folder from the Themes gallery to add your own
-            - Theme editor built-in: customise colors, font family, border radius, and library background image
-            - Official themes update automatically on each launch to stay current
-
-            #### App-Wide Theme Integration
-            - **Google Sans Flex** is now the global font, loaded once and applied via the theme system — custom themes can override it
-            - All hardcoded font references (Livvic, Unbounded, per-component Google Fonts `<link>` tags) removed; everything inherits from the theme
-            - Overdrive gamepad mode now fully theme-aware: focus rings, active states, and accent colors all respond to the active theme accent color
-            - Scrollbars, buttons, sliders, and prose elements use theme CSS variables throughout
-            - New `.theme-btn` utility applies the button background/foreground hover-swap automatically
-
-            ### Installation
-
-            Download the appropriate installer for your platform:
-            - **Windows**: `.msi` or `.exe` installer
-            - **macOS**: `.dmg` or `.app.tar.gz`
-            - **Linux**: `.AppImage` or `.deb`
-
-            ### Auto-Update
-
-            This release supports automatic updates. The app will notify you when a newer version is available.
-
-            ### Checksums
-
-            See attached `.sig` files for signature verification.
+            Version bump.
           files: |
-            release-assets/*
+            release-assets/*.msi
+            release-assets/*.exe
+            release-assets/*.dmg
+            release-assets/*.AppImage
+            release-assets/*.deb
+            release-assets/*.tar.gz
+            release-assets/*.sig
+            release-assets/latest.json
           draft: false
           prerelease: false
 

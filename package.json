@@ -1,6 +1,6 @@
 {
   "name": "poligame",
-  "version": "1.2.7",
+  "version": "1.2.8",
   "description": "Game aggregator with marketplace",
   "type": "module",
   "scripts": {
