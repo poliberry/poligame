@@ -85,20 +85,6 @@ const HorizontalGameRail: React.FC<HorizontalGameRailProps> = ({
     });
   };
 
-  const handleWheelScroll = (event: React.WheelEvent<HTMLDivElement>) => {
-    const rail = railRef.current;
-    if (!rail) return;
-
-    const isMostlyVertical = Math.abs(event.deltaY) > Math.abs(event.deltaX);
-    if (isMostlyVertical) {
-      rail.scrollBy({
-        left: event.deltaY,
-        behavior: "auto",
-      });
-      event.preventDefault();
-    }
-  };
-
   return (
     <div className="relative group">
       {canScrollLeft && (
@@ -117,7 +103,6 @@ const HorizontalGameRail: React.FC<HorizontalGameRailProps> = ({
       <div
         ref={railRef}
         className="scrollbar-hide flex flex-row gap-5 overflow-x-auto overflow-y-hidden px-5 py-5 -mx-5"
-        onWheel={handleWheelScroll}
       >
         {games.map((game) => (
           <div
