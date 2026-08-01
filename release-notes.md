@@ -1,3 +1,16 @@
+## PoliGame v1.3.2
+
+### Bug fixes
+
+**Updater**
+- **Signature verification failure** — the release CI was silently falling back to empty minisign signatures when `.sig` files were missing, causing every in-app "Update Now" attempt to fail with a verification error. The CI now fails loudly if any platform signature is absent, ensuring `latest.json` always ships with valid signatures (#23).
+
+**Discord Rich Presence**
+- **Game icons not appearing** — the SteamGridDB icon URL rewriter (`rewrite_icon_variant_url`) was incorrectly applied to all `.ico` URLs, including Steam CDN (`media.steampowered.com`), producing 404s that Discord silently ignored. The rewrite is now gated to `cdn2.steamgriddb.com` only. Additionally, the artwork candidate order now prefers large Steam CDN cover/grid images over the small app icon, which is often a local `.ico` file Discord cannot fetch (#24).
+- **Status flickering between game and "Browsing launcher"** — three related fixes: (1) the stop-debounce threshold was raised from 2 to 5 consecutive null polls (~7.5 s) to tolerate launcher/bootstrapper handoffs; (2) a launcher-mode debounce defers the "Browsing launcher" Discord update for 8 seconds after the running game clears, preventing brief process-detection gaps from causing a visible status flicker; (3) the debounce cooldown is now stamped when `runningGame` transitions to null rather than on every game heartbeat, so it correctly covers the 30-second Discord IPC reconnect window (#24).
+
+---
+
 ## PoliGame v1.3.1
 
 ### New features

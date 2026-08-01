@@ -32,7 +32,7 @@ let knownGames: Game[] = [];
 // running. We clear the running game only after STOP_DEBOUNCE_COUNT consecutive
 // nulls to avoid flicker from transient process detection gaps.
 let consecutiveNullPolls = 0;
-const STOP_DEBOUNCE_COUNT = 2;
+const STOP_DEBOUNCE_COUNT = 5;
 
 const MONITOR_INTERVAL_MS = 1500;
 
