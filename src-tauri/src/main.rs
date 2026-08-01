@@ -875,6 +875,7 @@ fn main() {
             system_info::open_network_settings,
             updater::check_for_app_update,
             updater::install_app_update,
+            updater::restart_app,
             games::get_steam_requirements,
             enter_overdrive_mode,
             exit_overdrive_mode,
