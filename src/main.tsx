@@ -3,6 +3,7 @@ import React from "react";
 import ReactDOM from "react-dom/client";
 import App from "./App";
 import { ConvexProviderWrapper } from "./components/ConvexProvider";
+import "./lib/posthog";
 
 console.log("main.tsx: Starting React app initialization");
 console.log(
