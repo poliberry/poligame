@@ -58,8 +58,9 @@ export const useRunningGameStore = create<RunningGameStore>((set, get) => ({
   isMonitoring: false,
   
   setRunningGame: (game) => {
+    consecutiveNullPolls = 0;
     const previousGameId = get().runningGameId;
-    set({ 
+    set({
       runningGameId: game?.id || null, 
       runningGame: game,
       runningGameStartedAt:

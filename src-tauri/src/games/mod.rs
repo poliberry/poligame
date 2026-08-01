@@ -221,13 +221,18 @@ fn process_matches_executable(process: &sysinfo::Process, path: &str, candidates
         if proc_name == candidate || proc_stem == candidate || proc_file == candidate {
             return true;
         }
-        // Substring matching only for candidates long enough to be unique.
-        // Short candidates (e.g. "ace", "app") cause false positives across
-        // unrelated processes, so we require at least 5 characters.
-        candidate.len() >= 5
-            && (proc_name.contains(&candidate)
-                || proc_stem.contains(&candidate)
-                || proc_file.contains(&candidate))
+        // For substring matching, use the stem (extension stripped) both for the
+        // length gate and the actual search.  Checking the full filename (e.g.
+        // "ace.exe") against proc_name would let "space.exe".contains("ace.exe")
+        // slip through even though the stem "ace" is only 3 characters.
+        let candidate_stem = candidate
+            .strip_suffix(".exe")
+            .or_else(|| candidate.strip_suffix(".app"))
+            .unwrap_or(&candidate);
+        candidate_stem.len() >= 5
+            && (proc_name.contains(candidate_stem)
+                || proc_stem.contains(candidate_stem)
+                || proc_file.contains(candidate_stem))
     };
 
     // If only a game install directory is available, match processes whose executable
