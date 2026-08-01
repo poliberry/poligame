@@ -62,6 +62,7 @@ export const ThemeEditor: React.FC<ThemeEditorProps> = ({ initial, onBack, onSav
   const [mascotFile, setMascotFile] = useState(initial?.mascot_file ?? "");
   const [mascotAsset, setMascotAsset] = useState<string | null>(null);
   const [isNewMascot, setIsNewMascot] = useState(false);
+  const [mascotAssetExt, setMascotAssetExt] = useState("png");
 
   const isEditing = !!initial;
   const themeId = initial?.id ?? generateId(name);
@@ -73,7 +74,8 @@ export const ThemeEditor: React.FC<ThemeEditorProps> = ({ initial, onBack, onSav
   }, []);
 
   // Resolve bare filenames to data URLs for preview only.
-  // On failure the state stays as the bare filename so the manifest is never corrupted.
+  // Uses a functional updater that only applies the result if the state hasn't
+  // changed since the request was made (guards against Remove/replace races).
   useEffect(() => {
     if (!initial?.id) return;
 
@@ -83,7 +85,8 @@ export const ThemeEditor: React.FC<ThemeEditorProps> = ({ initial, onBack, onSav
         .then((b64) => {
           const ext = bg.split(".").pop()?.toLowerCase() ?? "png";
           const mime = ext === "jpg" || ext === "jpeg" ? "image/jpeg" : `image/${ext}`;
-          setBgImage(`data:${mime};base64,${b64}`);
+          // Only apply if the user hasn't already removed or replaced the image
+          setBgImage((curr) => (curr === bg ? `data:${mime};base64,${b64}` : curr));
         })
         .catch(() => { /* keep bgImage as bare filename — save will preserve it */ });
     }
@@ -94,7 +97,8 @@ export const ThemeEditor: React.FC<ThemeEditorProps> = ({ initial, onBack, onSav
         .then((b64) => {
           const ext = mf.split(".").pop()?.toLowerCase() ?? "png";
           const mime = ext === "jpg" || ext === "jpeg" ? "image/jpeg" : `image/${ext}`;
-          setMascotFile(`data:${mime};base64,${b64}`);
+          // Only apply if the user hasn't already removed or replaced the mascot
+          setMascotFile((curr) => (curr === mf ? `data:${mime};base64,${b64}` : curr));
         })
         .catch(() => { /* keep mascotFile as bare filename — save will preserve it */ });
     }
@@ -172,6 +176,7 @@ export const ThemeEditor: React.FC<ThemeEditorProps> = ({ initial, onBack, onSav
 
       setMascotAsset(base64);
       setMascotFile(dataUrl);
+      setMascotAssetExt(ext);
       setIsNewMascot(true);
     } catch {
       toast.error("Failed to load mascot image");
@@ -207,7 +212,7 @@ export const ThemeEditor: React.FC<ThemeEditorProps> = ({ initial, onBack, onSav
       // Save mascot asset if a new one was picked
       let finalMascotFile: string | undefined = undefined;
       if (mascotAsset && isNewMascot) {
-        const filename = "mascot.png";
+        const filename = `mascot.${mascotAssetExt}`;
         await invoke("save_theme_asset", {
           themeId: id,
           assetFilename: filename,

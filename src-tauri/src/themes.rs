@@ -297,6 +297,7 @@ pub fn import_pgtheme(src_path: String) -> Result<ThemeManifest, String> {
     // Reject any path component that could escape the intended directories.
     fn is_safe_filename(s: &str) -> bool {
         !s.is_empty()
+            && s != "."
             && !s.contains("..")
             && !s.contains('/')
             && !s.contains('\\')
@@ -362,8 +363,13 @@ pub fn import_pgtheme(src_path: String) -> Result<ThemeManifest, String> {
 
     // Write assets first so that if a write fails the YAML is not yet committed,
     // leaving no partially installed theme.
+    let assets_dir = dir.join("assets").join(&manifest.id);
+    // Remove any previously installed assets for this theme so a re-import
+    // produces exactly the archive contents rather than a merged mix.
+    if assets_dir.exists() {
+        fs::remove_dir_all(&assets_dir).map_err(|e| e.to_string())?;
+    }
     if !asset_files.is_empty() {
-        let assets_dir = dir.join("assets").join(&manifest.id);
         fs::create_dir_all(&assets_dir).map_err(|e| e.to_string())?;
         for (rel_path, bytes) in asset_files {
             fs::write(assets_dir.join(&rel_path), &bytes).map_err(|e| e.to_string())?;
