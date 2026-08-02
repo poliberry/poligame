@@ -310,7 +310,7 @@ const Library: React.FC = () => {
   const activeTheme = useThemeStore((s) => s.activeTheme);
 
   return (
-    <div className="relative flex flex-col gap-4 p-4 h-full w-full pb-8">
+    <div className="relative flex flex-col gap-4 p-4 h-full overflow-x-hidden w-full pb-8">
       {/* Game Roulette Button */}
       {!isLoading && filteredGames.length > 0 && (
         <div className="flex justify-end gap-2">
