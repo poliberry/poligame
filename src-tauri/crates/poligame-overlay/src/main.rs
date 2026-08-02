@@ -19,6 +19,15 @@ mod ui;
 use anyhow::Result;
 
 fn main() -> Result<()> {
+    // On Windows, allocate a console if one doesn't exist (for TUI)
+    #[cfg(windows)]
+    {
+        use windows::Win32::System::Console::*;
+        unsafe {
+            let _ = AllocConsole();
+        }
+    }
+
     let game_title = std::env::var("POLIGAME_GAME_TITLE").ok();
     let game_id    = std::env::var("POLIGAME_GAME_ID").ok();
 

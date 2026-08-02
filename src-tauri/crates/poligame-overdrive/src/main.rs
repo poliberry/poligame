@@ -23,6 +23,15 @@ pub use db::{Game, GameDb};
 pub use ipc::{IpcEvent, send_event};
 
 fn main() -> Result<()> {
+    // On Windows, allocate a console if one doesn't exist (for TUI)
+    #[cfg(windows)]
+    {
+        use windows::Win32::System::Console::*;
+        unsafe {
+            let _ = AllocConsole();
+        }
+    }
+
     let db_path = std::env::var("POLIGAME_DB").ok().unwrap_or_else(|| {
         dirs::data_dir()
             .unwrap_or_default()

@@ -3898,6 +3898,7 @@ dependencies = [
  "serde_json",
  "sqlx",
  "tokio",
+ "windows 0.52.0",
 ]
 
 [[package]]
