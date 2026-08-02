@@ -62,7 +62,46 @@ fn helper_bin(app: &tauri::AppHandle, name: &str) -> Option<PathBuf> {
     let mut path = app.path().resource_dir().ok()?;
     let bin = if cfg!(windows) { format!("{name}.exe") } else { name.to_string() };
     path.push(&bin);
-    if path.exists() { Some(path) } else { None }
+
+    // Try exact name first (for bundled releases)
+    if path.exists() {
+        return Some(path);
+    }
+
+    // Fall back to name with platform triple (for dev builds)
+    let triple = if cfg!(target_os = "windows") {
+        if cfg!(target_arch = "x86_64") {
+            "x86_64-pc-windows-msvc"
+        } else {
+            "i686-pc-windows-msvc"
+        }
+    } else if cfg!(target_os = "macos") {
+        if cfg!(target_arch = "aarch64") {
+            "aarch64-apple-darwin"
+        } else {
+            "x86_64-apple-darwin"
+        }
+    } else if cfg!(target_arch = "x86_64") {
+        "x86_64-unknown-linux-gnu"
+    } else if cfg!(target_arch = "aarch64") {
+        "aarch64-unknown-linux-gnu"
+    } else {
+        return None;
+    };
+
+    path.pop();
+    let bin_with_triple = if cfg!(windows) {
+        format!("{}-{}.exe", name, triple)
+    } else {
+        format!("{}-{}", name, triple)
+    };
+    path.push(bin_with_triple);
+
+    if path.exists() {
+        Some(path)
+    } else {
+        None
+    }
 }
 
 #[derive(Debug, Serialize, Deserialize)]

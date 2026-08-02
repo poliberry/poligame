@@ -34,16 +34,55 @@ fn rpc_bin_path(app: &AppHandle) -> Result<std::path::PathBuf, String> {
 
     let name = if cfg!(windows) { "poligame-rpc.exe" } else { "poligame-rpc" };
     path.push(name);
+
+    // Try exact name first (for bundled releases)
+    if path.exists() {
+        return Ok(path);
+    }
+
+    // Fall back to name with platform triple (for dev builds)
+    let triple = if cfg!(target_os = "windows") {
+        if cfg!(target_arch = "x86_64") {
+            "x86_64-pc-windows-msvc"
+        } else {
+            "i686-pc-windows-msvc"
+        }
+    } else if cfg!(target_os = "macos") {
+        if cfg!(target_arch = "aarch64") {
+            "aarch64-apple-darwin"
+        } else {
+            "x86_64-apple-darwin"
+        }
+    } else if cfg!(target_arch = "x86_64") {
+        "x86_64-unknown-linux-gnu"
+    } else if cfg!(target_arch = "aarch64") {
+        "aarch64-unknown-linux-gnu"
+    } else {
+        return Err("Unknown platform triple".to_string());
+    };
+
+    path.pop();
+    let name_with_triple = if cfg!(windows) {
+        format!("poligame-rpc-{}.exe", triple)
+    } else {
+        format!("poligame-rpc-{}", triple)
+    };
+    path.push(name_with_triple);
+
     Ok(path)
 }
 
 pub fn spawn_rpc_process(app: &AppHandle, state: &DiscordPresenceState) {
-    let Ok(bin) = rpc_bin_path(app) else { return };
+    let Ok(bin) = rpc_bin_path(app) else {
+        eprintln!("[rpc] Failed to resolve resource directory");
+        return;
+    };
     if !bin.exists() {
-        eprintln!("[rpc] binary not found at {}", bin.display());
+        eprintln!("[rpc] Binary not found at {}", bin.display());
         return;
     }
 
+    eprintln!("[rpc] Spawning RPC process from {}", bin.display());
     spawn_rpc_process_with_bin(&bin, state);
 }
 
