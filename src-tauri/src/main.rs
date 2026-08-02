@@ -768,7 +768,7 @@ async fn hide_overdrive_overlay(
 }
 
 /// Called by game-launch code to notify the overlay which game started.
-pub fn notify_overlay_game_started(
+pub(crate) fn notify_overlay_game_started(
     app: &tauri::AppHandle,
     helpers: &HelperProcesses,
     game_title: &str,
@@ -778,7 +778,7 @@ pub fn notify_overlay_game_started(
 }
 
 /// Called when a game exits to tell the overlay.
-pub fn notify_overlay_game_stopped(helpers: &HelperProcesses) {
+pub(crate) fn notify_overlay_game_stopped(helpers: &HelperProcesses) {
     let mut guard = helpers.overlay.lock().unwrap();
     if let Some(ref mut ov) = *guard {
         ov.send(&serde_json::json!({"cmd": "game_stopped"}));

@@ -10,7 +10,7 @@ name = "poligame-overdrive"
 path = "src/main.rs"
 
 [dependencies]
-gpui = "0.2"
+# gpui = "0.2"  # Re-enable when implementing the full render layer (API stub in src/ui/mod.rs)
 gilrs = "0.10"
 sqlx = { version = "0.7", default-features = false, features = ["runtime-tokio-rustls", "sqlite"] }
 serde = { version = "1.0", features = ["derive"] }
