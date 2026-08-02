@@ -8,8 +8,9 @@ import { execSync, spawnSync } from 'child_process';
 import { copyFileSync, mkdirSync, existsSync } from 'fs';
 import { join } from 'path';
 import { platform } from 'os';
+import { fileURLToPath } from 'url';
 
-const ROOT = new URL('..', import.meta.url).pathname.replace(/^\/([A-Z]:)/, '$1');
+const ROOT = fileURLToPath(new URL('..', import.meta.url));
 const TAURI_DIR = join(ROOT, 'src-tauri');
 const BIN_DIR   = join(TAURI_DIR, 'binaries');
 

@@ -44,7 +44,11 @@ pub fn spawn_rpc_process(app: &AppHandle, state: &DiscordPresenceState) {
         return;
     }
 
-    match Command::new(&bin)
+    spawn_rpc_process_with_bin(&bin, state);
+}
+
+fn spawn_rpc_process_with_bin(bin: &std::path::Path, state: &DiscordPresenceState) {
+    match Command::new(bin)
         .stdin(Stdio::piped())
         .stdout(Stdio::null())
         .stderr(Stdio::null())
@@ -96,6 +100,33 @@ fn send(state: &DiscordPresenceState, cmd: serde_json::Value) -> Result<(), Stri
     })
 }
 
+fn send_with_respawn(app: &AppHandle, state: &DiscordPresenceState, cmd: serde_json::Value) -> Result<(), String> {
+    // Check if process is dead and respawn if needed
+    {
+        let mut guard = state.process.lock().unwrap();
+        if let Some(rpc) = guard.as_mut() {
+            if rpc.child.try_wait().map(|s| s.is_some()).unwrap_or(false) {
+                *guard = None;
+            }
+        }
+    }
+
+    // If no process, try to respawn
+    if state.process.lock().unwrap().is_none() {
+        if let Ok(bin) = rpc_bin_path(app) {
+            spawn_rpc_process_with_bin(&bin, state);
+        }
+    }
+
+    // Now try to send
+    send(state, cmd)
+}
+
+// TODO: Consider reading responses from the RPC helper to detect connection failures
+// (e.g. if Discord is not running). Currently, commands are fire-and-forget, so the
+// frontend will report success even if the helper fails to connect to Discord or the
+// IPC pipe breaks. This trades response latency for implementation simplicity.
+
 fn resolve_client_id(from_cmd: Option<String>) -> Option<String> {
     let v = from_cmd
         .as_deref()
@@ -114,13 +145,15 @@ fn resolve_client_id(from_cmd: Option<String>) -> Option<String> {
 
 #[tauri::command]
 pub fn discord_presence_connect(
+    app: AppHandle,
     state: State<'_, DiscordPresenceState>,
     client_id: Option<String>,
 ) -> Result<bool, String> {
     if resolve_client_id(client_id.clone()).is_none() {
         return Ok(false);
     }
-    send(
+    send_with_respawn(
+        &app,
         &state,
         serde_json::json!({ "cmd": "connect", "client_id": client_id }),
     )?;
@@ -129,11 +162,13 @@ pub fn discord_presence_connect(
 
 #[tauri::command]
 pub fn discord_presence_update_launcher(
+    app: AppHandle,
     state: State<'_, DiscordPresenceState>,
     route: Option<String>,
     client_id: Option<String>,
 ) -> Result<(), String> {
-    send(
+    send_with_respawn(
+        &app,
         &state,
         serde_json::json!({ "cmd": "update_launcher", "route": route, "client_id": client_id }),
     )
@@ -141,6 +176,7 @@ pub fn discord_presence_update_launcher(
 
 #[tauri::command]
 pub fn discord_presence_update_game(
+    app: AppHandle,
     state: State<'_, DiscordPresenceState>,
     game_title: String,
     launcher: Option<String>,
@@ -148,7 +184,8 @@ pub fn discord_presence_update_game(
     start_timestamp: Option<i64>,
     client_id: Option<String>,
 ) -> Result<(), String> {
-    send(
+    send_with_respawn(
+        &app,
         &state,
         serde_json::json!({
             "cmd": "update_game",
@@ -162,6 +199,9 @@ pub fn discord_presence_update_game(
 }
 
 #[tauri::command]
-pub fn discord_presence_clear(state: State<'_, DiscordPresenceState>) -> Result<(), String> {
-    send(&state, serde_json::json!({ "cmd": "clear" }))
+pub fn discord_presence_clear(
+    app: AppHandle,
+    state: State<'_, DiscordPresenceState>,
+) -> Result<(), String> {
+    send_with_respawn(&app, &state, serde_json::json!({ "cmd": "clear" }))
 }

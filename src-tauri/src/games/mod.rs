@@ -1194,6 +1194,7 @@ use sysinfo::{System};
 pub async fn launch_game(
     app: tauri::AppHandle,
     game_id: String,
+    helpers: tauri::State<'_, crate::HelperProcesses>,
 ) -> Result<(), String> {
 
     use std::{
@@ -1357,8 +1358,6 @@ pub async fn launch_game(
     let game_id_clone = game_id.clone();
     let launch_id_clone = launch_id.clone();
     let game_clone = game.clone();
-
-
 
     tauri::async_runtime::spawn(async move {
         struct LaunchInProgressGuard;
@@ -1567,6 +1566,16 @@ pub async fn launch_game(
                         "started",
                         "Game started!"
                     );
+
+                    // Notify overlay which game started
+                    if let Some(helpers) = app_handle.try_state::<crate::HelperProcesses>() {
+                        crate::notify_overlay_game_started(
+                            &app_handle,
+                            helpers.inner(),
+                            &game.title,
+                            &game_id_clone,
+                        );
+                    }
 
                     break;
                 }

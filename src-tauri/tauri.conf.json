@@ -3,7 +3,7 @@
   "version": "1.3.5",
   "identifier": "com.poliberry.gameApp",
   "build": {
-    "beforeDevCommand": "npm run dev:web",
+    "beforeDevCommand": "npm run build:helpers && npm run dev:web",
     "beforeBuildCommand": "npm run build:helpers && npm run build:frontend",
     "frontendDist": "../dist",
     "devUrl": "http://localhost:1420"

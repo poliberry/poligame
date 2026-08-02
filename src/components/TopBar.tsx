@@ -100,16 +100,7 @@ export const TopBar: React.FC = () => {
 
   const handleEnterOverdrive = async () => {
     try {
-      // Navigate first, then set fullscreen
-      navigate("/overdrive");
-      // Small delay to ensure navigation completes before setting fullscreen
-      setTimeout(async () => {
-        try {
-          await invoke("enter_overdrive_mode");
-        } catch (error) {
-          console.error("Failed to enter Overdrive mode:", error);
-        }
-      }, 100);
+      await invoke("enter_overdrive_mode");
     } catch (error) {
       console.error("Failed to enter Overdrive mode:", error);
     }

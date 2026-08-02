@@ -26,11 +26,11 @@ impl GameDb {
         let pool = SqlitePool::connect(&format!("sqlite://{}?mode=ro", db_path)).await?;
 
         let rows = sqlx::query(
-            "SELECT id, title, launcher, cover_art, grid_cover, header_image,
-                    COALESCE(playtime_seconds, 0) AS playtime_seconds,
-                    last_played, description, executable, steam_app_id
+            "SELECT id, title, launcher, cover_art, grid_cover_art, header_art,
+                    COALESCE(playtime_minutes, 0) * 60 AS playtime_seconds,
+                    last_played, description, executable_path, steam_app_id
              FROM games
-             ORDER BY COALESCE(playtime_seconds, 0) DESC, title ASC",
+             ORDER BY COALESCE(playtime_minutes, 0) DESC, title ASC",
         )
         .fetch_all(&pool)
         .await?;
@@ -44,12 +44,12 @@ impl GameDb {
                 title:            r.try_get("title").unwrap_or_default(),
                 launcher:         r.try_get("launcher").ok(),
                 cover_art:        r.try_get("cover_art").ok(),
-                grid_cover:       r.try_get("grid_cover").ok(),
-                header_image:     r.try_get("header_image").ok(),
+                grid_cover:       r.try_get("grid_cover_art").ok(),
+                header_image:     r.try_get("header_art").ok(),
                 playtime_seconds: r.try_get("playtime_seconds").unwrap_or(0),
                 last_played:      r.try_get("last_played").ok(),
                 description:      r.try_get("description").ok(),
-                executable:       r.try_get("executable").ok(),
+                executable:       r.try_get("executable_path").ok(),
                 steam_app_id:     r.try_get("steam_app_id").ok(),
             })
             .collect();

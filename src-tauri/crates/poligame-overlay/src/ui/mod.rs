@@ -85,7 +85,7 @@ pub fn run(
     cmd_rx: std::sync::mpsc::Receiver<Command>,
 ) {
     let cmd_rx = Arc::new(Mutex::new(cmd_rx));
-    let (gp_tx, _gp_rx) = std::sync::mpsc::channel::<GamepadEvent>();
+    let (gp_tx, gp_rx) = std::sync::mpsc::channel::<GamepadEvent>();
     spawn_gamepad_thread(gp_tx);
 
     eprintln!("[overlay] UI run() stub — gpui 0.2.x rendering not yet implemented");
@@ -98,6 +98,10 @@ pub fn run(
         match cmd_rx.lock().unwrap().recv() {
             Ok(Command::Quit) | Err(_) => break,
             Ok(cmd) => eprintln!("[overlay] cmd: {cmd:?}"),
+        }
+        // Drain gamepad events to avoid channel buffer leak
+        while let Ok(_ev) = gp_rx.try_recv() {
+            // Events will be handled when gpui render is implemented
         }
     }
 
