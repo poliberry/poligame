@@ -308,18 +308,9 @@ const Library: React.FC = () => {
     !searchQuery && filterLauncher === "all" && viewMode === "grid";
 
   const activeTheme = useThemeStore((s) => s.activeTheme);
-  const bgImage = activeTheme?.appearance?.background_image;
-  const bgOpacity = activeTheme?.appearance?.background_image_opacity ?? 0.15;
 
   return (
     <div className="relative flex flex-col gap-4 p-4 h-full w-full pb-8">
-      {bgImage && (
-        <div
-          className="absolute inset-0 -z-10 bg-cover bg-center bg-no-repeat pointer-events-none"
-          style={{ backgroundImage: `url(${bgImage})`, opacity: bgOpacity }}
-          aria-hidden="true"
-        />
-      )}
       {/* Game Roulette Button */}
       {!isLoading && filteredGames.length > 0 && (
         <div className="flex justify-end gap-2">
