@@ -17,7 +17,10 @@ mod themes;
 
 use serde::{Deserialize, Serialize};
 use std::fs;
+use std::io::Write;
 use std::path::PathBuf;
+use std::process::{Child, ChildStdin, Stdio};
+use std::sync::Mutex;
 use tauri::{Manager, PhysicalPosition, Position};
 use tauri_plugin_notification::NotificationExt;
 
@@ -25,7 +28,42 @@ const TRAY_PANEL_LABEL: &str = "tray-panel";
 const TRAY_ICON_ID: &str = "main-tray";
 const TRAY_PANEL_WIDTH: i32 = 360;
 const TRAY_PANEL_HEIGHT: i32 = 520;
-const OVERDRIVE_OVERLAY_LABEL: &str = "overdrive-overlay";
+
+// ─── Helper process state ────────────────────────────────────────────────────
+
+struct HelperChild {
+    child: Child,
+    stdin: ChildStdin,
+}
+
+impl HelperChild {
+    fn send(&mut self, cmd: &serde_json::Value) {
+        let mut line = serde_json::to_string(cmd).unwrap_or_default();
+        line.push('\n');
+        let _ = self.stdin.write_all(line.as_bytes());
+    }
+}
+
+struct HelperProcesses {
+    overdrive: Mutex<Option<HelperChild>>,
+    overlay: Mutex<Option<HelperChild>>,
+}
+
+impl HelperProcesses {
+    fn new() -> Self {
+        Self {
+            overdrive: Mutex::new(None),
+            overlay: Mutex::new(None),
+        }
+    }
+}
+
+fn helper_bin(app: &tauri::AppHandle, name: &str) -> Option<PathBuf> {
+    let mut path = app.path().resource_dir().ok()?;
+    let bin = if cfg!(windows) { format!("{name}.exe") } else { name.to_string() };
+    path.push(&bin);
+    if path.exists() { Some(path) } else { None }
+}
 
 #[derive(Debug, Serialize, Deserialize)]
 struct SetupState {
@@ -616,63 +654,135 @@ fn apply_windows_webview2_video_workaround() {
     std::env::set_var("WEBVIEW2_ADDITIONAL_BROWSER_ARGUMENTS", combined);
 }
 
-#[tauri::command]
-fn enter_overdrive_mode(app: tauri::AppHandle) -> Result<(), String> {
-    use tauri::Manager;
-    
-    if let Some(window) = app.get_webview_window("main") {
-        window.set_fullscreen(true).map_err(|e| e.to_string())?;
-    }
-    Ok(())
-}
+// ─── Overdrive — spawns the poligame-overdrive helper ────────────────────────
 
 #[tauri::command]
-fn exit_overdrive_mode(app: tauri::AppHandle) -> Result<(), String> {
-    use tauri::Manager;
+fn enter_overdrive_mode(
+    app: tauri::AppHandle,
+    helpers: tauri::State<'_, HelperProcesses>,
+) -> Result<(), String> {
+    let Some(bin) = helper_bin(&app, "poligame-overdrive") else {
+        return Err(
+            "Overdrive is not installed. Re-run the PoliGame installer and enable the Overdrive component.".into(),
+        );
+    };
 
-    if let Some(window) = app.get_webview_window("main") {
-        window.set_fullscreen(false).map_err(|e| e.to_string())?;
+    let db_path = app
+        .path()
+        .app_local_data_dir()
+        .map(|p| p.join("poligame.db").to_string_lossy().into_owned())
+        .unwrap_or_default();
+
+    let mut child = std::process::Command::new(&bin)
+        .env("POLIGAME_DB", &db_path)
+        .stdin(Stdio::piped())
+        .stdout(Stdio::null())
+        .stderr(Stdio::null())
+        .spawn()
+        .map_err(|e| format!("Failed to launch Overdrive: {e}"))?;
+
+    let stdin = child.stdin.take().ok_or("Failed to get Overdrive stdin")?;
+
+    let mut guard = helpers.overdrive.lock().unwrap();
+    if let Some(mut old) = guard.take() {
+        old.send(&serde_json::json!({"cmd": "quit"}));
+        let _ = old.child.wait();
     }
-    Ok(())
-}
-
-fn do_show_overdrive_overlay(app: &tauri::AppHandle) -> tauri::Result<()> {
-    use tauri::Manager;
-
-    if let Some(window) = app.get_webview_window(OVERDRIVE_OVERLAY_LABEL) {
-        window.show()?;
-        window.set_focus()?;
-        return Ok(());
-    }
-
-    tauri::WebviewWindowBuilder::new(
-        app,
-        OVERDRIVE_OVERLAY_LABEL,
-        tauri::WebviewUrl::App("index.html/#/overdrive-overlay".into()),
-    )
-    .title("Overdrive Overlay")
-    .transparent(true)
-    .decorations(false)
-    .always_on_top(true)
-    .skip_taskbar(true)
-    .fullscreen(true)
-    .build()?;
+    *guard = Some(HelperChild { child, stdin });
 
     Ok(())
 }
 
 #[tauri::command]
-async fn show_overdrive_overlay(app: tauri::AppHandle) -> Result<(), String> {
-    do_show_overdrive_overlay(&app).map_err(|e| e.to_string())
+fn exit_overdrive_mode(
+    helpers: tauri::State<'_, HelperProcesses>,
+) -> Result<(), String> {
+    let mut guard = helpers.overdrive.lock().unwrap();
+    if let Some(mut od) = guard.take() {
+        od.send(&serde_json::json!({"cmd": "quit"}));
+        let _ = od.child.wait();
+    }
+    Ok(())
+}
+
+// ─── Overlay — spawns the poligame-overlay helper ────────────────────────────
+
+fn ensure_overlay_running(
+    app: &tauri::AppHandle,
+    helpers: &HelperProcesses,
+    game_title: Option<&str>,
+    game_id: Option<&str>,
+) -> Result<(), String> {
+    let mut guard = helpers.overlay.lock().unwrap();
+
+    // Re-use existing process if alive
+    if let Some(ref mut ov) = *guard {
+        if ov.child.try_wait().map(|s| s.is_none()).unwrap_or(false) {
+            ov.send(&serde_json::json!({"cmd": "show"}));
+            return Ok(());
+        }
+        // Process died — fall through to respawn
+        *guard = None;
+    }
+
+    let Some(bin) = helper_bin(app, "poligame-overlay") else {
+        return Err("Game overlay is not installed. Re-run the PoliGame installer and enable the Game Overlay component.".into());
+    };
+
+    let mut cmd = std::process::Command::new(&bin);
+    if let Some(t) = game_title { cmd.env("POLIGAME_GAME_TITLE", t); }
+    if let Some(i) = game_id   { cmd.env("POLIGAME_GAME_ID", i); }
+
+    let mut child = cmd
+        .stdin(Stdio::piped())
+        .stdout(Stdio::null())
+        .stderr(Stdio::null())
+        .spawn()
+        .map_err(|e| format!("Failed to launch overlay: {e}"))?;
+
+    let stdin = child.stdin.take().ok_or("Failed to get overlay stdin")?;
+    let mut helper = HelperChild { child, stdin };
+    helper.send(&serde_json::json!({"cmd": "show"}));
+    *guard = Some(helper);
+
+    Ok(())
 }
 
 #[tauri::command]
-async fn hide_overdrive_overlay(app: tauri::AppHandle) -> Result<(), String> {
-    use tauri::Manager;
-    if let Some(window) = app.get_webview_window(OVERDRIVE_OVERLAY_LABEL) {
-        window.hide().map_err(|e| e.to_string())?;
+async fn show_overdrive_overlay(
+    app: tauri::AppHandle,
+    helpers: tauri::State<'_, HelperProcesses>,
+) -> Result<(), String> {
+    ensure_overlay_running(&app, &helpers, None, None)
+}
+
+#[tauri::command]
+async fn hide_overdrive_overlay(
+    helpers: tauri::State<'_, HelperProcesses>,
+) -> Result<(), String> {
+    let mut guard = helpers.overlay.lock().unwrap();
+    if let Some(ref mut ov) = *guard {
+        ov.send(&serde_json::json!({"cmd": "hide"}));
     }
     Ok(())
+}
+
+/// Called by game-launch code to notify the overlay which game started.
+pub fn notify_overlay_game_started(
+    app: &tauri::AppHandle,
+    helpers: &HelperProcesses,
+    game_title: &str,
+    game_id: &str,
+) {
+    let _ = ensure_overlay_running(app, helpers, Some(game_title), Some(game_id));
+}
+
+/// Called when a game exits to tell the overlay.
+pub fn notify_overlay_game_stopped(helpers: &HelperProcesses) {
+    let mut guard = helpers.overlay.lock().unwrap();
+    if let Some(ref mut ov) = *guard {
+        ov.send(&serde_json::json!({"cmd": "game_stopped"}));
+    }
 }
 
 #[tauri::command]
@@ -701,9 +811,10 @@ fn main() {
         let env_path = std::path::Path::new(&manifest_dir).join(".env");
         dotenv::from_path(&env_path).ok();
     }
-    
+
     tauri::Builder::default()
         .manage(discord_presence::DiscordPresenceState::new())
+        .manage(HelperProcesses::new())
         .plugin(tauri_plugin_shell::init())
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_fs::init())
@@ -725,6 +836,12 @@ fn main() {
                 eprintln!("Failed to initialize themes: {}", e);
             }
 
+            // Spawn the Discord RPC helper process
+            {
+                let rpc_state = app.state::<discord_presence::DiscordPresenceState>();
+                discord_presence::spawn_rpc_process(app.handle(), &rpc_state);
+            }
+
             // Register global shortcut Ctrl+Shift+F9 to show/hide the in-game overlay
             {
                 use tauri_plugin_global_shortcut::{Code, GlobalShortcutExt, Modifiers, Shortcut, ShortcutState};
@@ -733,7 +850,8 @@ fn main() {
                     if event.state == ShortcutState::Pressed {
                         let h = app_handle.clone();
                         tauri::async_runtime::spawn(async move {
-                            let _ = show_overdrive_overlay(h).await;
+                            let helpers = h.state::<HelperProcesses>();
+                            let _ = show_overdrive_overlay(h.clone(), helpers).await;
                         });
                     }
                 })?;
@@ -769,10 +887,7 @@ fn main() {
         })
         .on_window_event(|window, event| match event {
             tauri::WindowEvent::CloseRequested { api, .. } => {
-                if window.label() == "main"
-                    || window.label() == TRAY_PANEL_LABEL
-                    || window.label() == OVERDRIVE_OVERLAY_LABEL
-                {
+                if window.label() == "main" || window.label() == TRAY_PANEL_LABEL {
                     api.prevent_close();
                     let _ = window.hide();
                 }
