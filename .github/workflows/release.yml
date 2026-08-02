@@ -31,10 +31,10 @@ jobs:
           - platform: 'macos-latest'
             args: '--target x86_64-apple-darwin'
             arch: 'x86_64'
-          - platform: 'ubuntu-22.04'
+          - platform: 'blacksmith-4vcpu-ubuntu-2404'
             args: '--bundles appimage'
             arch: 'x64'
-          - platform: 'windows-latest'
+          - platform: 'blacksmith-4vcpu-windows-2025'
             args: ''
             arch: 'x64'
 
@@ -58,7 +58,7 @@ jobs:
           targets: ${{ matrix.platform == 'macos-latest' && 'aarch64-apple-darwin,x86_64-apple-darwin' || '' }}
 
       - name: Install dependencies (ubuntu only)
-        if: matrix.platform == 'ubuntu-22.04'
+        if: matrix.platform == 'blacksmith-4vcpu-ubuntu-2404'
         run: |
           sudo apt-get update
           sudo apt-get install -y \
@@ -125,6 +125,18 @@ jobs:
 
           ls -la release-assets/
 
+      - name: Verify bundle signatures
+        shell: bash
+        run: |
+          SIG_FILES=$(find release-assets -name "*.sig" 2>/dev/null || true)
+          if [ -z "$SIG_FILES" ]; then
+            echo "ERROR: No .sig files found in release-assets/."
+            echo "Ensure TAURI_PRIVATE_KEY and TAURI_KEY_PASSWORD secrets are set in repository settings."
+            exit 1
+          fi
+          echo "Signature files found:"
+          echo "$SIG_FILES"
+
       - name: Upload artifacts
         uses: actions/upload-artifact@v4
         with:
@@ -134,11 +146,16 @@ jobs:
 
   publish-release:
     needs: release
-    runs-on: ubuntu-latest
+    runs-on: blacksmith-4vcpu-ubuntu-2404
     permissions:
       contents: write
 
     steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          path: repo
+
       - name: Download all artifacts
         uses: actions/download-artifact@v4
         with:
@@ -156,17 +173,18 @@ jobs:
           VERSION="${{ needs.release.outputs.version }}"
           BASE="https://github.com/poliberry/poligame/releases/download/v${VERSION}"
 
-          # Discover artifacts and read signatures into named variables.
-          # Minisign .sig files are multi-line; jq --arg handles newline
-          # escaping so the resulting JSON is always valid.
+          # Read signatures — cat will fail with a clear error if a .sig file is
+          # missing (e.g. because TAURI_PRIVATE_KEY secret is not configured).
+          # Do not add 2>/dev/null fallbacks here; an empty signature silently
+          # breaks the in-app updater's signature verification for all users.
           MACOS_AARCH64="${BASE}/PoliGame_aarch64.app.tar.gz"
-          MACOS_AARCH64_SIG=$(cat release-assets/PoliGame_aarch64.app.tar.gz.sig 2>/dev/null || echo '')
+          MACOS_AARCH64_SIG=$(cat release-assets/PoliGame_aarch64.app.tar.gz.sig)
           MACOS_X86_64="${BASE}/PoliGame_x86_64.app.tar.gz"
-          MACOS_X86_64_SIG=$(cat release-assets/PoliGame_x86_64.app.tar.gz.sig 2>/dev/null || echo '')
+          MACOS_X86_64_SIG=$(cat release-assets/PoliGame_x86_64.app.tar.gz.sig)
           LINUX="${BASE}/PoliGame_${VERSION}_amd64.AppImage.tar.gz"
-          LINUX_SIG=$(cat release-assets/PoliGame_${VERSION}_amd64.AppImage.tar.gz.sig 2>/dev/null || echo '')
+          LINUX_SIG=$(cat release-assets/PoliGame_${VERSION}_amd64.AppImage.tar.gz.sig)
           WINDOWS="${BASE}/PoliGame_${VERSION}_x64-setup.nsis.zip"
-          WINDOWS_SIG=$(cat release-assets/PoliGame_${VERSION}_x64-setup.nsis.zip.sig 2>/dev/null || echo '')
+          WINDOWS_SIG=$(cat release-assets/PoliGame_${VERSION}_x64-setup.nsis.zip.sig)
 
           jq -n \
             --arg version "$VERSION" \
@@ -198,10 +216,7 @@ jobs:
           token: ${{ secrets.GITHUB_TOKEN }}
           tag_name: v${{ needs.release.outputs.version }}
           name: Release v${{ needs.release.outputs.version }}
-          body: |
-            ## PoliGame v${{ needs.release.outputs.version }}
-
-            Version bump.
+          body_path: repo/release-notes.md
           files: |
             release-assets/*.msi
             release-assets/*.exe

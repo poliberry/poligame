@@ -43,9 +43,12 @@ const Settings: React.FC = () => {
   const [isCheckingUpdates, setIsCheckingUpdates] = useState(false);
   const [isInstallingUpdate, setIsInstallingUpdate] = useState(false);
   const [updateMessage, setUpdateMessage] = useState<string | null>(null);
+  const [isRestartPending, setIsRestartPending] = useState(false);
+  const [appVersion, setAppVersion] = useState<string>("");
 
   useEffect(() => {
     loadSettings();
+    invoke<string>("get_app_version").then(setAppVersion).catch(() => {});
   }, []);
 
   useEffect(() => {
@@ -134,7 +137,10 @@ const Settings: React.FC = () => {
 
     try {
       const updated = await invoke<boolean>("install_app_update");
-      if (!updated) {
+      if (updated) {
+        setIsRestartPending(true);
+        setUpdateMessage("Update installed. Restart PoliGame to apply it.");
+      } else {
         setUpdateMessage("No update available right now.");
       }
     } catch (error) {
@@ -142,6 +148,15 @@ const Settings: React.FC = () => {
       setUpdateMessage(message);
     } finally {
       setIsInstallingUpdate(false);
+    }
+  };
+
+  const handleRestartApp = async () => {
+    try {
+      await invoke("restart_app");
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Failed to restart.";
+      setUpdateMessage(message);
     }
   };
 
@@ -560,7 +575,7 @@ const Settings: React.FC = () => {
                   <p>
                     <strong>PoliGame</strong>
                   </p>
-                  <p>Version 1.0.0</p>
+                  <p>Version {appVersion || "…"}</p>
                   <p>Game aggregator with marketplace functionality</p>
                 </div>
                 <div className="mt-6 space-y-3">
@@ -568,19 +583,25 @@ const Settings: React.FC = () => {
                   <div className="flex flex-wrap gap-2">
                     <Button
                       onClick={() => void handleCheckForUpdates()}
-                      disabled={isCheckingUpdates || isInstallingUpdate}
+                      disabled={isCheckingUpdates || isInstallingUpdate || isRestartPending}
                     >
                       {isCheckingUpdates ? "Checking..." : "Check for Updates"}
                     </Button>
-                    <Button
-                      variant="outline"
-                      onClick={() => void handleInstallUpdate()}
-                      disabled={!updateInfo?.available || isCheckingUpdates || isInstallingUpdate}
-                    >
-                      {isInstallingUpdate ? "Installing..." : "Install Update"}
-                    </Button>
+                    {isRestartPending ? (
+                      <Button onClick={() => void handleRestartApp()}>
+                        Restart Now
+                      </Button>
+                    ) : (
+                      <Button
+                        variant="outline"
+                        onClick={() => void handleInstallUpdate()}
+                        disabled={!updateInfo?.available || isCheckingUpdates || isInstallingUpdate}
+                      >
+                        {isInstallingUpdate ? "Installing..." : "Install Update"}
+                      </Button>
+                    )}
                   </div>
-                  {updateInfo?.available && (
+                  {updateInfo?.available && !isRestartPending && (
                     <p className="text-sm text-foreground/70">
                       New version {updateInfo.version} is available. Current version: {updateInfo.current_version}
                     </p>

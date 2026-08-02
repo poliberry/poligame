@@ -7,6 +7,7 @@ import { useAuthStore } from "@/stores/authStore";
 import { Button } from "@/components/ui/button";
 import { X, AlertTriangle } from "lucide-react";
 import { toast } from "sonner";
+import { isPostHogInitialized, posthog } from "@/lib/posthog";
 
 interface DeleteCustomAppDialogProps {
   isOpen: boolean;
@@ -48,6 +49,9 @@ export const DeleteCustomAppDialog: React.FC<DeleteCustomAppDialogProps> = ({
         }
       }
 
+      if (isPostHogInitialized) {
+        posthog.capture("game_custom_app_removed", { game_id: gameId });
+      }
       toast.success("App removed successfully");
       try {
         await onSuccess();

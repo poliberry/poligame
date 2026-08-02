@@ -11,6 +11,13 @@ fn rewrite_icon_variant_url(url: &str) -> String {
         return url.to_string();
     };
 
+    // The /32/128x128.png path variant is SteamGridDB-specific. Applying this
+    // rewrite to other CDNs (e.g. media.steampowered.com) produces a 404 that
+    // Discord silently ignores, leaving the large_image slot empty.
+    if parsed.host_str() != Some("cdn2.steamgriddb.com") {
+        return url.to_string();
+    }
+
     let path = parsed.path();
     if path.ends_with("/32/128x128.png") {
         return parsed.to_string();

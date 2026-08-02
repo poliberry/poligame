@@ -12,6 +12,7 @@ import { useAuthStore } from "@/stores/authStore";
 import { ExternalLink, Loader2, RefreshCw, Search, X } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
+import { isPostHogInitialized, posthog } from "@/lib/posthog";
 
 interface InstalledProgram {
   name: string;
@@ -263,6 +264,12 @@ export const AddCustomAppDialog: React.FC<AddCustomAppDialogProps> = ({
         }
       }
 
+      if (isPostHogInitialized) {
+        posthog.capture("game_custom_app_added", {
+          add_mode: mode,
+          has_steamgriddb_artwork: Boolean(selectedSteamGridDbArtwork),
+        });
+      }
       toast.success("Custom app added successfully");
       setTitle("");
       setExecutablePath("");

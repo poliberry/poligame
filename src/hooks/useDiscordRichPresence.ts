@@ -8,6 +8,10 @@ import { Game } from "@/types";
 const DISCORD_CLIENT_ID = import.meta.env.VITE_DISCORD_CLIENT_ID as string | undefined;
 const RECONNECT_INTERVAL_MS = 30_000;
 const HEARTBEAT_INTERVAL_MS = 15_000;
+// How long to wait before switching Discord to "launcher" mode after runningGame
+// clears. Prevents brief process-detection gaps (launcher handoff, IPC reconnect
+// window) from causing a visible flicker between game and launcher statuses.
+const LAUNCHER_DEBOUNCE_MS = 8_000;
 
 type PresencePayload =
   | {
@@ -53,17 +57,20 @@ function pickPublicArtworkUrl(game: Game): string | undefined {
     customHeroArt?: string;
   };
 
+  // Prefer large, reliable HTTPS images (Steam CDN cover/grid) over the small
+  // app icon, which is often a local .ico file or a 128×128 px SteamGridDB
+  // thumbnail — both of which Discord either can't fetch or won't display.
   const candidates = [
-    artwork.icon,
-    artwork.customLogo,
-    artwork.logoArt,
-    artwork.logo,
-    artwork.headerArt,
-    artwork.customHeroArt,
     artwork.coverArt,
     artwork.customCoverArt,
     artwork.gridCoverArt,
     artwork.customGridCoverArt,
+    artwork.headerArt,
+    artwork.customHeroArt,
+    artwork.logoArt,
+    artwork.customLogo,
+    artwork.logo,
+    artwork.icon,
   ];
 
   for (const candidate of candidates) {
@@ -82,6 +89,14 @@ export function useDiscordRichPresence(enabled: boolean = true) {
   const [isConnected, setIsConnected] = useState(false);
   const [sendTick, setSendTick] = useState(0);
   const previousPayloadRef = useRef<string>("");
+  // Stamped when runningGame transitions to null; launcher updates are deferred
+  // until this timestamp passes so transient detection gaps don't flash Discord.
+  const gameModeCooldownEndRef = useRef<number>(0);
+  const launcherDebounceTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  // Tracks the previous runningGame value so we can detect the non-null → null
+  // transition and stamp the cooldown at the right moment — when the game clears,
+  // not when the last game update was sent (which may be much earlier).
+  const wasRunningRef = useRef<boolean>(false);
 
   const payload = useMemo<PresencePayload>(() => {
     if (!runningGame) {
@@ -101,6 +116,18 @@ export function useDiscordRichPresence(enabled: boolean = true) {
         : undefined,
     };
   }, [location.pathname, runningGame, runningGameStartedAt]);
+
+  // Stamp the cooldown the moment runningGame clears, not when a game update is
+  // sent. This means the window is correctly anchored to when the game actually
+  // disappears — so the debounce still works when Discord is mid-reconnect and
+  // isConnected is false (the update effect doesn't run during that gap).
+  useEffect(() => {
+    const isRunning = runningGame !== null;
+    if (wasRunningRef.current && !isRunning) {
+      gameModeCooldownEndRef.current = Date.now() + LAUNCHER_DEBOUNCE_MS;
+    }
+    wasRunningRef.current = isRunning;
+  }, [runningGame]);
 
   // Attempt connection on mount and retry every 30 s until connected. Re-runs
   // when isConnected drops to false (e.g. after a failed update) to recover.
@@ -143,6 +170,10 @@ export function useDiscordRichPresence(enabled: boolean = true) {
     }
 
     return () => {
+      if (launcherDebounceTimerRef.current !== null) {
+        clearTimeout(launcherDebounceTimerRef.current);
+        launcherDebounceTimerRef.current = null;
+      }
       setIsConnected(false);
       previousPayloadRef.current = "";
       void invoke("discord_presence_clear").catch(() => undefined);
@@ -164,6 +195,10 @@ export function useDiscordRichPresence(enabled: boolean = true) {
 
     appWindow
       .onCloseRequested(() => {
+        if (launcherDebounceTimerRef.current !== null) {
+          clearTimeout(launcherDebounceTimerRef.current);
+          launcherDebounceTimerRef.current = null;
+        }
         setIsConnected(false);
         previousPayloadRef.current = "";
         void invoke("discord_presence_clear").catch(() => undefined);
@@ -209,6 +244,11 @@ export function useDiscordRichPresence(enabled: boolean = true) {
     const update = async () => {
       try {
         if (payload.mode === "game") {
+          // Cancel any pending launcher debounce — game is back.
+          if (launcherDebounceTimerRef.current !== null) {
+            clearTimeout(launcherDebounceTimerRef.current);
+            launcherDebounceTimerRef.current = null;
+          }
           await invoke("discord_presence_update_game", {
             gameTitle: payload.gameTitle,
             launcher: payload.launcher,
@@ -219,11 +259,30 @@ export function useDiscordRichPresence(enabled: boolean = true) {
           return;
         }
 
+        // Launcher mode: defer the update while the cooldown is still active so
+        // a brief runningGame null (e.g. game launcher handoff, IPC reconnect gap)
+        // doesn't flash "Browsing launcher" before the game is re-detected.
+        const remaining = gameModeCooldownEndRef.current - Date.now();
+        if (remaining > 0) {
+          if (launcherDebounceTimerRef.current === null) {
+            launcherDebounceTimerRef.current = setTimeout(() => {
+              launcherDebounceTimerRef.current = null;
+              previousPayloadRef.current = "";
+              setSendTick((t) => t + 1);
+            }, remaining);
+          }
+          return;
+        }
+
         await invoke("discord_presence_update_launcher", {
           route: payload.route,
           clientId: DISCORD_CLIENT_ID,
         });
       } catch (error) {
+        if (launcherDebounceTimerRef.current !== null) {
+          clearTimeout(launcherDebounceTimerRef.current);
+          launcherDebounceTimerRef.current = null;
+        }
         console.debug("Discord Rich Presence update failed:", error);
         // The IPC connection was likely lost; reset so reconnection is attempted.
         setIsConnected(false);

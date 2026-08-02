@@ -5,6 +5,13 @@ import { readFile } from "@tauri-apps/plugin-fs";
 import { useThemeStore } from "@/stores/themeStore";
 import type { ThemeManifest, ThemeColors, ThemeTypography, ThemeAppearance } from "@/types/theme";
 import { Button } from "@/components/ui/button";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { ArrowLeft, AlertTriangle, RefreshCw } from "lucide-react";
 import { toast } from "sonner";
 
@@ -59,6 +66,10 @@ export const ThemeEditor: React.FC<ThemeEditorProps> = ({ initial, onBack, onSav
   const [isSaving, setIsSaving] = useState(false);
   const [bgImageAsset, setBgImageAsset] = useState<string | null>(null);
   const [isNewBgImage, setIsNewBgImage] = useState(false);
+  const [mascotFile, setMascotFile] = useState(initial?.mascot_file ?? "");
+  const [mascotAsset, setMascotAsset] = useState<string | null>(null);
+  const [isNewMascot, setIsNewMascot] = useState(false);
+  const [mascotAssetExt, setMascotAssetExt] = useState("png");
 
   const isEditing = !!initial;
   const themeId = initial?.id ?? generateId(name);
@@ -67,6 +78,37 @@ export const ThemeEditor: React.FC<ThemeEditorProps> = ({ initial, onBack, onSav
     invoke<string[]>("get_system_fonts")
       .then(setSystemFonts)
       .catch(() => setSystemFonts(["system-ui", "sans-serif", "serif", "monospace"]));
+  }, []);
+
+  // Resolve bare filenames to data URLs for preview only.
+  // Uses a functional updater that only applies the result if the state hasn't
+  // changed since the request was made (guards against Remove/replace races).
+  useEffect(() => {
+    if (!initial?.id) return;
+
+    const bg = initial.appearance?.background_image;
+    if (bg && !bg.startsWith("data:") && !bg.startsWith("http")) {
+      invoke<string>("get_theme_asset_base64", { themeId: initial.id, assetFilename: bg })
+        .then((b64) => {
+          const ext = bg.split(".").pop()?.toLowerCase() ?? "png";
+          const mime = ext === "jpg" || ext === "jpeg" ? "image/jpeg" : `image/${ext}`;
+          // Only apply if the user hasn't already removed or replaced the image
+          setBgImage((curr) => (curr === bg ? `data:${mime};base64,${b64}` : curr));
+        })
+        .catch(() => { /* keep bgImage as bare filename — save will preserve it */ });
+    }
+
+    const mf = initial.mascot_file;
+    if (mf && !mf.startsWith("data:") && !mf.startsWith("http")) {
+      invoke<string>("get_theme_asset_base64", { themeId: initial.id, assetFilename: mf })
+        .then((b64) => {
+          const ext = mf.split(".").pop()?.toLowerCase() ?? "png";
+          const mime = ext === "jpg" || ext === "jpeg" ? "image/jpeg" : `image/${ext}`;
+          // Only apply if the user hasn't already removed or replaced the mascot
+          setMascotFile((curr) => (curr === mf ? `data:${mime};base64,${b64}` : curr));
+        })
+        .catch(() => { /* keep mascotFile as bare filename — save will preserve it */ });
+    }
   }, []);
 
   const checkFont = (family: string) => {
@@ -120,6 +162,34 @@ export const ThemeEditor: React.FC<ThemeEditorProps> = ({ initial, onBack, onSav
     }
   };
 
+  const handlePickMascot = async () => {
+    try {
+      const selected = await open({
+        filters: [{ name: "Image", extensions: ["png", "jpg", "jpeg", "webp", "gif"] }],
+        multiple: false,
+      });
+      if (!selected) return;
+
+      const bytes = await readFile(selected as string);
+      const CHUNK = 0x8000;
+      let binary = "";
+      for (let i = 0; i < bytes.length; i += CHUNK) {
+        binary += String.fromCharCode(...bytes.subarray(i, i + CHUNK));
+      }
+      const base64 = btoa(binary);
+      const ext = (selected as string).split(".").pop()?.toLowerCase() ?? "png";
+      const mime = ext === "jpg" || ext === "jpeg" ? "image/jpeg" : `image/${ext}`;
+      const dataUrl = `data:${mime};base64,${base64}`;
+
+      setMascotAsset(base64);
+      setMascotFile(dataUrl);
+      setMascotAssetExt(ext);
+      setIsNewMascot(true);
+    } catch {
+      toast.error("Failed to load mascot image");
+    }
+  };
+
   const handleSave = async () => {
     if (!name.trim()) {
       toast.error("Theme name is required");
@@ -140,6 +210,28 @@ export const ThemeEditor: React.FC<ThemeEditorProps> = ({ initial, onBack, onSav
           dataBase64: bgImageAsset,
         });
         finalBgImage = filename;
+      } else if (bgImage && !bgImage.startsWith("data:") && !bgImage.startsWith("http")) {
+        finalBgImage = bgImage; // preserve bare filename from existing theme
+      } else if (bgImage.startsWith("data:")) {
+        finalBgImage = isEditing ? (initial!.appearance?.background_image ?? "") : "";
+      }
+
+      // Save mascot asset if a new one was picked
+      let finalMascotFile: string | undefined = undefined;
+      if (mascotAsset && isNewMascot) {
+        const filename = `mascot.${mascotAssetExt}`;
+        await invoke("save_theme_asset", {
+          themeId: id,
+          assetFilename: filename,
+          dataBase64: mascotAsset,
+        });
+        finalMascotFile = filename;
+      } else if (mascotFile && !mascotFile.startsWith("data:") && !mascotFile.startsWith("http")) {
+        finalMascotFile = mascotFile;
+      } else if (!mascotFile) {
+        finalMascotFile = undefined;
+      } else {
+        finalMascotFile = isEditing ? initial!.mascot_file : undefined;
       }
 
       const manifest: ThemeManifest = {
@@ -149,7 +241,7 @@ export const ThemeEditor: React.FC<ThemeEditorProps> = ({ initial, onBack, onSav
         author: author.trim() || "User",
         publisher: "user",
         description: description.trim() || undefined,
-        mascot_file: undefined,
+        mascot_file: finalMascotFile,
         colors,
         typography: { font_family: fontFamily || "system-ui" },
         appearance: {
@@ -277,17 +369,18 @@ export const ThemeEditor: React.FC<ThemeEditorProps> = ({ initial, onBack, onSav
           <div>
             <label className="text-xs text-muted-foreground mb-1 block">Font Family</label>
             <div className="flex gap-2">
-              <select
-                className="flex-1 px-2 py-1.5 text-sm rounded bg-input border border-border text-foreground focus:outline-none focus:ring-1 focus:ring-[var(--theme-accent)]"
-                value={fontFamily}
-                onChange={(e) => handleFontChange(e.target.value)}
-              >
-                {systemFonts.map((f) => (
-                  <option key={f} value={f} style={{ fontFamily: f }}>
-                    {f}
-                  </option>
-                ))}
-              </select>
+              <Select value={fontFamily} onValueChange={(v) => v && handleFontChange(v)}>
+                <SelectTrigger className="flex-1 text-sm h-[30px]">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {systemFonts.map((f) => (
+                    <SelectItem key={f} value={f}>
+                      <span style={{ fontFamily: f }}>{f}</span>
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
               <input
                 className="w-40 px-2 py-1.5 text-sm rounded bg-input border border-border text-foreground focus:outline-none focus:ring-1 focus:ring-[var(--theme-accent)]"
                 value={fontFamily}
@@ -387,6 +480,43 @@ export const ThemeEditor: React.FC<ThemeEditorProps> = ({ initial, onBack, onSav
                     className="w-full figma-range"
                   />
                 </div>
+              </div>
+            )}
+          </div>
+
+          <div>
+            <label className="text-xs text-muted-foreground mb-1 block">
+              Mascot (corner overlay in Library)
+            </label>
+            <div className="flex items-center gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handlePickMascot}
+                className="text-xs"
+              >
+                Choose mascot
+              </Button>
+              {mascotFile && (
+                <button
+                  onClick={() => {
+                    setMascotFile("");
+                    setMascotAsset(null);
+                    setIsNewMascot(false);
+                  }}
+                  className="text-xs text-muted-foreground hover:text-destructive transition-colors"
+                >
+                  Remove
+                </button>
+              )}
+            </div>
+            {mascotFile && mascotFile.startsWith("data:") && (
+              <div className="mt-2">
+                <img
+                  src={mascotFile}
+                  alt="Mascot preview"
+                  className="w-16 h-16 object-contain rounded border border-border"
+                />
               </div>
             )}
           </div>

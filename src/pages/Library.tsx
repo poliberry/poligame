@@ -78,25 +78,11 @@ const HorizontalGameRail: React.FC<HorizontalGameRailProps> = ({
   const scrollByCards = (direction: "left" | "right") => {
     const rail = railRef.current;
     if (!rail) return;
-    const amount = Math.max(rail.clientWidth * 0.75, 260);
+    const amount = Math.max(rail.clientWidth * 0.4, 200);
     rail.scrollBy({
       left: direction === "left" ? -amount : amount,
       behavior: "smooth",
     });
-  };
-
-  const handleWheelScroll = (event: React.WheelEvent<HTMLDivElement>) => {
-    const rail = railRef.current;
-    if (!rail) return;
-
-    const isMostlyVertical = Math.abs(event.deltaY) > Math.abs(event.deltaX);
-    if (isMostlyVertical) {
-      rail.scrollBy({
-        left: event.deltaY,
-        behavior: "auto",
-      });
-      event.preventDefault();
-    }
   };
 
   return (
@@ -106,7 +92,7 @@ const HorizontalGameRail: React.FC<HorizontalGameRailProps> = ({
           type="button"
           size="icon"
           variant="secondary"
-          className="absolute left-0 top-1/2 z-10 -translate-y-1/2 rounded-full bg-black/50 hover:bg-black/70 backdrop-blur-sm"
+          className="absolute left-0 top-1/2 z-[60] -translate-y-1/2 rounded-full bg-black/50 hover:bg-black/70 backdrop-blur-sm active:scale-95 transition-transform"
           onClick={() => scrollByCards("left")}
           aria-label="Scroll left"
         >
@@ -117,7 +103,6 @@ const HorizontalGameRail: React.FC<HorizontalGameRailProps> = ({
       <div
         ref={railRef}
         className="scrollbar-hide flex flex-row gap-5 overflow-x-auto overflow-y-hidden px-5 py-5 -mx-5"
-        onWheel={handleWheelScroll}
       >
         {games.map((game) => (
           <div
@@ -135,7 +120,7 @@ const HorizontalGameRail: React.FC<HorizontalGameRailProps> = ({
           type="button"
           size="icon"
           variant="secondary"
-          className="absolute right-0 top-1/2 z-10 -translate-y-1/2 rounded-full bg-black/50 hover:bg-black/70 backdrop-blur-sm"
+          className="absolute right-0 top-1/2 z-[60] -translate-y-1/2 rounded-full bg-black/50 hover:bg-black/70 backdrop-blur-sm active:scale-95 transition-transform"
           onClick={() => scrollByCards("right")}
           aria-label="Scroll right"
         >
@@ -210,9 +195,15 @@ const Library: React.FC = () => {
 
   const scanGames = async () => {
     setScanning(true);
-    const result = await invoke<string>("scan_all_games");
-    console.log("Scan result:", result);
-    setScanning(false);
+    try {
+      const result = await invoke<string>("scan_all_games");
+      console.log("Scan result:", result);
+      await handleRefreshGames();
+    } catch (error) {
+      console.error("Error scanning games:", error);
+    } finally {
+      setScanning(false);
+    }
   };
 
   const handleGameRoulette = async () => {
@@ -317,18 +308,9 @@ const Library: React.FC = () => {
     !searchQuery && filterLauncher === "all" && viewMode === "grid";
 
   const activeTheme = useThemeStore((s) => s.activeTheme);
-  const bgImage = activeTheme?.appearance?.background_image;
-  const bgOpacity = activeTheme?.appearance?.background_image_opacity ?? 0.15;
 
   return (
     <div className="relative flex flex-col gap-4 p-4 h-full w-full pb-8">
-      {bgImage && (
-        <div
-          className="absolute inset-0 -z-10 bg-cover bg-center bg-no-repeat pointer-events-none"
-          style={{ backgroundImage: `url(${bgImage})`, opacity: bgOpacity }}
-          aria-hidden="true"
-        />
-      )}
       {/* Game Roulette Button */}
       {!isLoading && filteredGames.length > 0 && (
         <div className="flex justify-end gap-2">

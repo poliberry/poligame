@@ -22,6 +22,7 @@ import { DeleteCustomAppDialog } from "./DeleteCustomAppDialog";
 import { toast } from "sonner";
 import { getImageUrl } from "@/utils/imageUtils";
 import { Button } from "./ui/button";
+import { isPostHogInitialized, posthog } from "@/lib/posthog";
 
 interface GameCardProps {
   game: Game;
@@ -88,6 +89,13 @@ export const GameCard: React.FC<GameCardProps> = ({
     e.stopPropagation();
     try {
       await invoke("launch_game", { gameId: game.id });
+      if (isPostHogInitialized) {
+        posthog.capture("game_launch_started", {
+          game_id: game.id,
+          launcher: game.launcher,
+          installed: game.installed,
+        });
+      }
       toast.success(`Launching ${game.title}...`);
     } catch (error: any) {
       console.error("Error launching game:", error);
