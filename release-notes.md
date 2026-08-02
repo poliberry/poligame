@@ -1,3 +1,12 @@
+## PoliGame v1.3.4
+
+### Bug fixes
+
+**Themes**
+- **Background appearing twice** — In 1.3.3, the background image for a given theme was displayed twice, as a background, and within the Library content. This has now been corrected to only apply the background to the app's shell.
+
+---
+
 ## PoliGame v1.3.2
 
 ### Bug fixes
