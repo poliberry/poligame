@@ -1,38 +1,30 @@
-// Overdrive gpui UI
-//
-// Status: Architecture complete; gpui render implementation pending API confirmation.
-//
-// The gpui 0.2.x API changed significantly from 0.1.x:
-//   • App::new() now returns Entity<App>, not the application runner
-//   • AppContext became a trait; App is the concrete runner context
-//   • Render::render signature is now render(&mut self, window: &mut Window, cx: &mut Context<Self>)
-//   • Focusable::focus_handle is now focus_handle(&self, cx: &App) or similar
-//
-// The correct entry point in gpui 0.2 is:
-//   App::new().run(|cx: &mut App| { cx.open_window(...) });
-//
-// TODO: Implement full spatial-nav UI once the exact gpui 0.2 API is locked in.
-// The IPC, gamepad, DB, and keyboard layers are complete.
-
 use std::sync::{Arc, Mutex};
+use crossterm::{
+    event::{self, Event, KeyCode},
+    execute,
+    terminal::{disable_raw_mode, enable_raw_mode, EnterAlternateScreen, LeaveAlternateScreen},
+};
+use ratatui::{
+    backend::CrosstermBackend,
+    layout::{Alignment, Constraint, Direction, Layout},
+    style::{Color, Modifier, Style},
+    text::{Line, Span},
+    widgets::{Block, Borders, List, ListItem, Paragraph},
+    Terminal,
+};
+use std::io;
 
 pub use state::{AppState, View};
 mod state;
 
 // ─── Gamepad thread ───────────────────────────────────────────────────────────
 
-#[derive(Debug)]
+#[derive(Debug, Clone, Copy)]
 pub enum GamepadEvent {
-    DPadLeft,
-    DPadRight,
-    DPadUp,
-    DPadDown,
-    StickLeft,
-    StickRight,
-    South,
-    East,
-    Start,
-    None,
+    Up,
+    Down,
+    Confirm,
+    Back,
 }
 
 pub fn spawn_gamepad_thread() -> std::sync::mpsc::Receiver<GamepadEvent> {
@@ -46,25 +38,26 @@ pub fn spawn_gamepad_thread() -> std::sync::mpsc::Receiver<GamepadEvent> {
             while let Some(gilrs::Event { event, .. }) = gilrs.next_event() {
                 use gilrs::{Axis, Button, EventType};
                 let ev = match event {
-                    EventType::ButtonPressed(Button::DPadLeft, _)  => GamepadEvent::DPadLeft,
-                    EventType::ButtonPressed(Button::DPadRight, _) => GamepadEvent::DPadRight,
-                    EventType::ButtonPressed(Button::DPadUp, _)    => GamepadEvent::DPadUp,
-                    EventType::ButtonPressed(Button::DPadDown, _)  => GamepadEvent::DPadDown,
-                    EventType::ButtonPressed(Button::South, _)     => GamepadEvent::South,
-                    EventType::ButtonPressed(Button::East, _)      => GamepadEvent::East,
-                    EventType::ButtonPressed(Button::Start, _)     => GamepadEvent::Start,
-                    EventType::AxisChanged(Axis::LeftStickX, v, _) => {
+                    EventType::ButtonPressed(Button::DPadUp, _) => Some(GamepadEvent::Up),
+                    EventType::ButtonPressed(Button::DPadDown, _) => Some(GamepadEvent::Down),
+                    EventType::ButtonPressed(Button::South, _) => Some(GamepadEvent::Confirm),
+                    EventType::ButtonPressed(Button::East, _) => Some(GamepadEvent::Back),
+                    EventType::AxisChanged(Axis::LeftStickY, v, _) => {
                         if last_stick.elapsed().as_millis() > 150 && v.abs() > 0.6 {
                             last_stick = std::time::Instant::now();
-                            if v < 0.0 { GamepadEvent::StickLeft } else { GamepadEvent::StickRight }
+                            if v < 0.0 {
+                                Some(GamepadEvent::Up)
+                            } else {
+                                Some(GamepadEvent::Down)
+                            }
                         } else {
-                            GamepadEvent::None
+                            None
                         }
                     }
-                    _ => GamepadEvent::None,
+                    _ => None,
                 };
-                if !matches!(ev, GamepadEvent::None) {
-                    let _ = tx.send(ev);
+                if let Some(e) = ev {
+                    let _ = tx.send(e);
                 }
             }
             std::thread::sleep(std::time::Duration::from_millis(16));
@@ -74,81 +67,145 @@ pub fn spawn_gamepad_thread() -> std::sync::mpsc::Receiver<GamepadEvent> {
     rx
 }
 
-// ─── Application entry ────────────────────────────────────────────────────────
+// ─── TUI Application ──────────────────────────────────────────────────────────
 
-/// Runs the Overdrive fullscreen app.
-///
-/// Spawns a gamepad listener thread, then opens a fullscreen gpui window
-/// showing the game library with spatial navigation.
-///
-/// # gpui 0.2.x TODO
-/// The render/focus/window code is stubbed. Implement with:
-///
-/// ```rust
-/// use gpui::{App, Window, Context, Render, Focusable, FocusHandle, div, px, hsla, white};
-///
-/// struct OverdriveView { focus: FocusHandle, state: Arc<Mutex<AppState>> }
-///
-/// impl Render for OverdriveView {
-///     fn render(&mut self, _window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement { div() }
-/// }
-///
-/// App::new().run(|cx: &mut App| {
-///     cx.open_window(options, |_, cx| cx.new(|cx| OverdriveView { ... }));
-/// });
-/// ```
 pub fn run(state: Arc<Mutex<AppState>>) {
+    eprintln!("[overdrive] Starting TUI application");
+
+    if let Err(e) = run_tui(state) {
+        eprintln!("[overdrive] TUI error: {}", e);
+    }
+}
+
+fn run_tui(state: Arc<Mutex<AppState>>) -> Result<(), Box<dyn std::error::Error>> {
+    // Setup terminal
+    enable_raw_mode()?;
+    let mut stdout = io::stdout();
+    execute!(stdout, EnterAlternateScreen)?;
+    let backend = CrosstermBackend::new(stdout);
+    let mut terminal = Terminal::new(backend)?;
+
     let gp_rx = spawn_gamepad_thread();
-
-    eprintln!("[overdrive] ========================================");
-    eprintln!("[overdrive] PoliGame Overdrive — Stub Running");
-    eprintln!("[overdrive] ========================================");
-
-    let locked = state.lock().unwrap();
-    eprintln!("[overdrive] Loaded {} games from database", locked.games.len());
-    for game in locked.games.iter().take(5) {
-        eprintln!("[overdrive]   • {}", game.title);
-    }
-    if locked.games.len() > 5 {
-        eprintln!("[overdrive]   ... and {} more", locked.games.len() - 5);
-    }
-    drop(locked);
-
-    eprintln!("[overdrive]");
-    eprintln!("[overdrive] This is a stub UI — gpui 0.2.x rendering not yet implemented.");
-    eprintln!("[overdrive] Architecture layers complete: DB loading ✓, IPC ready ✓, gamepad ✓");
-    eprintln!("[overdrive]");
-
-    // Keep running and drain gamepad events until stdin closes
-    let mut line = String::new();
-    use std::io::BufRead;
-    let stdin = std::io::stdin();
-    let mut reader = stdin.lock();
+    let mut selected = 0usize;
 
     loop {
-        // Drain gamepad events to avoid channel buffer leak
-        while let Ok(_ev) = gp_rx.try_recv() {
-            // Events will be handled when gpui render is implemented
+        let app_state = state.lock().unwrap();
+        let games = app_state.games.clone();
+        let count = games.len();
+        drop(app_state);
+
+        // Draw
+        terminal.draw(|f| {
+            let chunks = Layout::default()
+                .direction(Direction::Vertical)
+                .constraints([
+                    Constraint::Length(3),
+                    Constraint::Min(5),
+                    Constraint::Length(3),
+                ])
+                .split(f.size());
+
+            // Header
+            let header = Paragraph::new("PoliGame Overdrive")
+                .style(Style::default().fg(Color::Cyan).add_modifier(Modifier::BOLD))
+                .block(Block::default().borders(Borders::BOTTOM))
+                .alignment(Alignment::Center);
+            f.render_widget(header, chunks[0]);
+
+            // Game list
+            let items: Vec<ListItem> = games
+                .iter()
+                .enumerate()
+                .map(|(i, game)| {
+                    let content = if i == selected {
+                        Line::from(vec![Span::styled(
+                            format!("▶ {}", game.title),
+                            Style::default()
+                                .fg(Color::Black)
+                                .bg(Color::Cyan)
+                                .add_modifier(Modifier::BOLD),
+                        )])
+                    } else {
+                        Line::from(game.title.clone())
+                    };
+                    ListItem::new(content)
+                })
+                .collect();
+
+            let list = List::new(items)
+                .block(Block::default().borders(Borders::ALL).title("Games"))
+                .style(Style::default().fg(Color::White));
+            f.render_widget(list, chunks[1]);
+
+            // Footer
+            let footer = Paragraph::new("↑↓ Navigate  Enter Launch  B Back  Ctrl+C Quit")
+                .style(Style::default().fg(Color::DarkGray))
+                .alignment(Alignment::Center);
+            f.render_widget(footer, chunks[2]);
+        })?;
+
+        // Handle input
+        if event::poll(std::time::Duration::from_millis(50))? {
+            if let Event::Key(key) = event::read()? {
+                match key.code {
+                    KeyCode::Up | KeyCode::Char('w') => {
+                        selected = selected.saturating_sub(1);
+                    }
+                    KeyCode::Down | KeyCode::Char('s') => {
+                        if selected < count.saturating_sub(1) {
+                            selected += 1;
+                        }
+                    }
+                    KeyCode::Enter => {
+                        let app_state = state.lock().unwrap();
+                        if let Some(game) = app_state.games.get(selected) {
+                            crate::send_event(crate::IpcEvent::LaunchGame {
+                                game_id: game.id.clone(),
+                            });
+                        }
+                    }
+                    KeyCode::Esc => {
+                        crate::send_event(crate::IpcEvent::Exit);
+                        break;
+                    }
+                    KeyCode::Char('c') if key.modifiers.contains(crossterm::event::KeyModifiers::CONTROL) => {
+                        break;
+                    }
+                    _ => {}
+                }
+            }
         }
 
-        // Poll stdin with a timeout by attempting to read
-        // For now, just read one line and exit (stub behavior)
-        line.clear();
-        match reader.read_line(&mut line) {
-            Ok(0) => {
-                eprintln!("[overdrive] Stdin closed, exiting");
-                break;
-            }
-            Ok(_) => {
-                // Got a line of input on stdin (shouldn't happen in normal flow)
-                eprintln!("[overdrive] Received IPC: {}", line.trim());
-            }
-            Err(e) => {
-                eprintln!("[overdrive] Stdin read error: {e}");
-                break;
+        // Handle gamepad
+        while let Ok(ev) = gp_rx.try_recv() {
+            match ev {
+                GamepadEvent::Up => {
+                    selected = selected.saturating_sub(1);
+                }
+                GamepadEvent::Down => {
+                    if selected < count.saturating_sub(1) {
+                        selected += 1;
+                    }
+                }
+                GamepadEvent::Confirm => {
+                    let app_state = state.lock().unwrap();
+                    if let Some(game) = app_state.games.get(selected) {
+                        crate::send_event(crate::IpcEvent::LaunchGame {
+                            game_id: game.id.clone(),
+                        });
+                    }
+                }
+                GamepadEvent::Back => {
+                    crate::send_event(crate::IpcEvent::Exit);
+                    break;
+                }
             }
         }
     }
 
-    eprintln!("[overdrive] Exiting");
+    // Cleanup terminal
+    disable_raw_mode()?;
+    execute!(io::stdout(), LeaveAlternateScreen)?;
+
+    Ok(())
 }
