@@ -12,9 +12,7 @@ pub struct Game {
     pub header_image: Option<String>,
     pub playtime_seconds: i64,
     pub last_played: Option<String>,
-    pub description: Option<String>,
     pub executable: Option<String>,
-    pub steam_app_id: Option<String>,
 }
 
 pub struct GameDb;
@@ -28,7 +26,7 @@ impl GameDb {
         let rows = sqlx::query(
             "SELECT id, title, launcher, cover_art, grid_cover_art, header_art,
                     COALESCE(playtime_minutes, 0) * 60 AS playtime_seconds,
-                    last_played, description, executable_path, steam_app_id
+                    last_played, executable_path
              FROM games
              ORDER BY COALESCE(playtime_minutes, 0) DESC, title ASC",
         )
@@ -48,9 +46,7 @@ impl GameDb {
                 header_image:     r.try_get("header_art").ok(),
                 playtime_seconds: r.try_get("playtime_seconds").unwrap_or(0),
                 last_played:      r.try_get("last_played").ok(),
-                description:      r.try_get("description").ok(),
                 executable:       r.try_get("executable_path").ok(),
-                steam_app_id:     r.try_get("steam_app_id").ok(),
             })
             .collect();
 

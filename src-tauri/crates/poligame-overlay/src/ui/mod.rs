@@ -84,20 +84,36 @@ pub fn run(
     game_id: Option<String>,
     cmd_rx: std::sync::mpsc::Receiver<Command>,
 ) {
+    eprintln!("[overlay] ========================================");
+    eprintln!("[overlay] PoliGame Game Overlay — Stub Running");
+    eprintln!("[overlay] ========================================");
+
+    if let Some(ref t) = game_title {
+        eprintln!("[overlay] Game: {}", t);
+    }
+    if let Some(ref id) = game_id {
+        eprintln!("[overlay] Game ID: {}", id);
+    }
+
+    eprintln!("[overlay]");
+    eprintln!("[overlay] This is a stub UI — gpui 0.2.x rendering not yet implemented.");
+    eprintln!("[overlay] Architecture layers complete: IPC ready ✓, gamepad ✓");
+    eprintln!("[overlay]");
+    eprintln!("[overlay] Listening for IPC commands (show/hide/quit)...");
+    eprintln!("[overlay]");
+
     let cmd_rx = Arc::new(Mutex::new(cmd_rx));
     let (gp_tx, gp_rx) = std::sync::mpsc::channel::<GamepadEvent>();
     spawn_gamepad_thread(gp_tx);
 
-    eprintln!("[overlay] UI run() stub — gpui 0.2.x rendering not yet implemented");
-    if let Some(ref t) = game_title {
-        eprintln!("[overlay] game_title={t}");
-    }
-
     // Process IPC commands until the main process closes stdin.
     loop {
         match cmd_rx.lock().unwrap().recv() {
-            Ok(Command::Quit) | Err(_) => break,
-            Ok(cmd) => eprintln!("[overlay] cmd: {cmd:?}"),
+            Ok(Command::Quit) | Err(_) => {
+                eprintln!("[overlay] Received quit command, exiting");
+                break;
+            }
+            Ok(cmd) => eprintln!("[overlay] IPC: {:?}", cmd),
         }
         // Drain gamepad events to avoid channel buffer leak
         while let Ok(_ev) = gp_rx.try_recv() {
@@ -105,5 +121,5 @@ pub fn run(
         }
     }
 
-    let _ = game_id; // will be used by the full implementation
+    eprintln!("[overlay] Exiting");
 }

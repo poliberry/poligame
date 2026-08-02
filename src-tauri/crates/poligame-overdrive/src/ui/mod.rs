@@ -98,22 +98,57 @@ pub fn spawn_gamepad_thread() -> std::sync::mpsc::Receiver<GamepadEvent> {
 /// });
 /// ```
 pub fn run(state: Arc<Mutex<AppState>>) {
-    let _gp_rx = Arc::new(Mutex::new(spawn_gamepad_thread()));
+    let gp_rx = spawn_gamepad_thread();
 
-    // TODO: Replace this stub with gpui 0.2.x window code.
-    // The run loop should:
-    //   1. Open a fullscreen, decorated=false gpui window
-    //   2. Poll gp_rx on every frame via cx.spawn() and translate events to
-    //      move_selection / launch_selected calls on the view
-    //   3. Invoke crate::send_event(IpcEvent::LaunchGame { game_id }) when
-    //      the user confirms a game
-    //   4. Invoke crate::send_event(IpcEvent::Exit) on Esc / B-button
-    //   5. Show the on-screen keyboard (crate::keyboard::show_platform_keyboard)
-    //      when a text-entry field gains focus on a touch device
+    eprintln!("[overdrive] ========================================");
+    eprintln!("[overdrive] PoliGame Overdrive — Stub Running");
+    eprintln!("[overdrive] ========================================");
 
-    eprintln!("[overdrive] UI run() stub — gpui 0.2.x rendering not yet implemented");
-    eprintln!("[overdrive] Loaded {} games", state.lock().unwrap().games.len());
+    let locked = state.lock().unwrap();
+    eprintln!("[overdrive] Loaded {} games from database", locked.games.len());
+    for game in locked.games.iter().take(5) {
+        eprintln!("[overdrive]   • {}", game.title);
+    }
+    if locked.games.len() > 5 {
+        eprintln!("[overdrive]   ... and {} more", locked.games.len() - 5);
+    }
+    drop(locked);
 
-    // Block until stdin closes (main PoliGame process terminates)
-    let _ = std::io::stdin().read_line(&mut String::new());
+    eprintln!("[overdrive]");
+    eprintln!("[overdrive] This is a stub UI — gpui 0.2.x rendering not yet implemented.");
+    eprintln!("[overdrive] Architecture layers complete: DB loading ✓, IPC ready ✓, gamepad ✓");
+    eprintln!("[overdrive]");
+
+    // Keep running and drain gamepad events until stdin closes
+    let mut line = String::new();
+    use std::io::BufRead;
+    let stdin = std::io::stdin();
+    let mut reader = stdin.lock();
+
+    loop {
+        // Drain gamepad events to avoid channel buffer leak
+        while let Ok(_ev) = gp_rx.try_recv() {
+            // Events will be handled when gpui render is implemented
+        }
+
+        // Poll stdin with a timeout by attempting to read
+        // For now, just read one line and exit (stub behavior)
+        line.clear();
+        match reader.read_line(&mut line) {
+            Ok(0) => {
+                eprintln!("[overdrive] Stdin closed, exiting");
+                break;
+            }
+            Ok(_) => {
+                // Got a line of input on stdin (shouldn't happen in normal flow)
+                eprintln!("[overdrive] Received IPC: {}", line.trim());
+            }
+            Err(e) => {
+                eprintln!("[overdrive] Stdin read error: {e}");
+                break;
+            }
+        }
+    }
+
+    eprintln!("[overdrive] Exiting");
 }

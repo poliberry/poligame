@@ -667,17 +667,16 @@ fn enter_overdrive_mode(
         );
     };
 
-    let db_path = app
-        .path()
-        .app_local_data_dir()
-        .map(|p| p.join("poligame.db").to_string_lossy().into_owned())
+    // Match the DB path used by the main Tauri app (from init_database in games/mod.rs)
+    let db_path = dirs::data_dir()
+        .map(|d| d.join("PoliGame").join("poligame.db").to_string_lossy().into_owned())
         .unwrap_or_default();
 
     let mut child = std::process::Command::new(&bin)
         .env("POLIGAME_DB", &db_path)
         .stdin(Stdio::piped())
-        .stdout(Stdio::null())
-        .stderr(Stdio::null())
+        .stdout(Stdio::inherit())
+        .stderr(Stdio::inherit())
         .spawn()
         .map_err(|e| format!("Failed to launch Overdrive: {e}"))?;
 
@@ -729,14 +728,20 @@ fn ensure_overlay_running(
         return Err("Game overlay is not installed. Re-run the PoliGame installer and enable the Game Overlay component.".into());
     };
 
+    // Match the DB path used by the main Tauri app
+    let db_path = dirs::data_dir()
+        .map(|d| d.join("PoliGame").join("poligame.db").to_string_lossy().into_owned())
+        .unwrap_or_default();
+
     let mut cmd = std::process::Command::new(&bin);
     if let Some(t) = game_title { cmd.env("POLIGAME_GAME_TITLE", t); }
     if let Some(i) = game_id   { cmd.env("POLIGAME_GAME_ID", i); }
+    cmd.env("POLIGAME_DB", &db_path);
 
     let mut child = cmd
         .stdin(Stdio::piped())
-        .stdout(Stdio::null())
-        .stderr(Stdio::null())
+        .stdout(Stdio::inherit())
+        .stderr(Stdio::inherit())
         .spawn()
         .map_err(|e| format!("Failed to launch overlay: {e}"))?;
 

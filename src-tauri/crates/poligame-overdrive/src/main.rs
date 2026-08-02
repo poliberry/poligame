@@ -8,6 +8,7 @@
 // Touch: on-text-focus the OS touch keyboard is invoked (Windows TabTip /
 // platform equivalent); a built-in GPUI on-screen keyboard backs this up.
 
+// Show console in debug builds so we can see errors and output
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
 mod db;
@@ -31,8 +32,19 @@ fn main() -> Result<()> {
             .into_owned()
     });
 
+    eprintln!("[overdrive] Loading database from: {}", db_path);
+
     let rt = tokio::runtime::Runtime::new()?;
-    let games = rt.block_on(GameDb::load(&db_path)).unwrap_or_default();
+    let games = match rt.block_on(GameDb::load(&db_path)) {
+        Ok(g) => {
+            eprintln!("[overdrive] Successfully loaded {} games", g.len());
+            g
+        }
+        Err(e) => {
+            eprintln!("[overdrive] ERROR loading games: {}", e);
+            Vec::new()
+        }
+    };
 
     let app_state = Arc::new(Mutex::new(ui::AppState {
         games,

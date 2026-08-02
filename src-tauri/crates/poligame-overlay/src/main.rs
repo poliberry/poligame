@@ -10,6 +10,7 @@
 // IPC: newline-delimited JSON commands arrive on stdin from the main process.
 // Events are sent back on stdout.
 
+// Show console in debug builds so we can see errors and output
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
 mod ipc;
