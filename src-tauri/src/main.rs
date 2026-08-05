@@ -616,6 +616,26 @@ fn apply_windows_webview2_video_workaround() {
     std::env::set_var("WEBVIEW2_ADDITIONAL_BROWSER_ARGUMENTS", combined);
 }
 
+/// WebKitGTK enforces the same kind of autoplay policy Chromium/WebView2 do:
+/// media with sound can't be started with a script-triggered `.play()` unless
+/// the page already muted the element or the user has interacted with it
+/// first. The Setup flow's intro video/music autoplay on first launch with
+/// neither, so `.play()` was silently rejected (caught and logged, never
+/// surfaced) and nothing appeared to load. WebView2 already gets a workaround
+/// for this exact class of bug above via `--autoplay-policy`; this is the
+/// WebKitGTK equivalent, using the settings API since WebKitGTK has no
+/// autoplay-policy command line switch or env var.
+#[cfg(target_os = "linux")]
+fn apply_linux_webkit_autoplay_workaround(window: &tauri::WebviewWindow) {
+    use webkit2gtk::{SettingsExt, WebViewExt};
+
+    let _ = window.with_webview(|webview| {
+        if let Some(settings) = webview.inner().settings() {
+            settings.set_media_playback_requires_user_gesture(false);
+        }
+    });
+}
+
 #[tauri::command]
 fn enter_overdrive_mode(app: tauri::AppHandle) -> Result<(), String> {
     use tauri::Manager;
@@ -928,6 +948,11 @@ fn main() {
 
             tray_builder.build(app)?;
             ensure_tray_panel(&app.handle())?;
+
+            #[cfg(target_os = "linux")]
+            if let Some(main_window) = app.get_webview_window("main") {
+                apply_linux_webkit_autoplay_workaround(&main_window);
+            }
 
             Ok(())
         })
