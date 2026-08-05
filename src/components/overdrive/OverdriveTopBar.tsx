@@ -750,8 +750,33 @@ const OverdriveTopBar: React.FC<OverdriveTopBarProps> = ({
                 setIsSearchActive(true);
                 setTopBarFocused(true);
               }}
-              onBlur={() => {
+              onBlur={(event) => {
                 setIsSearchActive(false);
+
+                // Moving to another top-bar item (e.g. `moveTopBarFocus`
+                // calling `focusTopBarItem("network")` in response to a
+                // controller/keyboard right-press while search is focused)
+                // blurs this input as a side effect. That's an internal
+                // transition, not the user leaving the top bar, so it must
+                // NOT clear `isTopBarFocused` - doing so would strand
+                // top-bar navigation after a single "move right" the moment
+                // it left the search item.
+                const nextFocusTarget = event.relatedTarget;
+                const isMovingToAnotherTopBarItem =
+                  nextFocusTarget instanceof HTMLElement && nextFocusTarget.hasAttribute("data-topbar-item");
+                if (isMovingToAnotherTopBarItem) {
+                  return;
+                }
+
+                // Otherwise focus is leaving the top bar entirely (e.g. the
+                // user clicked elsewhere on the page with the mouse instead
+                // of pressing "B" on the controller to back out through
+                // `leaveTopBarFocus`). Every controller button/d-pad handler
+                // on the home screen early-returns while `isTopBarFocused`
+                // is true, so if it isn't cleared here too it stays stuck
+                // true forever and controller navigation looks completely
+                // dead until the app is restarted.
+                setTopBarFocused(false);
               }}
               onKeyDown={(event) => {
                 if (event.key === "Enter") {
