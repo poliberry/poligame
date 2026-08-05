@@ -1158,14 +1158,14 @@ const Overdrive: React.FC = () => {
       }
 
       if (isKeyboardOpen) {
-        if (button === "B" || button === "CIRCLE" || button === "START") {
+        if (button === "B" || button === "START") {
           closeKeyboard(true);
         }
         return;
       }
 
       if (isComposerOpen) {
-        if (button === "B" || button === "CIRCLE" || button === "START") {
+        if (button === "B" || button === "START") {
           setIsComposerOpen(false);
         }
         return;
@@ -1177,9 +1177,7 @@ const Overdrive: React.FC = () => {
 
       // FULL VIEW: Tab Content
       if (isFullView && navigationMode === 'tabContent') {
-        const contentLength = getTabContentLength();
-
-        if (button === 'B' || button === 'CIRCLE') {
+        if (button === 'B') {
           setNavigationMode('tabs');
           setTabContentIndex(0);
           playNavigateSound();
@@ -1192,10 +1190,67 @@ const Overdrive: React.FC = () => {
           lastNavigationTime.current = now;
           return;
         }
+        return;
+      }
+
+      // FULL VIEW: Tabs
+      if (isFullView && navigationMode === 'tabs') {
+        if (button === 'B') {
+          setIsFullView(false);
+          setNavigationMode('library');
+          setTabContentIndex(0);
+          playNavigateSound();
+          lastNavigationTime.current = now;
+          return;
+        }
+
+        if (button === 'A' || button === 'X') {
+          enterTabContentNavigation();
+          return;
+        }
+        return;
+      }
+
+      // NORMAL VIEW: Library
+      if (!isFullView && navigationMode === 'library') {
+        if ((button === "A" || button === "X")) {
+          const game = sortedGames[libraryFocusIndex];
+          if (game) handleOpenGameDetails(game.id);
+          return;
+        }
+
+        if (button === "LB") {
+          navigateLibrary("prev");
+          return;
+        }
+
+        if (button === "RB") {
+          navigateLibrary("next");
+          return;
+        }
+      }
+    },
+
+    // D-PAD (this used to be entirely unwired on the home screen - only the
+    // analog stick worked - because `useResponsiveGamepad` never emits the
+    // 'UP'/'DOWN'/'LEFT'/'RIGHT' values this handler's old `onButtonDown`
+    // branches were checking `button` for; those branches were dead code and
+    // have moved here, keyed on the actual `onDPad` direction callback.)
+    onDPad: (direction) => {
+      if (currentView.type !== "home") return;
+      if (isTopBarFocused) return;
+      if (isKeyboardOpen || isComposerOpen) return;
+      if (isMenuOpen || isPowerDialogOpen) return;
+      const now = Date.now();
+      if (now - lastNavigationTime.current < navigationCooldown) return;
+
+      // FULL VIEW: Tab Content
+      if (isFullView && navigationMode === 'tabContent') {
+        const contentLength = getTabContentLength();
 
         if (activeTab === 'achievements') {
           const cols = 1;
-          if (button === 'RIGHT') {
+          if (direction === 'RIGHT') {
             if ((tabContentIndex + 1) % cols !== 0 && tabContentIndex < contentLength - 1) {
               setTabContentIndex(prev => prev + 1);
               playNavigateSound();
@@ -1203,7 +1258,7 @@ const Overdrive: React.FC = () => {
             }
             return;
           }
-          if (button === 'LEFT') {
+          if (direction === 'LEFT') {
             if (tabContentIndex % cols !== 0) {
               setTabContentIndex(prev => prev - 1);
               playNavigateSound();
@@ -1211,7 +1266,7 @@ const Overdrive: React.FC = () => {
             }
             return;
           }
-          if (button === 'DOWN') {
+          if (direction === 'DOWN') {
             const newIndex = tabContentIndex + cols;
             if (newIndex < contentLength) {
               setTabContentIndex(newIndex);
@@ -1221,7 +1276,7 @@ const Overdrive: React.FC = () => {
             }
             return;
           }
-          if (button === 'UP') {
+          if (direction === 'UP') {
             const newIndex = tabContentIndex - cols;
             if (newIndex >= 0) {
               setTabContentIndex(newIndex);
@@ -1236,35 +1291,33 @@ const Overdrive: React.FC = () => {
             return;
           }
         } else if (activeTab === 'community') {
-          if (button === 'LEFT' || button === 'RIGHT' || button === 'UP' || button === 'DOWN') {
-            const direction = button === 'LEFT'
-              ? 'left'
-              : button === 'RIGHT'
-                ? 'right'
-                : button === 'UP'
-                  ? 'up'
-                  : 'down';
+          const dir = direction === 'LEFT'
+            ? 'left'
+            : direction === 'RIGHT'
+              ? 'right'
+              : direction === 'UP'
+                ? 'up'
+                : 'down';
 
-            const nextIndex = getNextCommunityIndex(tabContentIndex, direction);
+          const nextIndex = getNextCommunityIndex(tabContentIndex, dir);
 
-            if (nextIndex === -1) {
-              setNavigationMode('tabs');
-              setTabContentIndex(0);
-              playNavigateSound();
-              lastNavigationTime.current = now;
-              return;
-            }
-
-            if (nextIndex != null && nextIndex >= 0 && nextIndex < contentLength) {
-              setTabContentIndex(nextIndex);
-              playNavigateSound();
-              lastNavigationTime.current = now;
-              scrollToTabContent(nextIndex);
-            }
+          if (nextIndex === -1) {
+            setNavigationMode('tabs');
+            setTabContentIndex(0);
+            playNavigateSound();
+            lastNavigationTime.current = now;
             return;
           }
+
+          if (nextIndex != null && nextIndex >= 0 && nextIndex < contentLength) {
+            setTabContentIndex(nextIndex);
+            playNavigateSound();
+            lastNavigationTime.current = now;
+            scrollToTabContent(nextIndex);
+          }
+          return;
         } else {
-          if (button === 'DOWN') {
+          if (direction === 'DOWN') {
             if (tabContentIndex < contentLength - 1) {
               setTabContentIndex(prev => prev + 1);
               playNavigateSound();
@@ -1273,7 +1326,7 @@ const Overdrive: React.FC = () => {
             }
             return;
           }
-          if (button === 'UP') {
+          if (direction === 'UP') {
             if (tabContentIndex > 0) {
               setTabContentIndex(prev => prev - 1);
               playNavigateSound();
@@ -1292,16 +1345,7 @@ const Overdrive: React.FC = () => {
 
       // FULL VIEW: Tabs
       if (isFullView && navigationMode === 'tabs') {
-        if (button === 'B' || button === 'CIRCLE') {
-          setIsFullView(false);
-          setNavigationMode('library');
-          setTabContentIndex(0);
-          playNavigateSound();
-          lastNavigationTime.current = now;
-          return;
-        }
-
-        if (button === 'DOWN' || button === 'A' || button === 'X') {
+        if (direction === 'DOWN') {
           enterTabContentNavigation();
           return;
         }
@@ -1309,7 +1353,7 @@ const Overdrive: React.FC = () => {
         const tabs = ['achievements', 'timeline', 'community'] as const;
         const currentIdx = tabs.indexOf(activeTab);
 
-        if (button === 'RIGHT') {
+        if (direction === 'RIGHT') {
           const nextTab = tabs[(currentIdx + 1) % tabs.length];
           setActiveTab(nextTab);
           setTabContentIndex(0);
@@ -1318,7 +1362,7 @@ const Overdrive: React.FC = () => {
           return;
         }
 
-        if (button === 'LEFT') {
+        if (direction === 'LEFT') {
           const prevTab = tabs[(currentIdx - 1 + tabs.length) % tabs.length];
           setActiveTab(prevTab);
           setTabContentIndex(0);
@@ -1331,20 +1375,14 @@ const Overdrive: React.FC = () => {
 
       // NORMAL VIEW: Library
       if (!isFullView && navigationMode === 'library') {
-        if (button === "UP") {
+        if (direction === "UP") {
           playNavigateSound();
           lastNavigationTime.current = now;
           setTopBarFocused(true);
           return;
         }
 
-        if ((button === "A" || button === "X")) {
-          const game = sortedGames[libraryFocusIndex];
-          if (game) handleOpenGameDetails(game.id);
-          return;
-        }
-
-        if (button === "DOWN") {
+        if (direction === "DOWN") {
           if (sortedGames.length > 0) {
             setIsFullView(true);
             setNavigationMode('tabs');
@@ -1355,12 +1393,12 @@ const Overdrive: React.FC = () => {
           return;
         }
 
-        if (button === "LB") {
+        if (direction === "LEFT") {
           navigateLibrary("prev");
           return;
         }
 
-        if (button === "RB") {
+        if (direction === "RIGHT") {
           navigateLibrary("next");
           return;
         }

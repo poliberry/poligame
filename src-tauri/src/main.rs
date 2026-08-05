@@ -692,6 +692,21 @@ fn focus_main_window(app: tauri::AppHandle) -> Result<(), String> {
     Ok(())
 }
 
+/// Handles the global shortcut that toggles the in-game overlay, regardless
+/// of which of the candidate key combos ended up being registered.
+fn overlay_shortcut_handler(
+    app_handle: &tauri::AppHandle,
+    _shortcut: &tauri_plugin_global_shortcut::Shortcut,
+    event: tauri_plugin_global_shortcut::ShortcutEvent,
+) {
+    if event.state == tauri_plugin_global_shortcut::ShortcutState::Pressed {
+        let h = app_handle.clone();
+        tauri::async_runtime::spawn(async move {
+            let _ = show_overdrive_overlay(h).await;
+        });
+    }
+}
+
 fn main() {
     // Load environment variables from .env file in src-tauri directory
     // Create a .env file in the src-tauri directory with: STEAMGRIDDB_API_KEY=your_key_here
@@ -725,18 +740,59 @@ fn main() {
                 eprintln!("Failed to initialize themes: {}", e);
             }
 
-            // Register global shortcut Ctrl+Shift+F9 to show/hide the in-game overlay
+            // Register a global shortcut to show/hide the in-game overlay.
+            //
+            // Ctrl+Shift+F9 used to be hardcoded here, but Ctrl/F-keys are
+            // among the combos most likely to already be claimed by desktop
+            // environment or window manager global bindings (this is what
+            // caused it to silently fail to register on some Linux setups).
+            // Alt+Shift+O avoids both Ctrl/Cmd and Super, which are the
+            // modifiers most commonly reserved by the OS/DE on Linux, Windows
+            // and macOS, while still being trivial to type with one hand.
+            // A couple of fallbacks (including the old combo) are tried in
+            // order in case the primary one is ever claimed by something
+            // else, and a failed registration is logged rather than treated
+            // as fatal - the app should never fail to start just because a
+            // global hotkey grab was refused by the OS.
             {
-                use tauri_plugin_global_shortcut::{Code, GlobalShortcutExt, Modifiers, Shortcut, ShortcutState};
-                let shortcut = Shortcut::new(Some(Modifiers::SHIFT | Modifiers::CONTROL), Code::F9);
-                app.handle().global_shortcut().on_shortcut(shortcut, |app_handle, _shortcut, event| {
-                    if event.state == ShortcutState::Pressed {
-                        let h = app_handle.clone();
-                        tauri::async_runtime::spawn(async move {
-                            let _ = show_overdrive_overlay(h).await;
-                        });
+                use tauri_plugin_global_shortcut::{Code, GlobalShortcutExt, Modifiers, Shortcut};
+
+                let overlay_shortcut_candidates: [(Modifiers, Code); 3] = [
+                    (Modifiers::ALT | Modifiers::SHIFT, Code::KeyO),
+                    (Modifiers::CONTROL | Modifiers::ALT, Code::KeyO),
+                    (Modifiers::SHIFT | Modifiers::CONTROL, Code::F9),
+                ];
+
+                let mut registered = false;
+                for (modifiers, code) in overlay_shortcut_candidates {
+                    let shortcut = Shortcut::new(Some(modifiers), code);
+                    match app
+                        .handle()
+                        .global_shortcut()
+                        .on_shortcut(shortcut, overlay_shortcut_handler)
+                    {
+                        Ok(_) => {
+                            eprintln!(
+                                "Registered overlay global shortcut: {:?}+{:?}",
+                                modifiers, code
+                            );
+                            registered = true;
+                            break;
+                        }
+                        Err(e) => {
+                            eprintln!(
+                                "Failed to register overlay shortcut {:?}+{:?}: {}",
+                                modifiers, code, e
+                            );
+                        }
                     }
-                })?;
+                }
+                if !registered {
+                    eprintln!(
+                        "Warning: could not register any overlay global shortcut - \
+                         all candidate key combinations were refused by the OS."
+                    );
+                }
             }
 
             let mut tray_builder = tauri::tray::TrayIconBuilder::with_id(TRAY_ICON_ID)
