@@ -1,6 +1,6 @@
 [package]
 name = "poligame"
-version = "1.3.4"
+version = "1.3.5"
 description = "Game aggregator with marketplace"
 authors = ["poliberry"]
 license = ""
