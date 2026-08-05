@@ -726,9 +726,13 @@ fn overlay_shortcut_handler(
 /// ourselves once with it set.
 ///
 /// This only touches AppImage runs (`APPIMAGE` is set by the AppImage runtime)
-/// and is a no-op if the host doesn't have any of these libraries — normal
+/// and is a no-op if the host is missing any of these libraries — a partial
+/// preload would still leave the missing one(s) loaded from the AppImage's
+/// bundled copy, reintroducing the exact conflict this works around. Regular
 /// package installs (.deb, distro packages) already link against the system
-/// WebKitGTK/GTK stack and never hit this in the first place.
+/// WebKitGTK/GTK stack and never hit this in the first place. Any `LD_PRELOAD`
+/// the user already had set (e.g. for an allocator or instrumentation tool)
+/// is preserved, with these libraries prepended rather than replacing it.
 #[cfg(target_os = "linux")]
 fn reexec_appimage_with_system_wayland_libs_if_needed() {
     const GUARD_VAR: &str = "__POLIGAME_WAYLAND_LD_PRELOAD_SET";
@@ -737,12 +741,19 @@ fn reexec_appimage_with_system_wayland_libs_if_needed() {
         return;
     }
 
-    let libs = system_library_paths(&[
+    let wanted = [
         "libwayland-client.so.0",
         "libwayland-egl.so.1",
         "libwayland-cursor.so.0",
-    ]);
-    if libs.is_empty() {
+    ];
+    let libs = system_library_paths(&wanted);
+    // A partial result is worse than no fix at all: whichever library wasn't
+    // resolved would still load from the AppImage's bundled copy, so the
+    // process would end up mixing host and bundled Wayland libraries anyway -
+    // exactly the conflict this works around. Only proceed if every one of
+    // them was found, and don't set the guard var otherwise so this is
+    // retried (and still no-ops harmlessly) on the next launch.
+    if libs.len() != wanted.len() {
         return;
     }
 
@@ -750,10 +761,20 @@ fn reexec_appimage_with_system_wayland_libs_if_needed() {
         return;
     };
 
+    // Prepend to any LD_PRELOAD the user already has set (e.g. for an
+    // allocator or instrumentation tool) rather than clobbering it.
+    let mut preload = libs.join(":");
+    if let Some(existing) = std::env::var_os("LD_PRELOAD") {
+        if !existing.is_empty() {
+            preload.push(':');
+            preload.push_str(&existing.to_string_lossy());
+        }
+    }
+
     use std::os::unix::process::CommandExt;
     let err = std::process::Command::new(exe)
         .args(std::env::args_os().skip(1))
-        .env("LD_PRELOAD", libs.join(":"))
+        .env("LD_PRELOAD", preload)
         .env(GUARD_VAR, "1")
         .exec();
     eprintln!("Failed to re-exec with system Wayland libraries preloaded: {err}");
