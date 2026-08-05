@@ -104,6 +104,18 @@ let rafId: number | null = null;
 let lastState: NormalizedState = EMPTY_STATE;
 let lastGamepadIndex: number | null = null;
 
+// A subscriber's callback throwing must never take down the shared polling
+// loop for every other mounted consumer - isolate each call so one bad
+// listener can't stop input for the rest of the app.
+function notify<T extends unknown[]>(fn: ((...args: T) => void) | undefined, ...args: T) {
+  if (!fn) return;
+  try {
+    fn(...args);
+  } catch (error) {
+    console.error("[gamepad] Listener threw:", error);
+  }
+}
+
 function readFirstConnectedGamepad(): Gamepad | null {
   const gamepads = navigator.getGamepads();
   for (const gp of gamepads) {
@@ -189,18 +201,18 @@ function tick() {
 
   for (const name of BUTTON_NAMES) {
     if (state[name] && !lastState[name]) {
-      listeners.forEach((listener) => listener.onButtonDown?.(name));
+      listeners.forEach((listener) => notify(listener.onButtonDown, name));
     }
   }
   for (const { direction, key } of DPAD_DIRECTIONS) {
     if (state[key] && !lastState[key]) {
-      listeners.forEach((listener) => listener.onDPadDown?.(direction));
+      listeners.forEach((listener) => notify(listener.onDPadDown, direction));
     }
   }
 
   const leftX = gamepad.axes[mapping.axes.LEFT_X] ?? 0;
   const leftY = gamepad.axes[mapping.axes.LEFT_Y] ?? 0;
-  listeners.forEach((listener) => listener.onStick?.(leftX, leftY));
+  listeners.forEach((listener) => notify(listener.onStick, leftX, leftY));
 
   lastState = state;
   rafId = requestAnimationFrame(tick);
