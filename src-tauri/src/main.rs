@@ -707,7 +707,99 @@ fn overlay_shortcut_handler(
     }
 }
 
+/// The Linux AppImage bundles its own copies of libwayland-client, libwayland-egl
+/// and libwayland-cursor (pulled in by linuxdeploy's GTK plugin alongside GTK/
+/// WebKitGTK itself). Those bundled copies get resolved ahead of the host's own
+/// via the AppImage runtime's `LD_LIBRARY_PATH`, so the process ends up with two
+/// different builds of libwayland-client loaded at once: one used by our bundled
+/// GTK stack, another used internally by the host's Mesa/EGL driver. Mesa's EGL
+/// Wayland platform then fails to reconcile the two and aborts the whole process
+/// with:
+///   Could not create default EGL display: EGL_BAD_PARAMETER. Aborting...
+///
+/// The fix is to force the single, host-provided copies of these libraries to be
+/// used everywhere via `LD_PRELOAD`, resolved through the dynamic linker cache
+/// (`ldconfig -p`) rather than `LD_LIBRARY_PATH`, so we get the real system path
+/// regardless of what the AppImage runtime has set up. Since these libraries are
+/// direct dependencies of the executable (loaded before `main` ever runs),
+/// `LD_PRELOAD` can only take effect on a fresh process image, so we re-exec
+/// ourselves once with it set.
+///
+/// This only touches AppImage runs (`APPIMAGE` is set by the AppImage runtime)
+/// and is a no-op if the host doesn't have any of these libraries — normal
+/// package installs (.deb, distro packages) already link against the system
+/// WebKitGTK/GTK stack and never hit this in the first place.
+#[cfg(target_os = "linux")]
+fn reexec_appimage_with_system_wayland_libs_if_needed() {
+    const GUARD_VAR: &str = "__POLIGAME_WAYLAND_LD_PRELOAD_SET";
+
+    if std::env::var_os("APPIMAGE").is_none() || std::env::var_os(GUARD_VAR).is_some() {
+        return;
+    }
+
+    let libs = system_library_paths(&[
+        "libwayland-client.so.0",
+        "libwayland-egl.so.1",
+        "libwayland-cursor.so.0",
+    ]);
+    if libs.is_empty() {
+        return;
+    }
+
+    let Ok(exe) = std::env::current_exe() else {
+        return;
+    };
+
+    use std::os::unix::process::CommandExt;
+    let err = std::process::Command::new(exe)
+        .args(std::env::args_os().skip(1))
+        .env("LD_PRELOAD", libs.join(":"))
+        .env(GUARD_VAR, "1")
+        .exec();
+    eprintln!("Failed to re-exec with system Wayland libraries preloaded: {err}");
+}
+
+/// Looks up the given library names in the dynamic linker cache (`ldconfig -p`),
+/// which reflects the host's real, standard library search paths independent of
+/// any `LD_LIBRARY_PATH` override. Prefers 64-bit (x86-64) entries when a name
+/// has both 32- and 64-bit results. Names with no match are silently skipped.
+#[cfg(target_os = "linux")]
+fn system_library_paths(names: &[&str]) -> Vec<String> {
+    let output = match std::process::Command::new("ldconfig").arg("-p").output() {
+        Ok(o) if o.status.success() => o.stdout,
+        _ => return Vec::new(),
+    };
+    let text = String::from_utf8_lossy(&output);
+
+    let mut found = Vec::new();
+    for name in names {
+        // Walk every matching line, preferring an x86-64 entry over a 32-bit
+        // one but otherwise keeping the first match found.
+        let mut best: Option<&str> = None;
+        for line in text.lines() {
+            if line.split_whitespace().next() != Some(*name) {
+                continue;
+            }
+            if best.is_none() || line.contains("x86-64") {
+                best = Some(line);
+            }
+        }
+        if let Some(line) = best {
+            if let Some(path) = line.rsplit("=> ").next() {
+                found.push(path.trim().to_string());
+            }
+        }
+    }
+    found
+}
+
 fn main() {
+    // Must happen before anything else touches the environment: on Linux
+    // AppImage builds this may re-exec the whole process with a fixed
+    // LD_PRELOAD. See the function doc for why.
+    #[cfg(target_os = "linux")]
+    reexec_appimage_with_system_wayland_libs_if_needed();
+
     // Load environment variables from .env file in src-tauri directory
     // Create a .env file in the src-tauri directory with: STEAMGRIDDB_API_KEY=your_key_here
     dotenv::dotenv().ok();
@@ -717,13 +809,9 @@ fn main() {
         dotenv::from_path(&env_path).ok();
     }
 
-    // Work around a WebKitGTK crash on Linux where the DMA-BUF renderer fails to
-    // create an EGL display under Wayland (commonly seen with NVIDIA drivers and
-    // some Mesa versions), which aborts the whole process with:
-    //   "Could not create default EGL display: EGL_BAD_PARAMETER. Aborting..."
-    // Disabling the DMA-BUF renderer falls back to a code path that doesn't hit
-    // this bug. This must be set before the webview is created, and only applies
-    // if the user hasn't already set it themselves.
+    // Also work around WebKitGTK's newer DMA-BUF renderer being flaky on some
+    // GPU/driver combinations (separate from the Wayland library issue above).
+    // Only applies if the user hasn't already set it themselves.
     #[cfg(target_os = "linux")]
     {
         if std::env::var_os("WEBKIT_DISABLE_DMABUF_RENDERER").is_none() {
