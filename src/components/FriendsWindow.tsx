@@ -534,12 +534,12 @@ export const FriendsWindow: React.FC<FriendsWindowProps> = ({ onClose }) => {
   if (!isAuthenticated || !user) {
     return (
       <div className="w-full h-full">
-        <div className="flex items-center justify-between py-1 px-2 border-b border-white/10 drag-region" data-tauri-drag-region>
+        <div className="flex items-center justify-between py-1 px-2 border-b border-white/10 drag-region">
           <div className="flex items-center gap-2">
             <Users size={16} />
             <h2 className="text-sm font-semibold uppercase italic">Friends</h2>
           </div>
-          <div className="flex items-center gap-2 no-drag-region" data-tauri-drag-region="false">
+          <div className="flex items-center gap-2 no-drag-region">
             {/* Window Controls */}
             <button
               onClick={handleMinimize}
@@ -576,7 +576,7 @@ export const FriendsWindow: React.FC<FriendsWindowProps> = ({ onClose }) => {
     <div className="flex flex-col h-full bg-[var(--theme-background)]">
 
       {/* Header */}
-      <div className="flex items-center justify-between py-1 px-2 border-b border-white/10 drag-region" data-tauri-drag-region>
+      <div className="flex items-center justify-between py-1 px-2 border-b border-white/10 drag-region">
         <div className="flex items-center gap-2">
           <Users size={16} />
           <h2 className="text-sm font-semibold uppercase italic">Friends</h2>
@@ -586,7 +586,7 @@ export const FriendsWindow: React.FC<FriendsWindowProps> = ({ onClose }) => {
             </span>
           )}
         </div>
-        <div className="flex items-center gap-2 no-drag-region" data-tauri-drag-region="false">
+        <div className="flex items-center gap-2 no-drag-region">
           {/* Status Selector */}
           <div className="relative">
             <button

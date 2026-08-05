@@ -33,6 +33,7 @@ import { usePlaytimeTracking } from "@/hooks/usePlaytimeTracking";
 import { useDiscordRichPresence } from "@/hooks/useDiscordRichPresence";
 import { AccessibilityFilter } from "@/components/AccessibilityFilter";
 import { useTauriDragRegions } from "@/hooks/useTauriDragRegions";
+import { WindowResizeHandles } from "@/components/WindowResizeHandles";
 import { useResponsiveGamepad } from "@/hooks/useResponsiveGamepad";
 import { useOverdriveStore } from "@/stores/overdriveStore";
 import { OverdriveInternalView } from "@/stores/overdriveStore";
@@ -440,6 +441,7 @@ function App() {
   return (
     <ThemeProvider>
       <AccessibilityFilter />
+      <WindowResizeHandles />
       <NovuProviderWrapper>
         <HashRouter>
           <UpdateAvailableDialog />

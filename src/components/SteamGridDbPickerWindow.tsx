@@ -254,7 +254,7 @@ export const SteamGridDbPickerWindow: React.FC = () => {
 
     return (
         <div className="w-full h-screen overflow-hidden bg-background text-foreground flex flex-col">
-            <div data-tauri-drag-region className="drag-region flex items-center justify-between border-b px-2 py-1">
+            <div className="drag-region flex items-center justify-between border-b px-2 py-1">
                 <h1 className="text-sm font-light text-muted-foreground">SteamGridDB Artwork Picker</h1>
                 <Button type="button" variant="ghost" size="icon" onClick={() => void closeWindow()}>
                     <X className="h-4 w-4" />

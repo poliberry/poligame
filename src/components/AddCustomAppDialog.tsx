@@ -298,7 +298,7 @@ export const AddCustomAppDialog: React.FC<AddCustomAppDialogProps> = ({
       <link rel="preconnect" href="https://fonts.googleapis.com" />
       <link rel="preconnect" href="https://fonts.gstatic.com" />
       <div className="w-full h-full">
-        <div data-tauri-drag-region className="drag-region flex items-center bg-background justify-between border-b px-1 py-1">
+        <div className="drag-region flex items-center bg-background justify-between border-b px-1 py-1">
           <h2 className="text-sm font-light text-muted-foreground">Add Custom App</h2>
           <Button variant="ghost" size="icon" onClick={onClose}>
             <X className="h-4 w-4" />
