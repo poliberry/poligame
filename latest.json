@@ -1,23 +1,23 @@
 {
-  "version": "1.3.5",
-  "notes": "See full release notes at https://github.com/poliberry/poligame/releases/tag/v1.3.5",
-  "pub_date": "2026-08-05T04:32:15Z",
+  "version": "1.3.6",
+  "notes": "See full release notes at https://github.com/poliberry/poligame/releases/tag/v1.3.6",
+  "pub_date": "2026-08-05T05:35:13Z",
   "platforms": {
     "darwin-aarch64": {
-      "signature": "dW50cnVzdGVkIGNvbW1lbnQ6IHNpZ25hdHVyZSBmcm9tIHRhdXJpIHNlY3JldCBrZXkKUlVReEhzdlBDa2xic0JuMDFtbHRxTG5vNTVHakU4N3ZNOWZyTDVqaVRKRTdlZE41YW05U2Z5TkFrdm43MjZGaG1YMXB3TjFIaFptRFVpSHNNUTBqNDJsV2ZIZXJjN2Q2VkFJPQp0cnVzdGVkIGNvbW1lbnQ6IHRpbWVzdGFtcDoxNzg1OTA0MjkxCWZpbGU6UG9saUdhbWUuYXBwLnRhci5negpTVFM4WjVZRlpuMUx4eVFlUDA0enhjVldPL3VGNUVYYTdvMm54QnI5V2pWMVBPR3VVRjg5OXVJN2ttY0N4eEVvaW10Q2RtUHY2UjcyYXk5WWNsdzdCUT09Cg==",
-      "url": "https://github.com/poliberry/poligame/releases/download/v1.3.5/PoliGame_aarch64.app.tar.gz"
+      "signature": "dW50cnVzdGVkIGNvbW1lbnQ6IHNpZ25hdHVyZSBmcm9tIHRhdXJpIHNlY3JldCBrZXkKUlVReEhzdlBDa2xic0ZEdFhSbzNyWGZWc2dBWnpJbUVFQ0R4dW5WMmJ2R1BHbmFWUG9ocUM2RVFIRjUxQ01GelhGcGFRTWpLU2pYWkJzdmkvNC9YSGRodGZybWxKNS83MndrPQp0cnVzdGVkIGNvbW1lbnQ6IHRpbWVzdGFtcDoxNzg1OTA4MDY4CWZpbGU6UG9saUdhbWUuYXBwLnRhci5negpkYkJocUUzcEtUQVExNjlMQVFvYVcyU3pqOS85YXo1S0Ftd2gzaU5oNmdsNHJlNFpRLzZaVld3UVBEcHJUN1FxMnl0RUtxcHVzTzdER0lJbXk3b3BDUT09Cg==",
+      "url": "https://github.com/poliberry/poligame/releases/download/v1.3.6/PoliGame_aarch64.app.tar.gz"
     },
     "darwin-x86_64": {
-      "signature": "dW50cnVzdGVkIGNvbW1lbnQ6IHNpZ25hdHVyZSBmcm9tIHRhdXJpIHNlY3JldCBrZXkKUlVReEhzdlBDa2xic0VySWduQ0NxUnp1ZUl6djZJUlZxOWJ2dVdhZ2hPL2hLM2RicFI4cCtldHJtZXE4VXN6bVE1UVpjWnl0UU9BcEZjSDBoNjVSR2JMaW1LdVBublF0a0FJPQp0cnVzdGVkIGNvbW1lbnQ6IHRpbWVzdGFtcDoxNzg1OTA0MjIzCWZpbGU6UG9saUdhbWUuYXBwLnRhci5negp2OTRDSVAvdUhhRXEya1hxbXhWUGNYb0NrVHI2YWtJVE5SdjQ0djBqNDQ5d0VJQWRsN1JCaW1CTHhLcEF2WnJucnQwM09Obko2VDRRV0lNOGo3L3pCQT09Cg==",
-      "url": "https://github.com/poliberry/poligame/releases/download/v1.3.5/PoliGame_x86_64.app.tar.gz"
+      "signature": "dW50cnVzdGVkIGNvbW1lbnQ6IHNpZ25hdHVyZSBmcm9tIHRhdXJpIHNlY3JldCBrZXkKUlVReEhzdlBDa2xic05yOEFJOU5FeWtVeitFb2Jpc2tDNkkwc3B1NGpwTHF6ZTV2Y1J2MjRvczQ5RC81ZTE3ekQ5VjJweFB6U1llamMvdjZySVNIVDRla0xVV3pNS0l2N2drPQp0cnVzdGVkIGNvbW1lbnQ6IHRpbWVzdGFtcDoxNzg1OTA3OTY1CWZpbGU6UG9saUdhbWUuYXBwLnRhci5negpOVm1JTmNEdW5rN015VEFaVXhKbFdacHAxKzFqd3dIaEx0ZXk2VlJNRlIvUGhlaVZFRDJQditicmdPUmNQTVFHZThBUGdKQ0RKOWRIcnZ0SmVlaUhEQT09Cg==",
+      "url": "https://github.com/poliberry/poligame/releases/download/v1.3.6/PoliGame_x86_64.app.tar.gz"
     },
     "linux-x86_64": {
-      "signature": "dW50cnVzdGVkIGNvbW1lbnQ6IHNpZ25hdHVyZSBmcm9tIHRhdXJpIHNlY3JldCBrZXkKUlVReEhzdlBDa2xic0xEdXdsenpQQ2JPaGg4NnZ6VEZIWUM2UkkxWTREeGpoWkJVTTQrREFMcTEzRzdDZ1lieEhSdlNvWEN2Wno4RHBjQlFwcU9LcTlVS1c2aUdlUkM3NEFRPQp0cnVzdGVkIGNvbW1lbnQ6IHRpbWVzdGFtcDoxNzg1OTAzOTczCWZpbGU6UG9saUdhbWVfMS4zLjVfYW1kNjQuQXBwSW1hZ2UudGFyLmd6Cm82UW8wdDh0Z1lvc2NmcGZFU0Z3bFdUd1ZFNGEyTjM1Y2VwRVgycHFweVJwQWI3YVdERXFrcHp4Z3dLckdFbmRla2s4Z09wKzdTdldmZlJ6amY1dkJBPT0K",
-      "url": "https://github.com/poliberry/poligame/releases/download/v1.3.5/PoliGame_1.3.5_amd64.AppImage.tar.gz"
+      "signature": "dW50cnVzdGVkIGNvbW1lbnQ6IHNpZ25hdHVyZSBmcm9tIHRhdXJpIHNlY3JldCBrZXkKUlVReEhzdlBDa2xic0xWK3M4ZUU4WGJFZTVKV3BXbXBZVXY2SFg0V2dEQkd5YXoxRWxxUTlLbDc2MXVCRUNleE5wekRUdDVRRWs5azcxK2ZzQVIrWkU5K1RkeTc2eFJ6blE0PQp0cnVzdGVkIGNvbW1lbnQ6IHRpbWVzdGFtcDoxNzg1OTA3ODE2CWZpbGU6UG9saUdhbWVfMS4zLjZfYW1kNjQuQXBwSW1hZ2UudGFyLmd6CmVVaEorckw2WjkvNk9sN25QdzE3STNRQlhKbWlyUmlXWjNEbDlDNEtqeldkN2h4NkZqWXpwdTVReTgxN0Y4Z1ZWaGNsUk9FUVJWU2RGY25JdnlYaUFnPT0K",
+      "url": "https://github.com/poliberry/poligame/releases/download/v1.3.6/PoliGame_1.3.6_amd64.AppImage.tar.gz"
     },
     "windows-x86_64": {
-      "signature": "dW50cnVzdGVkIGNvbW1lbnQ6IHNpZ25hdHVyZSBmcm9tIHRhdXJpIHNlY3JldCBrZXkKUlVReEhzdlBDa2xic002ZzdBWEtjek9oaU1sbm40TVQrT2tEMEtISkNOUzhoSlpLM2NTajVGdmd4akk0RldVSlFLNzBiWWxORzVlZjA1eTlKdm1yMEt4b0E0elpuVDNUZ1FzPQp0cnVzdGVkIGNvbW1lbnQ6IHRpbWVzdGFtcDoxNzg1OTAzOTYxCWZpbGU6UG9saUdhbWVfMS4zLjVfeDY0LXNldHVwLm5zaXMuemlwCmdxbHd5cVlQblE5ei9USUt5dHVRN211Q1Badm9lMG14NU00dWpsU3lGcUJacGx0Nm8zUjhMVHpoU0NkVGs2Wm14MlJ4ekl1MURlQTRWQUxSZ3ExQUNRPT0K",
-      "url": "https://github.com/poliberry/poligame/releases/download/v1.3.5/PoliGame_1.3.5_x64-setup.nsis.zip"
+      "signature": "dW50cnVzdGVkIGNvbW1lbnQ6IHNpZ25hdHVyZSBmcm9tIHRhdXJpIHNlY3JldCBrZXkKUlVReEhzdlBDa2xic0hqR0k3UWZWUmNxMllmVWpTcUY2eFRteVhWd0k4bk1Ga3NKL1BLbFBUeHlOaVh0VEJTWlFCQnhYMGx6ZjdsREVUMUo5RDJLNHZaUnVaTFBIcTJhemdzPQp0cnVzdGVkIGNvbW1lbnQ6IHRpbWVzdGFtcDoxNzg1OTA3NzIwCWZpbGU6UG9saUdhbWVfMS4zLjZfeDY0LXNldHVwLm5zaXMuemlwCmFDUVdCVGcyR3RMNlM2L1FjZ0JLU28zcGxwOTBsVnRSWkdRQTR3NkxIUkF0ZUFyT2t6ZmVGa2MxeUtKY1d4NnpJdnp0NDAwRkQ3aDlLVHduL0ptQkNnPT0K",
+      "url": "https://github.com/poliberry/poligame/releases/download/v1.3.6/PoliGame_1.3.6_x64-setup.nsis.zip"
     }
   }
 }
