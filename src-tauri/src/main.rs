@@ -716,7 +716,21 @@ fn main() {
         let env_path = std::path::Path::new(&manifest_dir).join(".env");
         dotenv::from_path(&env_path).ok();
     }
-    
+
+    // Work around a WebKitGTK crash on Linux where the DMA-BUF renderer fails to
+    // create an EGL display under Wayland (commonly seen with NVIDIA drivers and
+    // some Mesa versions), which aborts the whole process with:
+    //   "Could not create default EGL display: EGL_BAD_PARAMETER. Aborting..."
+    // Disabling the DMA-BUF renderer falls back to a code path that doesn't hit
+    // this bug. This must be set before the webview is created, and only applies
+    // if the user hasn't already set it themselves.
+    #[cfg(target_os = "linux")]
+    {
+        if std::env::var_os("WEBKIT_DISABLE_DMABUF_RENDERER").is_none() {
+            std::env::set_var("WEBKIT_DISABLE_DMABUF_RENDERER", "1");
+        }
+    }
+
     tauri::Builder::default()
         .manage(discord_presence::DiscordPresenceState::new())
         .plugin(tauri_plugin_shell::init())
