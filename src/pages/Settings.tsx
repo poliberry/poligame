@@ -163,12 +163,12 @@ const Settings: React.FC = () => {
   return (
     <div className="w-full h-full flex flex-col bg-background">
 
-      <div className="flex items-center justify-between py-1 px-2 border-b border-border bg-muted drag-region" data-tauri-drag-region>
+      <div className="flex items-center justify-between py-1 px-2 border-b border-border bg-muted drag-region">
         <div className="flex items-center gap-2 text-foreground/70">
           <Cog size={16} />
           <h2 className="text-sm font-semibold uppercase italic">Settings</h2>
         </div>
-        <div className="flex items-end gap-2 no-drag-region text-foreground/70" data-tauri-drag-region="false">
+        <div className="flex items-end gap-2 no-drag-region text-foreground/70">
           {/* Window Controls */}
           <button
             onClick={handleMinimize}

@@ -33,6 +33,7 @@ import { usePlaytimeTracking } from "@/hooks/usePlaytimeTracking";
 import { useDiscordRichPresence } from "@/hooks/useDiscordRichPresence";
 import { AccessibilityFilter } from "@/components/AccessibilityFilter";
 import { useTauriDragRegions } from "@/hooks/useTauriDragRegions";
+import { WindowResizeHandles } from "@/components/WindowResizeHandles";
 import { useResponsiveGamepad } from "@/hooks/useResponsiveGamepad";
 import { useOverdriveStore } from "@/stores/overdriveStore";
 import { OverdriveInternalView } from "@/stores/overdriveStore";
@@ -358,7 +359,13 @@ function AppContent() {
 
   // Track playtime for all games
   usePlaytimeTracking(!isCustomDialogWindow);
-  useTauriDragRegions(!isCustomDialogWindow);
+  // Unlike the other hooks gated on isCustomDialogWindow, this one must stay
+  // enabled everywhere: it's the only thing that drives dragging now that
+  // the raw data-tauri-drag-region attribute is gone (see
+  // useTauriDragRegions.ts), and AddCustomAppDialog's titlebar relies on it
+  // like every other window. It's a harmless no-op on routes/windows with
+  // no `.drag-region` element, so there's no downside to leaving it on.
+  useTauriDragRegions();
   useDiscordRichPresence(!isCustomDialogWindow);
 
   if (isOverdriveRoute) {
@@ -440,6 +447,7 @@ function App() {
   return (
     <ThemeProvider>
       <AccessibilityFilter />
+      <WindowResizeHandles />
       <NovuProviderWrapper>
         <HashRouter>
           <UpdateAvailableDialog />

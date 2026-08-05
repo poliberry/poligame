@@ -185,12 +185,11 @@ export const AccountDetails: React.FC = () => {
           backgroundColor: 'var(--theme-background)',
           borderBottomColor: 'rgba(255, 255, 255, 0.1)',
         }}
-        data-tauri-drag-region
       >
-        <div className="flex items-center gap-2" data-tauri-drag-region>
+        <div className="flex items-center gap-2 drag-region">
           <h1 className="text-lg font-semibold text-white">Account Details</h1>
         </div>
-        <div className="flex gap-1 no-drag-region" data-tauri-drag-region="false">
+        <div className="flex gap-1 no-drag-region">
           <button
             onClick={handleMinimize}
             className="p-1 hover:bg-white/10 rounded transition-colors cursor-pointer"

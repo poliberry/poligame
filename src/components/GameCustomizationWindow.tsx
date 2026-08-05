@@ -431,7 +431,6 @@ export const GameCustomizationWindow: React.FC<
       {/* Header */}
       <div
         className="flex items-center justify-between bg-[var(--theme-background)] py-0.5 px-2 z-[50] drag-region"
-        data-tauri-drag-region
       >
         <div className="flex-1 flex-grow">
           <h1
@@ -442,7 +441,6 @@ export const GameCustomizationWindow: React.FC<
         </div>
         <div
           className="flex items-center gap-2 no-drag-region"
-          data-tauri-drag-region="false"
         >
           <button
             onClick={handleClose}

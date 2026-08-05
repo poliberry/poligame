@@ -209,7 +209,6 @@ export const TopBar: React.FC = () => {
       }}
     >
       <div
-        data-tauri-drag-region
         className="drag-region flex flex-row w-full items-center justify-between"
         style={{
           margin: 0,
@@ -230,7 +229,6 @@ export const TopBar: React.FC = () => {
           <div className="flex flex-row gap-0 ml-4">
             <div
               className="relative inline-block text-left no-drag-region"
-              data-tauri-drag-region="false"
             >
               <DropdownMenu>
                 <DropdownMenuTrigger>
@@ -302,7 +300,6 @@ export const TopBar: React.FC = () => {
             {isAuthenticated && user && (
               <div
                 className="relative inline-block text-left no-drag-region"
-                data-tauri-drag-region="false"
               >
                 <DropdownMenu>
                   <DropdownMenuTrigger>
@@ -334,7 +331,6 @@ export const TopBar: React.FC = () => {
             )}
             <div
               className="relative inline-block text-left no-drag-region"
-              data-tauri-drag-region="false"
             >
               <DropdownMenu>
                 <DropdownMenuTrigger>
@@ -374,7 +370,6 @@ export const TopBar: React.FC = () => {
             </div>
             <div
               className="relative inline-block text-left no-drag-region"
-              data-tauri-drag-region="false"
             >
               <DropdownMenu>
                 <DropdownMenuTrigger>
@@ -410,7 +405,6 @@ export const TopBar: React.FC = () => {
         </div>
         <div
           className={cn("flex items-center gap-1 no-drag-region", runningGame ? "mr-8" : "mr-4")}
-          data-tauri-drag-region="false"
         >
           <NovuInbox />
           <Button

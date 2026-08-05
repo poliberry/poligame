@@ -481,7 +481,6 @@ export const Setup: React.FC = () => {
           </video>
           <div className="w-full h-full bg-black/50 z-10 absolute top-0 left-0">
             <div
-              data-tauri-drag-region
               className="drag-region backdrop-blur-lg fixed top-0 left-0 w-full h-10 bg-black/50 z-20 flex items-center justify-end px-2"
             >
               <div className="flex items-center gap-3">
@@ -953,7 +952,6 @@ export const Setup: React.FC = () => {
                                 <div className="flex flex-row gap-0 ml-2">
                                   <div
                                     className="relative inline-block text-left no-drag-region"
-                                    data-tauri-drag-region="false"
                                   >
                                     <DropdownMenu>
                                       <DropdownMenuTrigger>
@@ -1014,7 +1012,6 @@ export const Setup: React.FC = () => {
                                   {user && (
                                     <div
                                       className="relative inline-block text-left no-drag-region"
-                                      data-tauri-drag-region="false"
                                     >
                                       <DropdownMenu>
                                         <DropdownMenuTrigger>
@@ -1044,7 +1041,6 @@ export const Setup: React.FC = () => {
                                   )}
                                   <div
                                     className="relative inline-block text-left no-drag-region"
-                                    data-tauri-drag-region="false"
                                   >
                                     <DropdownMenu>
                                       <DropdownMenuTrigger>
@@ -1082,7 +1078,6 @@ export const Setup: React.FC = () => {
                                   </div>
                                   <div
                                     className="relative inline-block text-left no-drag-region"
-                                    data-tauri-drag-region="false"
                                   >
                                     <DropdownMenu>
                                       <DropdownMenuTrigger>

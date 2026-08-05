@@ -1,5 +1,17 @@
 import { useEffect } from "react";
 
+// Deliberately keyed off the `.drag-region`/`.no-drag-region` CSS classes
+// only, NOT the `data-tauri-drag-region` HTML attribute. Setting that
+// attribute also activates Tauri/WRY's own built-in drag handling, which on
+// Linux (WebKitGTK) hit-tests the whole bounding box of the tagged element
+// rather than the DOM tree under the pointer - so it doesn't know to skip
+// over a nested button, link, or `no-drag-region` child the way this
+// listener does below. With both active at once, that native handler wins
+// the mousedown on Linux and starts moving the window instead of letting
+// the click reach the element underneath, which is what made every button
+// inside a titlebar effectively turn the whole window into a drag handle.
+// Using only the CSS classes here avoids ever registering that attribute,
+// so this listener is the sole thing driving dragging on every platform.
 export function useTauriDragRegions(enabled: boolean = true) {
   useEffect(() => {
     if (!enabled) {
@@ -29,10 +41,7 @@ export function useTauriDragRegions(enabled: boolean = true) {
         return;
       }
 
-      if (
-        target.closest("[data-tauri-drag-region='false']") ||
-        target.closest(".no-drag-region")
-      ) {
+      if (target.closest(".no-drag-region")) {
         return;
       }
 
@@ -42,10 +51,7 @@ export function useTauriDragRegions(enabled: boolean = true) {
         return;
       }
 
-      const dragRegion =
-        target.closest("[data-tauri-drag-region]") || target.closest(".drag-region");
-
-      if (!dragRegion) {
+      if (!target.closest(".drag-region")) {
         return;
       }
 
