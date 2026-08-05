@@ -752,6 +752,16 @@ const OverdriveTopBar: React.FC<OverdriveTopBarProps> = ({
               }}
               onBlur={() => {
                 setIsSearchActive(false);
+                // Clicking/typing into this input (switching from controller to
+                // keyboard/mouse) is the only place that sets `isTopBarFocused`
+                // true outside of controller navigation. Every controller
+                // button/d-pad handler on the home screen early-returns while
+                // it's true, so if it isn't cleared here too - e.g. the user
+                // clicks elsewhere with the mouse instead of pressing "B" on
+                // the controller to back out through `leaveTopBarFocus` - it
+                // stays stuck true forever and controller navigation looks
+                // completely dead until the app is restarted.
+                setTopBarFocused(false);
               }}
               onKeyDown={(event) => {
                 if (event.key === "Enter") {
