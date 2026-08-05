@@ -185,7 +185,7 @@ const OverdriveLibrary: React.FC<OverdriveLibraryProps> = ({
     });
   }, [games, onSelect, setSelectedGame, setSelectedIndex]);
 
-  // Controller support using responsive-gamepad
+  // Controller support (see useResponsiveGamepad)
   // Use useRef to store the latest navigateTo function to avoid closure issues
   const navigateToRef = React.useRef(navigateTo);
   React.useEffect(() => {
@@ -206,7 +206,6 @@ const OverdriveLibrary: React.FC<OverdriveLibraryProps> = ({
 
   useResponsiveGamepad({
     onButtonDown: (button) => {
-      console.log("[OverdriveLibrary] onButtonDown called with:", button);
       if (onButtonDownRef.current) {
         onButtonDownRef.current(button);
       }
@@ -238,7 +237,6 @@ const OverdriveLibrary: React.FC<OverdriveLibraryProps> = ({
       }
     },
     onDPad: (direction) => {
-      console.log("[OverdriveLibrary] onDPad called with:", direction);
       if (onDPadRef.current) {
         onDPadRef.current(direction);
       }
@@ -315,14 +313,12 @@ const OverdriveLibrary: React.FC<OverdriveLibraryProps> = ({
       }
       // LB - Navigate previous
       if (button === "LB") {
-        console.log("[OverdriveLibrary] LB button detected, navigating previous");
         if (typeof navigateToRef.current === "function") {
           navigateToRef.current("prev");
         }
       }
       // RB - Navigate next
       if (button === "RB") {
-        console.log("[OverdriveLibrary] RB button detected, navigating next");
         if (typeof navigateToRef.current === "function") {
           navigateToRef.current("next");
         }
@@ -330,14 +326,11 @@ const OverdriveLibrary: React.FC<OverdriveLibraryProps> = ({
     };
 
     onDPadRef.current = (direction: "UP" | "DOWN" | "LEFT" | "RIGHT") => {
-      console.log("[OverdriveLibrary] D-Pad pressed:", direction);
       if (direction === "LEFT") {
-        console.log("[OverdriveLibrary] D-Pad LEFT - navigating previous");
         if (typeof navigateToRef.current === "function") {
           navigateToRef.current("prev");
         }
       } else if (direction === "RIGHT") {
-        console.log("[OverdriveLibrary] D-Pad RIGHT - navigating next");
         if (typeof navigateToRef.current === "function") {
           navigateToRef.current("next");
         }
