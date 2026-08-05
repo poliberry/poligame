@@ -184,7 +184,7 @@ function tick() {
   if (!gamepad) {
     lastState = EMPTY_STATE;
     lastGamepadIndex = null;
-    rafId = requestAnimationFrame(tick);
+    rafId = listeners.size > 0 ? requestAnimationFrame(tick) : null;
     return;
   }
 
@@ -215,7 +215,13 @@ function tick() {
   listeners.forEach((listener) => notify(listener.onStick, leftX, leftY));
 
   lastState = state;
-  rafId = requestAnimationFrame(tick);
+  // A listener's callback (invoked via `notify` above) may have synchronously
+  // unsubscribed - possibly the last one - via the function `subscribeGamepad`
+  // returned. That already called `cancelAnimationFrame` on this frame's own
+  // (already-fired) id and reset `rafId` to null, but without this guard we'd
+  // still unconditionally schedule another frame here, leaving the loop
+  // running with zero listeners until something else happened to resubscribe.
+  rafId = listeners.size > 0 ? requestAnimationFrame(tick) : null;
 }
 
 /**

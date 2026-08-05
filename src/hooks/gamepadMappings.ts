@@ -72,18 +72,21 @@ export const STANDARD_MAPPING: GamepadMapping = {
 };
 
 // Decodes the common 8-direction hat-switch encoding some non-standard-mapped
-// PlayStation pads report on an axis for the d-pad (neutral ~1, then eight
-// evenly spaced values going clockwise from UP). Only cardinal directions are
-// exposed since that's all Overdrive's navigation uses.
+// PlayStation pads report on an axis for the d-pad. Only cardinal directions
+// are exposed since that's all Overdrive's navigation uses.
+//
+// Values run roughly: UP=-1, UP_RIGHT=-0.71, RIGHT=-0.43, DOWN_RIGHT=-0.14,
+// DOWN=0.14, DOWN_LEFT=0.43, LEFT=0.71, UP_LEFT=1, NEUTRAL~1.28 (varies by
+// pad, but is reliably outside the [-1, 1] range the eight pressed directions
+// occupy) - so neutral must be detected as "out of range", not as "very
+// negative", or UP (exactly -1) is misread as neutral and never fires.
 function decodeHatSwitch(value: number): "UP" | "DOWN" | "LEFT" | "RIGHT" | null {
-  if (value < -0.9) return null; // neutral (no d-pad pressed)
-  // Values run roughly: UP=-1, UP_RIGHT=-0.71, RIGHT=-0.43, DOWN_RIGHT=-0.14,
-  // DOWN=0.14, DOWN_LEFT=0.43, LEFT=0.71, UP_LEFT=1, NEUTRAL~1.28 (varies by pad).
+  if (value < -1.01 || value > 1.01) return null; // neutral (out of range)
   if (value >= -1 && value < -0.85) return "UP";
   if (value >= -0.6 && value < -0.3) return "RIGHT";
   if (value >= 0 && value < 0.3) return "DOWN";
   if (value >= 0.6 && value < 0.85) return "LEFT";
-  return null;
+  return null; // a diagonal, or an in-range neutral value for this pad
 }
 
 // Best-effort fallback for DualShock 4 / DualSense pads reporting a
