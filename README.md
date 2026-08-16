@@ -14,7 +14,7 @@ PoliGame utilises Tauri + Convex + React for its fameworks.
 </ul>
 </p>
 <h2>Want to try out PoliGame?</h2>
-<p>We publish releases on our website, https://games.poliberry.com (This is currently under some maintenance!), and on GitHub.
+<p>We publish releases on our website, https://play.poliberry.com, and on GitHub.
 Head to the Releases section, and download the latest version for your device.
 
 We currently support Linux (via AppImage) and Windows.
