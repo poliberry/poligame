@@ -707,6 +707,13 @@ fn focus_main_window(app: tauri::AppHandle) -> Result<(), String> {
         if !window.is_visible().unwrap_or(true) {
             window.show().map_err(|e| e.to_string())?;
         }
+        // A minimized window can still report `is_visible() == true` on most
+        // platforms, so `show()` alone won't bring it back - it also needs an
+        // explicit unminimize or `set_focus()` below is a no-op from the
+        // user's perspective (the window stays in the taskbar/dock).
+        if window.is_minimized().unwrap_or(false) {
+            window.unminimize().map_err(|e| e.to_string())?;
+        }
         window.set_focus().map_err(|e| e.to_string())?;
     }
     Ok(())
@@ -861,6 +868,16 @@ fn main() {
     }
 
     tauri::Builder::default()
+        // Must be the first plugin registered: it needs to intercept a second
+        // launch (another OS process opening PoliGame while one is already
+        // running) before any other plugin or `.setup()` work runs, otherwise
+        // that second process would carry on initializing its own database
+        // pool/windows instead of handing off to the running instance. The
+        // callback below runs *in the already-running instance*, not the new
+        // one - the new process exits on its own right after this fires.
+        .plugin(tauri_plugin_single_instance::init(|app, _args, _cwd| {
+            let _ = focus_main_window(app.clone());
+        }))
         .manage(discord_presence::DiscordPresenceState::new())
         .plugin(tauri_plugin_shell::init())
         .plugin(tauri_plugin_dialog::init())
@@ -946,6 +963,31 @@ fn main() {
                 tray_builder = tray_builder.icon(icon);
             }
 
+            // On Windows/macOS a click reliably reaches `on_tray_icon_event`
+            // below, which we use to open our own borderless "tray-panel"
+            // webview at the click position. Linux desktop environments (KDE
+            // in particular, but this is true of the StatusNotifierItem/
+            // AppIndicator protocol GTK uses in general) don't deliver click
+            // events to the app at all unless the tray icon has a native menu
+            // attached - without one, clicking the icon does nothing
+            // observable, which is what made it look like "the tray menu
+            // doesn't display" on Linux. Attach a real native menu there
+            // instead of relying on the custom panel.
+            #[cfg(target_os = "linux")]
+            {
+                use tauri::menu::{MenuBuilder, MenuItemBuilder};
+
+                let open_item = MenuItemBuilder::with_id("tray-open", "Open PoliGame").build(app)?;
+                let quit_item = MenuItemBuilder::with_id("tray-quit", "Quit").build(app)?;
+                let tray_menu = MenuBuilder::new(app)
+                    .item(&open_item)
+                    .separator()
+                    .item(&quit_item)
+                    .build()?;
+
+                tray_builder = tray_builder.menu(&tray_menu).show_menu_on_left_click(true);
+            }
+
             tray_builder.build(app)?;
             ensure_tray_panel(&app.handle())?;
 
@@ -970,6 +1012,15 @@ fn main() {
                     let _ = toggle_tray_panel(app, Some(position));
                 }
             }
+        })
+        .on_menu_event(|app, event| match event.id().as_ref() {
+            "tray-open" => {
+                let _ = focus_main_window(app.clone());
+            }
+            "tray-quit" => {
+                let _ = quit_application(app.clone());
+            }
+            _ => {}
         })
         .on_window_event(|window, event| match event {
             tauri::WindowEvent::CloseRequested { api, .. } => {
