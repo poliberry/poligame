@@ -1,7 +1,10 @@
 import { defineSchema, defineTable } from "convex/server";
 import { v } from "convex/values";
+import { axiomBridgeTables } from "./axiomBridge/bridge";
 
 export default defineSchema({
+  // Single-use request nonces for the Axiom Bridge (convex/axiom.ts). Nothing else lives here.
+  ...axiomBridgeTables(defineTable, v),
   users: defineTable({
     email: v.string(),
     passwordHash: v.string(),

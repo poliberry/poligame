@@ -9,10 +9,15 @@
  */
 
 import type * as auth from "../auth.js";
+import type * as axiom from "../axiom.js";
+import type * as axiomBridge_bridge from "../axiomBridge/bridge.js";
+import type * as axiomBridge_policy from "../axiomBridge/policy.js";
+import type * as axiomBridge_protocol from "../axiomBridge/protocol.js";
 import type * as forum from "../forum.js";
 import type * as friends from "../friends.js";
 import type * as gameActivity from "../gameActivity.js";
 import type * as gameCustomizations from "../gameCustomizations.js";
+import type * as http from "../http.js";
 import type * as messages from "../messages.js";
 import type * as playtime from "../playtime.js";
 import type * as privacy from "../privacy.js";
@@ -29,10 +34,15 @@ import type {
 
 declare const fullApi: ApiFromModules<{
   auth: typeof auth;
+  axiom: typeof axiom;
+  "axiomBridge/bridge": typeof axiomBridge_bridge;
+  "axiomBridge/policy": typeof axiomBridge_policy;
+  "axiomBridge/protocol": typeof axiomBridge_protocol;
   forum: typeof forum;
   friends: typeof friends;
   gameActivity: typeof gameActivity;
   gameCustomizations: typeof gameCustomizations;
+  http: typeof http;
   messages: typeof messages;
   playtime: typeof playtime;
   privacy: typeof privacy;
