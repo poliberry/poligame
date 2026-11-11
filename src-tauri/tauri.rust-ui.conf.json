@@ -1,0 +1,11 @@
+﻿{
+    "build":  {
+                  "beforeDevCommand":  "cd rust-ui \u0026\u0026 dx serve --platform web --port 1420",
+                  "beforeBuildCommand":  "cd rust-ui \u0026\u0026 dx build --platform web --release",
+                  "frontendDist":  "../rust-ui/target/dx/poligame-ui/release/web/public",
+                  "devUrl":  "http://localhost:1420"
+              },
+    "app":  {
+                "withGlobalTauri":  true
+            }
+}

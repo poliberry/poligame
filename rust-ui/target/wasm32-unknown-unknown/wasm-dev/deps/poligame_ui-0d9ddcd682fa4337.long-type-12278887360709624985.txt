@@ -1,0 +1,1 @@
+HomeViewPropsBuilder<((Vec<Game>,), (Vec<Game>,), (bool,), (Callback<dioxus::prelude::Event<MouseData>>,), ())>

@@ -6,6 +6,8 @@
   "scripts": {
     "dev": "tauri dev",
     "dev:web": "vite",
+    "dev:rust-ui": "tauri dev --config src-tauri/tauri.rust-ui.conf.json",
+    "build:rust-ui": "tauri build --config src-tauri/tauri.rust-ui.conf.json",
     "build": "tauri build",
     "build:overlay": "node scripts/build-overlay.js",
     "build:frontend": "tsc && vite build",

@@ -1,6 +1,6 @@
-use sqlx::{sqlite::SqlitePool, Row};
-use serde::{Deserialize, Serialize};
 use chrono::{DateTime, Utc};
+use serde::{Deserialize, Serialize};
+use sqlx::{sqlite::SqlitePool, Row};
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct GameRecord {
@@ -67,28 +67,19 @@ pub async fn init_database(pool: &SqlitePool) -> Result<(), sqlx::Error> {
     .execute(pool)
     .await?;
 
-    // Add new columns if they don't exist (migration)
-    let _ = sqlx::query("ALTER TABLE games ADD COLUMN griddb_id INTEGER")
-        .execute(pool)
-        .await;
-    let _ = sqlx::query("ALTER TABLE games ADD COLUMN grid_cover_art TEXT")
-        .execute(pool)
-        .await;
-    let _ = sqlx::query("ALTER TABLE games ADD COLUMN logo TEXT")
-        .execute(pool)
-        .await;
-    let _ = sqlx::query("ALTER TABLE games ADD COLUMN header_art TEXT")
-        .execute(pool)
-        .await;
-    let _ = sqlx::query("ALTER TABLE games ADD COLUMN icon TEXT")
-        .execute(pool)
-        .await;
-    let _ = sqlx::query("ALTER TABLE games ADD COLUMN executable_path TEXT")
-        .execute(pool)
-        .await;
-    let _ = sqlx::query("ALTER TABLE games ADD COLUMN launch_arguments TEXT")
-        .execute(pool)
-        .await;
+    // Older databases predate some game columns. Check the schema first so a
+    // duplicate-column error is distinguished from a real migration failure.
+    for (column, declaration) in [
+        ("griddb_id", "INTEGER"),
+        ("grid_cover_art", "TEXT"),
+        ("logo", "TEXT"),
+        ("header_art", "TEXT"),
+        ("icon", "TEXT"),
+        ("executable_path", "TEXT"),
+        ("launch_arguments", "TEXT"),
+    ] {
+        ensure_column(pool, "games", column, declaration).await?;
+    }
 
     sqlx::query(
         r#"
@@ -109,18 +100,85 @@ pub async fn init_database(pool: &SqlitePool) -> Result<(), sqlx::Error> {
     )
     .execute(pool)
     .await?;
-    
-    // Add icon column if it doesn't exist (migration)
-    let _ = sqlx::query("ALTER TABLE achievements ADD COLUMN icon TEXT")
-        .execute(pool)
-        .await;
+
+    ensure_column(pool, "achievements", "icon", "TEXT").await?;
 
     Ok(())
 }
 
+async fn ensure_column(
+    pool: &SqlitePool,
+    table: &str,
+    column: &str,
+    declaration: &str,
+) -> Result<(), sqlx::Error> {
+    // These identifiers come only from the fixed migration definitions above.
+    let rows = sqlx::query(&format!("PRAGMA table_info({table})"))
+        .fetch_all(pool)
+        .await?;
+    let exists = rows
+        .iter()
+        .any(|row| row.get::<String, _>("name") == column);
+    if !exists {
+        sqlx::query(&format!(
+            "ALTER TABLE {table} ADD COLUMN {column} {declaration}"
+        ))
+        .execute(pool)
+        .await?;
+    }
+    Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use sqlx::sqlite::SqlitePoolOptions;
+
+    #[tokio::test]
+    async fn initialization_upgrades_legacy_tables_without_losing_rows() {
+        let pool = SqlitePoolOptions::new()
+            .max_connections(1)
+            .connect("sqlite::memory:")
+            .await
+            .expect("in-memory database should open");
+
+        sqlx::query(
+            "CREATE TABLE games (id TEXT PRIMARY KEY, launcher TEXT NOT NULL, launcher_game_id TEXT NOT NULL, title TEXT NOT NULL, install_path TEXT, cover_art TEXT, metadata_json TEXT, playtime_minutes INTEGER DEFAULT 0, last_played DATETIME, created_at DATETIME NOT NULL, updated_at DATETIME NOT NULL)",
+        )
+        .execute(&pool)
+        .await
+        .expect("legacy games table should be created");
+        sqlx::query(
+            "INSERT INTO games (id, launcher, launcher_game_id, title, created_at, updated_at) VALUES ('legacy', 'steam', '1', 'Legacy game', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)",
+        )
+        .execute(&pool)
+        .await
+        .expect("legacy game should be inserted");
+
+        init_database(&pool)
+            .await
+            .expect("legacy schema should migrate");
+
+        let games = get_all_games(&pool)
+            .await
+            .expect("migrated games should remain readable");
+        assert_eq!(games.len(), 1);
+        assert_eq!(games[0].id, "legacy");
+        assert!(games[0].executable_path.is_none());
+
+        let columns = sqlx::query("PRAGMA table_info(achievements)")
+            .fetch_all(&pool)
+            .await
+            .expect("achievement schema should be readable");
+        assert!(columns
+            .iter()
+            .any(|row| row.get::<String, _>("name") == "icon"));
+    }
+}
+
 pub async fn insert_game(pool: &SqlitePool, game: &GameRecord) -> Result<(), sqlx::Error> {
     eprintln!("Executing INSERT for game: {} ({})", game.title, game.id);
-    
+
     let result = sqlx::query(
         r#"
         INSERT OR REPLACE INTO games 
@@ -149,16 +207,20 @@ pub async fn insert_game(pool: &SqlitePool, game: &GameRecord) -> Result<(), sql
     .bind(game.updated_at)
     .execute(pool)
     .await;
-    
+
     match result {
         Ok(rows) => {
-            eprintln!("INSERT successful: {} rows affected for game {}", rows.rows_affected(), game.id);
+            eprintln!(
+                "INSERT successful: {} rows affected for game {}",
+                rows.rows_affected(),
+                game.id
+            );
             Ok(())
-        },
+        }
         Err(e) => {
             eprintln!("INSERT failed for game {}: {:?}", game.id, e);
             Err(e)
-        },
+        }
     }
 }
 
@@ -248,7 +310,10 @@ pub async fn get_recently_played_games(
     Ok(games)
 }
 
-pub async fn get_game_by_id(pool: &SqlitePool, game_id: &str) -> Result<Option<GameRecord>, sqlx::Error> {
+pub async fn get_game_by_id(
+    pool: &SqlitePool,
+    game_id: &str,
+) -> Result<Option<GameRecord>, sqlx::Error> {
     let row = sqlx::query(
         r#"
         SELECT id, launcher, launcher_game_id, title, install_path, cover_art, griddb_id, grid_cover_art, logo, header_art, icon,
@@ -288,7 +353,10 @@ pub async fn get_game_by_id(pool: &SqlitePool, game_id: &str) -> Result<Option<G
     }
 }
 
-pub async fn insert_achievement(pool: &SqlitePool, achievement: &AchievementRecord) -> Result<(), sqlx::Error> {
+pub async fn insert_achievement(
+    pool: &SqlitePool,
+    achievement: &AchievementRecord,
+) -> Result<(), sqlx::Error> {
     sqlx::query(
         r#"
         INSERT OR REPLACE INTO achievements 
@@ -320,7 +388,10 @@ pub async fn delete_game_achievements(pool: &SqlitePool, game_id: &str) -> Resul
     Ok(())
 }
 
-pub async fn get_game_achievements(pool: &SqlitePool, game_id: &str) -> Result<Vec<AchievementRecord>, sqlx::Error> {
+pub async fn get_game_achievements(
+    pool: &SqlitePool,
+    game_id: &str,
+) -> Result<Vec<AchievementRecord>, sqlx::Error> {
     // Try to select with icon column, fall back to without if column doesn't exist
     let rows = sqlx::query(
         r#"
@@ -352,4 +423,3 @@ pub async fn get_game_achievements(pool: &SqlitePool, game_id: &str) -> Result<V
 
     Ok(achievements)
 }
-

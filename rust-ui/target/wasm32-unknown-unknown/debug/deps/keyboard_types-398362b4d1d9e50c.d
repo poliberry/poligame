@@ -1,0 +1,10 @@
+C:\Users\ddeba\Documents\Developer\poligame\rust-ui\target\wasm32-unknown-unknown\debug\deps\keyboard_types-398362b4d1d9e50c.d: C:\Users\ddeba\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\keyboard-types-0.7.0\src\lib.rs C:\Users\ddeba\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\keyboard-types-0.7.0\src\code.rs C:\Users\ddeba\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\keyboard-types-0.7.0\src\key.rs C:\Users\ddeba\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\keyboard-types-0.7.0\src\location.rs C:\Users\ddeba\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\keyboard-types-0.7.0\src\modifiers.rs C:\Users\ddeba\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\keyboard-types-0.7.0\src\shortcuts.rs
+
+C:\Users\ddeba\Documents\Developer\poligame\rust-ui\target\wasm32-unknown-unknown\debug\deps\libkeyboard_types-398362b4d1d9e50c.rmeta: C:\Users\ddeba\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\keyboard-types-0.7.0\src\lib.rs C:\Users\ddeba\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\keyboard-types-0.7.0\src\code.rs C:\Users\ddeba\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\keyboard-types-0.7.0\src\key.rs C:\Users\ddeba\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\keyboard-types-0.7.0\src\location.rs C:\Users\ddeba\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\keyboard-types-0.7.0\src\modifiers.rs C:\Users\ddeba\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\keyboard-types-0.7.0\src\shortcuts.rs
+
+C:\Users\ddeba\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\keyboard-types-0.7.0\src\lib.rs:
+C:\Users\ddeba\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\keyboard-types-0.7.0\src\code.rs:
+C:\Users\ddeba\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\keyboard-types-0.7.0\src\key.rs:
+C:\Users\ddeba\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\keyboard-types-0.7.0\src\location.rs:
+C:\Users\ddeba\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\keyboard-types-0.7.0\src\modifiers.rs:
+C:\Users\ddeba\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\keyboard-types-0.7.0\src\shortcuts.rs:

@@ -1,0 +1,11 @@
+C:\Users\ddeba\Documents\Developer\poligame\rust-ui\target\wasm32-unknown-unknown\debug\deps\slotmap-3c033dcaa04c9ddc.d: C:\Users\ddeba\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\slotmap-1.1.1\src\lib.rs C:\Users\ddeba\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\slotmap-1.1.1\src\basic.rs C:\Users\ddeba\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\slotmap-1.1.1\src\dense.rs C:\Users\ddeba\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\slotmap-1.1.1\src\hop.rs C:\Users\ddeba\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\slotmap-1.1.1\src\secondary.rs C:\Users\ddeba\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\slotmap-1.1.1\src\sparse_secondary.rs C:\Users\ddeba\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\slotmap-1.1.1\src\util.rs
+
+C:\Users\ddeba\Documents\Developer\poligame\rust-ui\target\wasm32-unknown-unknown\debug\deps\libslotmap-3c033dcaa04c9ddc.rmeta: C:\Users\ddeba\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\slotmap-1.1.1\src\lib.rs C:\Users\ddeba\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\slotmap-1.1.1\src\basic.rs C:\Users\ddeba\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\slotmap-1.1.1\src\dense.rs C:\Users\ddeba\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\slotmap-1.1.1\src\hop.rs C:\Users\ddeba\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\slotmap-1.1.1\src\secondary.rs C:\Users\ddeba\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\slotmap-1.1.1\src\sparse_secondary.rs C:\Users\ddeba\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\slotmap-1.1.1\src\util.rs
+
+C:\Users\ddeba\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\slotmap-1.1.1\src\lib.rs:
+C:\Users\ddeba\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\slotmap-1.1.1\src\basic.rs:
+C:\Users\ddeba\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\slotmap-1.1.1\src\dense.rs:
+C:\Users\ddeba\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\slotmap-1.1.1\src\hop.rs:
+C:\Users\ddeba\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\slotmap-1.1.1\src\secondary.rs:
+C:\Users\ddeba\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\slotmap-1.1.1\src\sparse_secondary.rs:
+C:\Users\ddeba\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\slotmap-1.1.1\src\util.rs:

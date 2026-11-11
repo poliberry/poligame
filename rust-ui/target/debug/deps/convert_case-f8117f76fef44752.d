@@ -1,0 +1,11 @@
+C:\Users\ddeba\Documents\Developer\poligame\rust-ui\target\debug\deps\convert_case-f8117f76fef44752.d: C:\Users\ddeba\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\convert_case-0.6.0\src\lib.rs C:\Users\ddeba\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\convert_case-0.6.0\src\case.rs C:\Users\ddeba\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\convert_case-0.6.0\src\converter.rs C:\Users\ddeba\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\convert_case-0.6.0\src\pattern.rs C:\Users\ddeba\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\convert_case-0.6.0\src\segmentation.rs
+
+C:\Users\ddeba\Documents\Developer\poligame\rust-ui\target\debug\deps\libconvert_case-f8117f76fef44752.rlib: C:\Users\ddeba\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\convert_case-0.6.0\src\lib.rs C:\Users\ddeba\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\convert_case-0.6.0\src\case.rs C:\Users\ddeba\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\convert_case-0.6.0\src\converter.rs C:\Users\ddeba\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\convert_case-0.6.0\src\pattern.rs C:\Users\ddeba\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\convert_case-0.6.0\src\segmentation.rs
+
+C:\Users\ddeba\Documents\Developer\poligame\rust-ui\target\debug\deps\libconvert_case-f8117f76fef44752.rmeta: C:\Users\ddeba\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\convert_case-0.6.0\src\lib.rs C:\Users\ddeba\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\convert_case-0.6.0\src\case.rs C:\Users\ddeba\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\convert_case-0.6.0\src\converter.rs C:\Users\ddeba\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\convert_case-0.6.0\src\pattern.rs C:\Users\ddeba\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\convert_case-0.6.0\src\segmentation.rs
+
+C:\Users\ddeba\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\convert_case-0.6.0\src\lib.rs:
+C:\Users\ddeba\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\convert_case-0.6.0\src\case.rs:
+C:\Users\ddeba\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\convert_case-0.6.0\src\converter.rs:
+C:\Users\ddeba\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\convert_case-0.6.0\src\pattern.rs:
+C:\Users\ddeba\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\convert_case-0.6.0\src\segmentation.rs:

@@ -1,0 +1,10 @@
+C:\Users\ddeba\Documents\Developer\poligame\rust-ui\target\wasm-dev\deps\proc_macro2_diagnostics-b6acb9842e048793.d: C:\Users\ddeba\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\proc-macro2-diagnostics-0.10.1\src\lib.rs C:\Users\ddeba\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\proc-macro2-diagnostics-0.10.1\src\ext.rs C:\Users\ddeba\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\proc-macro2-diagnostics-0.10.1\src\diagnostic.rs C:\Users\ddeba\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\proc-macro2-diagnostics-0.10.1\src\line.rs
+
+C:\Users\ddeba\Documents\Developer\poligame\rust-ui\target\wasm-dev\deps\libproc_macro2_diagnostics-b6acb9842e048793.rlib: C:\Users\ddeba\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\proc-macro2-diagnostics-0.10.1\src\lib.rs C:\Users\ddeba\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\proc-macro2-diagnostics-0.10.1\src\ext.rs C:\Users\ddeba\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\proc-macro2-diagnostics-0.10.1\src\diagnostic.rs C:\Users\ddeba\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\proc-macro2-diagnostics-0.10.1\src\line.rs
+
+C:\Users\ddeba\Documents\Developer\poligame\rust-ui\target\wasm-dev\deps\libproc_macro2_diagnostics-b6acb9842e048793.rmeta: C:\Users\ddeba\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\proc-macro2-diagnostics-0.10.1\src\lib.rs C:\Users\ddeba\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\proc-macro2-diagnostics-0.10.1\src\ext.rs C:\Users\ddeba\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\proc-macro2-diagnostics-0.10.1\src\diagnostic.rs C:\Users\ddeba\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\proc-macro2-diagnostics-0.10.1\src\line.rs
+
+C:\Users\ddeba\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\proc-macro2-diagnostics-0.10.1\src\lib.rs:
+C:\Users\ddeba\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\proc-macro2-diagnostics-0.10.1\src\ext.rs:
+C:\Users\ddeba\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\proc-macro2-diagnostics-0.10.1\src\diagnostic.rs:
+C:\Users\ddeba\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\proc-macro2-diagnostics-0.10.1\src\line.rs:

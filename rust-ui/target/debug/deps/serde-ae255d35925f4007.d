@@ -1,0 +1,14 @@
+C:\Users\ddeba\Documents\Developer\poligame\rust-ui\target\debug\deps\serde-ae255d35925f4007.d: C:\Users\ddeba\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\serde-1.0.229\src\lib.rs C:\Users\ddeba\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\serde-1.0.229\src\integer128.rs C:\Users\ddeba\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\serde-1.0.229\src\private\mod.rs C:\Users\ddeba\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\serde-1.0.229\src\private\de.rs C:\Users\ddeba\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\serde-1.0.229\src\private\ser.rs C:\Users\ddeba\Documents\Developer\poligame\rust-ui\target\debug\build\serde-945fe79b600af052\out/private.rs
+
+C:\Users\ddeba\Documents\Developer\poligame\rust-ui\target\debug\deps\libserde-ae255d35925f4007.rlib: C:\Users\ddeba\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\serde-1.0.229\src\lib.rs C:\Users\ddeba\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\serde-1.0.229\src\integer128.rs C:\Users\ddeba\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\serde-1.0.229\src\private\mod.rs C:\Users\ddeba\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\serde-1.0.229\src\private\de.rs C:\Users\ddeba\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\serde-1.0.229\src\private\ser.rs C:\Users\ddeba\Documents\Developer\poligame\rust-ui\target\debug\build\serde-945fe79b600af052\out/private.rs
+
+C:\Users\ddeba\Documents\Developer\poligame\rust-ui\target\debug\deps\libserde-ae255d35925f4007.rmeta: C:\Users\ddeba\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\serde-1.0.229\src\lib.rs C:\Users\ddeba\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\serde-1.0.229\src\integer128.rs C:\Users\ddeba\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\serde-1.0.229\src\private\mod.rs C:\Users\ddeba\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\serde-1.0.229\src\private\de.rs C:\Users\ddeba\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\serde-1.0.229\src\private\ser.rs C:\Users\ddeba\Documents\Developer\poligame\rust-ui\target\debug\build\serde-945fe79b600af052\out/private.rs
+
+C:\Users\ddeba\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\serde-1.0.229\src\lib.rs:
+C:\Users\ddeba\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\serde-1.0.229\src\integer128.rs:
+C:\Users\ddeba\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\serde-1.0.229\src\private\mod.rs:
+C:\Users\ddeba\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\serde-1.0.229\src\private\de.rs:
+C:\Users\ddeba\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\serde-1.0.229\src\private\ser.rs:
+C:\Users\ddeba\Documents\Developer\poligame\rust-ui\target\debug\build\serde-945fe79b600af052\out/private.rs:
+
+# env-dep:OUT_DIR=C:\\Users\\ddeba\\Documents\\Developer\\poligame\\rust-ui\\target\\debug\\build\\serde-945fe79b600af052\\out

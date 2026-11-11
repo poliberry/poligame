@@ -1,0 +1,7 @@
+C:\Users\ddeba\Documents\Developer\poligame\rust-ui\target\debug\deps\dunce-64b60465dfa1e886.d: C:\Users\ddeba\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\dunce-1.0.5\src\lib.rs
+
+C:\Users\ddeba\Documents\Developer\poligame\rust-ui\target\debug\deps\libdunce-64b60465dfa1e886.rlib: C:\Users\ddeba\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\dunce-1.0.5\src\lib.rs
+
+C:\Users\ddeba\Documents\Developer\poligame\rust-ui\target\debug\deps\libdunce-64b60465dfa1e886.rmeta: C:\Users\ddeba\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\dunce-1.0.5\src\lib.rs
+
+C:\Users\ddeba\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\dunce-1.0.5\src\lib.rs:

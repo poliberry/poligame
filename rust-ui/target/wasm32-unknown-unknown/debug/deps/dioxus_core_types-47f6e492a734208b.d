@@ -1,0 +1,9 @@
+C:\Users\ddeba\Documents\Developer\poligame\rust-ui\target\wasm32-unknown-unknown\debug\deps\dioxus_core_types-47f6e492a734208b.d: C:\Users\ddeba\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\dioxus-core-types-0.6.2\src\lib.rs C:\Users\ddeba\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\dioxus-core-types-0.6.2\src\bubbles.rs C:\Users\ddeba\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\dioxus-core-types-0.6.2\src\bundled.rs C:\Users\ddeba\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\dioxus-core-types-0.6.2\src\formatter.rs C:\Users\ddeba\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\dioxus-core-types-0.6.2\src\hr_context.rs
+
+C:\Users\ddeba\Documents\Developer\poligame\rust-ui\target\wasm32-unknown-unknown\debug\deps\libdioxus_core_types-47f6e492a734208b.rmeta: C:\Users\ddeba\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\dioxus-core-types-0.6.2\src\lib.rs C:\Users\ddeba\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\dioxus-core-types-0.6.2\src\bubbles.rs C:\Users\ddeba\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\dioxus-core-types-0.6.2\src\bundled.rs C:\Users\ddeba\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\dioxus-core-types-0.6.2\src\formatter.rs C:\Users\ddeba\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\dioxus-core-types-0.6.2\src\hr_context.rs
+
+C:\Users\ddeba\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\dioxus-core-types-0.6.2\src\lib.rs:
+C:\Users\ddeba\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\dioxus-core-types-0.6.2\src\bubbles.rs:
+C:\Users\ddeba\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\dioxus-core-types-0.6.2\src\bundled.rs:
+C:\Users\ddeba\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\dioxus-core-types-0.6.2\src\formatter.rs:
+C:\Users\ddeba\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\dioxus-core-types-0.6.2\src\hr_context.rs:

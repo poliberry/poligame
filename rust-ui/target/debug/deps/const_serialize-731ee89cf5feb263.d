@@ -1,0 +1,10 @@
+C:\Users\ddeba\Documents\Developer\poligame\rust-ui\target\debug\deps\const_serialize-731ee89cf5feb263.d: C:\Users\ddeba\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\const-serialize-0.6.2\src\lib.rs C:\Users\ddeba\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\const-serialize-0.6.2\src\const_buffers.rs C:\Users\ddeba\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\const-serialize-0.6.2\src\const_vec.rs C:\Users\ddeba\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\const-serialize-0.6.2\src\../README.md
+
+C:\Users\ddeba\Documents\Developer\poligame\rust-ui\target\debug\deps\libconst_serialize-731ee89cf5feb263.rlib: C:\Users\ddeba\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\const-serialize-0.6.2\src\lib.rs C:\Users\ddeba\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\const-serialize-0.6.2\src\const_buffers.rs C:\Users\ddeba\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\const-serialize-0.6.2\src\const_vec.rs C:\Users\ddeba\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\const-serialize-0.6.2\src\../README.md
+
+C:\Users\ddeba\Documents\Developer\poligame\rust-ui\target\debug\deps\libconst_serialize-731ee89cf5feb263.rmeta: C:\Users\ddeba\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\const-serialize-0.6.2\src\lib.rs C:\Users\ddeba\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\const-serialize-0.6.2\src\const_buffers.rs C:\Users\ddeba\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\const-serialize-0.6.2\src\const_vec.rs C:\Users\ddeba\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\const-serialize-0.6.2\src\../README.md
+
+C:\Users\ddeba\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\const-serialize-0.6.2\src\lib.rs:
+C:\Users\ddeba\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\const-serialize-0.6.2\src\const_buffers.rs:
+C:\Users\ddeba\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\const-serialize-0.6.2\src\const_vec.rs:
+C:\Users\ddeba\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\const-serialize-0.6.2\src\../README.md:
